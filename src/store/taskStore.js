@@ -1,0 +1,221 @@
+import { create } from 'zustand';
+
+// 优先从 sessionStorage 获取 fileId，没有则从 localStorage 获取，没有则新生成
+let fileId = sessionStorage.getItem('moo_file_id') || localStorage.getItem('moo_file_id');
+if (!fileId) {
+  fileId = `file_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
+  localStorage.setItem('moo_file_id', fileId);
+}
+sessionStorage.setItem('moo_file_id', fileId);
+
+// 本地存储 key（每个 tab 独立）
+const TASKS_KEY = `moo_tasks_${fileId}`;
+
+// 辅助函数：保证所有 links 都有 label 字段
+function ensureLinksLabel(tasks) {
+  return tasks.map(t => ({
+    ...t,
+    links: (t.links || []).map(l => ({ ...l, label: typeof l.label === 'string' ? l.label : '' }))
+  }));
+}
+
+// 从 localStorage 加载任务数据
+function loadTasksFromStorage() {
+  try {
+    const saved = localStorage.getItem(TASKS_KEY);
+    if (saved) {
+      return ensureLinksLabel(JSON.parse(saved));
+    }
+  } catch (e) {
+    // 解析失败则忽略
+  }
+  // 默认初始任务
+  return ensureLinksLabel([
+    {
+      id: 1,
+      title: "第一个任务",
+      position: { x: 100, y: 100 },
+      links: [],
+      lock: true,
+      parentId: null,
+      level: 0,
+      date: new Date().toISOString(), // 默认当天
+      collapsed: false
+    }
+  ]);
+}
+
+// 保存任务数据到 localStorage
+function saveTasksToStorage(tasks) {
+  try {
+    localStorage.setItem(TASKS_KEY, JSON.stringify(ensureLinksLabel(tasks)));
+  } catch (e) {
+    // 存储失败忽略
+  }
+}
+
+export const useTaskStore = create((set, get) => ({
+  // 初始化时从 localStorage 恢复
+  tasks: loadTasksFromStorage(),
+  undoStack: [],
+  redoStack: [],
+  // 保存快照
+  _saveSnapshot() {
+    const { tasks, undoStack } = get();
+    set({
+      undoStack: [...undoStack, JSON.parse(JSON.stringify(ensureLinksLabel(tasks)))],
+      redoStack: [],
+    });
+  },
+  addTask: (task) => {
+    get()._saveSnapshot();
+    set((state) => {
+      const newTasks = ensureLinksLabel([...state.tasks, { ...task, date: task.date || null, collapsed: false }]);
+      saveTasksToStorage(newTasks); // 保存到本地
+      return { tasks: newTasks };
+    });
+  },
+  updateTask: (id, updates, saveSnapshot = true) => {
+    if (saveSnapshot) get()._saveSnapshot();
+    set((state) => {
+      const newTasks = ensureLinksLabel(state.tasks.map((t) => (t.id === id ? { ...t, ...updates } : t)));
+      saveTasksToStorage(newTasks); // 保存到本地
+      return { tasks: newTasks };
+    });
+  },
+  addLink: (fromId, toId, fromAnchor = null, toAnchor = null, label = "") => {
+    get()._saveSnapshot();
+    set((state) => {
+      const newTasks = ensureLinksLabel(state.tasks.map((t) => {
+        if (t.id === fromId) {
+          const idx = t.links.findIndex(l => l.toId === toId);
+          if (idx !== -1) {
+            // 已存在则更新锚点和label
+            const newLinks = [...t.links];
+            newLinks[idx] = { ...newLinks[idx], fromAnchor, toAnchor, label: typeof newLinks[idx].label === 'string' ? newLinks[idx].label : '' };
+            return { ...t, links: newLinks };
+          } else {
+            // 不存在则添加
+            return {
+              ...t,
+              links: [...t.links, { toId, fromAnchor, toAnchor, label: typeof label === 'string' ? label : '' }]
+            };
+          }
+        }
+        return t;
+      }));
+      saveTasksToStorage(newTasks); // 保存到本地
+      return { tasks: newTasks };
+    });
+  },
+  updateLinkLabel: (fromId, toId, label) => {
+    get()._saveSnapshot();
+    set((state) => {
+      const newTasks = ensureLinksLabel(state.tasks.map((t) => {
+        if (t.id === fromId) {
+          return {
+            ...t,
+            links: t.links.map(l =>
+              l.toId === toId ? { ...l, label: typeof label === 'string' ? label : '' } : l
+            )
+          };
+        }
+        return t;
+      }));
+      saveTasksToStorage(newTasks);
+      return { tasks: newTasks };
+    });
+  },
+  deleteTask: (id) => {
+    get()._saveSnapshot();
+    set((state) => {
+      const newTasks = ensureLinksLabel(state.tasks
+        .filter((t) => t.id !== id)
+        .map((t) => ({
+          ...t,
+          links: t.links.filter((l) => l.toId !== id),
+        })));
+      saveTasksToStorage(newTasks); // 保存到本地
+      return { tasks: newTasks };
+    });
+  },
+  deleteLink: (fromId, toId) => {
+    get()._saveSnapshot();
+    set((state) => {
+      const newTasks = ensureLinksLabel(state.tasks.map((t) =>
+        t.id === fromId
+          ? { ...t, links: t.links.filter((l) => l.toId !== toId) }
+          : t
+      ));
+      saveTasksToStorage(newTasks); // 保存到本地
+      return { tasks: newTasks };
+    });
+  },
+  undo: () => {
+    const { undoStack, redoStack, tasks } = get();
+    if (undoStack.length === 0) return;
+    const prev = ensureLinksLabel(undoStack[undoStack.length - 1]);
+    saveTasksToStorage(prev); // 保存到本地
+    set({
+      tasks: JSON.parse(JSON.stringify(prev)),
+      undoStack: undoStack.slice(0, -1),
+      redoStack: [...redoStack, JSON.parse(JSON.stringify(ensureLinksLabel(tasks)))],
+    });
+  },
+  redo: () => {
+    const { undoStack, redoStack, tasks } = get();
+    if (redoStack.length === 0) return;
+    const next = ensureLinksLabel(redoStack[redoStack.length - 1]);
+    saveTasksToStorage(next); // 保存到本地
+    set({
+      tasks: JSON.parse(JSON.stringify(next)),
+      undoStack: [...undoStack, JSON.parse(JSON.stringify(ensureLinksLabel(tasks)))],
+      redoStack: redoStack.slice(0, -1),
+    });
+  },
+  toggleCollapse: (id) => {
+    set((state) => {
+      const newTasks = ensureLinksLabel(state.tasks.map((t) =>
+        t.id === id ? { ...t, collapsed: !t.collapsed } : t
+      ));
+      saveTasksToStorage(newTasks);
+      return { tasks: newTasks };
+    });
+  },
+  // 拖动卡片时，强制将相关连线的锚点全部设为null（无论原来是否为null）
+  forceResetAnchors: (cardId) => {
+    set((state) => {
+      const newTasks = ensureLinksLabel(state.tasks.map((t) => {
+        let links = t.links.map(l => {
+          if (t.id === cardId || l.toId === cardId) {
+            return { ...l, fromAnchor: null, toAnchor: null };
+          }
+          return l;
+        });
+        return { ...t, links };
+      }));
+      saveTasksToStorage(newTasks);
+      return { tasks: newTasks };
+    });
+  },
+  // 新增：清空所有任务
+  clearTasks: () => {
+    saveTasksToStorage([]);
+    set({ tasks: [] });
+  },
+  // 新增：静默移动任务（不触发快照）
+  moveTaskSilently: (id, position) => {
+    set((state) => {
+      const newTasks = ensureLinksLabel(state.tasks.map((t) => (t.id === id ? { ...t, position } : t)));
+      saveTasksToStorage(newTasks);
+      return { tasks: newTasks };
+    });
+  },
+}));
+
+// 监听 localStorage 变化，实现多标签页数据同步（仅同步同 fileId 的 tab）
+window.addEventListener('storage', (event) => {
+  if (event.key === TASKS_KEY) {
+    useTaskStore.setState({ tasks: loadTasksFromStorage() });
+  }
+}); 
