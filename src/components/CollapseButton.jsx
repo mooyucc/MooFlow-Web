@@ -19,9 +19,9 @@ const CollapseButton = ({ collapsed, onClick }) => (
     onClick={onClick}
   >
     <circle cx="10" cy="10" r="9" fill="#fff" stroke="#e0e0e5" strokeWidth="1" />
-    <line x1="6" y1="10" x2="14" y2="10" stroke="#1251a5" strokeWidth="2" strokeLinecap="round" />
+    <line x1="6" y1="10" x2="14" y2="10" stroke="#316acb" strokeWidth="2" strokeLinecap="round" />
     {!collapsed && (
-      <line x1="10" y1="6" x2="10" y2="14" stroke="#1251a5" strokeWidth="2" strokeLinecap="round" />
+      <line x1="10" y1="6" x2="10" y2="14" stroke="#316acb" strokeWidth="2" strokeLinecap="round" />
     )}
   </svg>
 );

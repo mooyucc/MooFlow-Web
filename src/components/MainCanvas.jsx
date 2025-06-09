@@ -68,6 +68,8 @@ const MainCanvas = () => {
     gridSize: 40,
   });
 
+  const [isEditing, setIsEditing] = useState(false);
+
   useEffect(() => {
     if (hasInitRef.current) return;
     if (tasks.length === 0) return;
@@ -321,14 +323,22 @@ const MainCanvas = () => {
   // Delete键批量删除
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedTaskIds.length > 0) {
-        selectedTaskIds.forEach(id => deleteTask(id));
-        setSelectedTaskIds([]);
+      if (isEditing) return;
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selectedTaskIds.length > 0) {
+          // 多选删除
+          selectedTaskIds.forEach(id => deleteTask(id));
+          setSelectedTaskIds([]);
+        } else if (selectedTaskId) {
+          // 单选删除
+          deleteTask(selectedTaskId);
+          setSelectedTaskId(null);
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedTaskIds, deleteTask]);
+  }, [selectedTaskId, selectedTaskIds, deleteTask, isEditing]);
 
   // 禁用右键菜单，防止右键拖动时弹出
   useEffect(() => {
@@ -414,12 +424,8 @@ const MainCanvas = () => {
     const rootTask = tasks[0];
     if (!rootTask || task.parentId !== rootTask.parentId) {
       // 只为非主线同级任务自动加连线
-      const siblings = tasks.filter(t => t.parentId === newTask.parentId && t.id !== newTask.id);
-      if (siblings.length > 0) {
-        // 找到x最靠右的同级任务
-        const lastSibling = siblings.reduce((prev, curr) => (curr.position.x > prev.position.x ? curr : prev), siblings[0]);
-        useTaskStore.getState().addLink(lastSibling.id, newTask.id, { x: 180, y: 36 }, { x: 0, y: 36 });
-      }
+      // 直接从当前任务连线到新任务
+      useTaskStore.getState().addLink(task.id, newTask.id, { x: 180, y: 36 }, { x: 0, y: 36 });
     }
   };
 
@@ -601,7 +607,7 @@ const MainCanvas = () => {
                 toAnchor={{ x: 0, y: 36 }}
                 tasks={tasks}
                 svgRef={svgRef}
-                color="#c026d3" // 紫色
+                color="#e11d48" // 红色主线
                 isMainChain={true}
               />
             );
@@ -635,7 +641,6 @@ const MainCanvas = () => {
                 svgRef={svgRef}
                 label={typeof link.label === 'string' ? link.label : ''}
                 onUpdateLabel={handleUpdateLinkLabel}
-                color="#9ca3af"
               />
             ) : null;
           }) : []
@@ -675,8 +680,8 @@ const MainCanvas = () => {
             y={Math.min(selectBox.y1, selectBox.y2)}
             width={Math.abs(selectBox.x2 - selectBox.x1)}
             height={Math.abs(selectBox.y2 - selectBox.y1)}
-            fill="#1251a522"
-            stroke="#1251a5"
+            fill="#316acb22"
+            stroke="#316acb"
             strokeDasharray="4 2"
             pointerEvents="none"
           />
@@ -697,6 +702,7 @@ const MainCanvas = () => {
             onDrag={handleTaskDrag}
             data-task-id={task.id}
             isFirst={task.id === (tasks[0]?.id)}
+            onEditingChange={setIsEditing}
           />
         ))}
         {/* 时间标尺（底部固定，随画布缩放/平移） */}
@@ -729,20 +735,19 @@ const MainCanvas = () => {
             if (todayX < months[0].x - 100 || todayX > months[months.length - 1].x + 100) return null;
             return (
               <>
-                <line
-                  x1={todayX}
-                  x2={todayX}
-                  y1={window.innerHeight / transform.scale - 120 - transform.offsetY / transform.scale}
-                  y2={window.innerHeight / transform.scale - 10 - transform.offsetY / transform.scale}
-                  stroke="#e11d48" // 红色
-                  strokeWidth={2}
-                  strokeDasharray="8 4"
+                <circle
+                  cx={todayX}
+                  cy={window.innerHeight / transform.scale - 60 - transform.offsetY / transform.scale}
+                  r={9}
+                  fill="none"
+                  stroke="#e11d48"
+                  strokeWidth={3}
                   opacity={0.95}
                   pointerEvents="none"
                 />
                 <text
                   x={todayX}
-                  y={window.innerHeight / transform.scale - 130 - transform.offsetY / transform.scale}
+                  y={window.innerHeight / transform.scale - 60 - transform.offsetY / transform.scale - 80}
                   fontSize={14}
                   fontFamily="-apple-system, BlinkMacSystemFont, 'SF Pro', 'Helvetica Neue', Arial, sans-serif"
                   fill="#e11d48"
@@ -750,7 +755,11 @@ const MainCanvas = () => {
                   style={{ fontWeight: 400, letterSpacing: 1, opacity: 0.95 }}
                   pointerEvents="none"
                 >
-                  Today
+                  <tspan x={todayX} dy={0}>T</tspan>
+                  <tspan x={todayX} dy={16}>o</tspan>
+                  <tspan x={todayX} dy={16}>d</tspan>
+                  <tspan x={todayX} dy={16}>a</tspan>
+                  <tspan x={todayX} dy={16}>y</tspan>
                 </text>
               </>
             );
@@ -797,7 +806,7 @@ const MainCanvas = () => {
                     x2={m.x}
                     y1={window.innerHeight / transform.scale - 90 - transform.offsetY / transform.scale}
                     y2={window.innerHeight / transform.scale - 20 - transform.offsetY / transform.scale}
-                    stroke="#1251a5"
+                    stroke="#316acb"
                     strokeWidth={3}
                     opacity={0.25}
                   />
@@ -806,7 +815,7 @@ const MainCanvas = () => {
                     y={window.innerHeight / transform.scale - 100 - transform.offsetY / transform.scale}
                     fontSize={22}
                     fontFamily="-apple-system, BlinkMacSystemFont, 'SF Pro', 'Helvetica Neue', Arial, sans-serif"
-                    fill="#1251a5"
+                    fill="#316acb"
                     textAnchor="middle"
                     style={{ fontWeight: 700, letterSpacing: 2, opacity: 0.7 }}
                   >
@@ -821,7 +830,7 @@ const MainCanvas = () => {
                   y={window.innerHeight / transform.scale - 30 - transform.offsetY / transform.scale}
                   fontSize={18}
                   fontFamily="-apple-system, BlinkMacSystemFont, 'SF Pro', 'Helvetica Neue', Arial, sans-serif"
-                  fill="#1251a5"
+                  fill="#316acb"
                   textAnchor="middle"
                   style={{ fontWeight: 500, letterSpacing: 1, opacity: 0.7 }}
                 >

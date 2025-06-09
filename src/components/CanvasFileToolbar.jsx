@@ -45,23 +45,28 @@ const HomeIcon = () => (
 );
 
 // 默认新建文件内容
-const defaultFile = () => ({
-  id: Date.now(),
-  name: `未命名文件${Date.now()}`,
-  tasks: [
-    {
-      id: 1,
-      title: "第一个任务",
-      position: { x: 100, y: 100 },
-      links: [],
-      lock: true,
-      parentId: null,
-      level: 0,
-      date: new Date().toISOString(),
-      collapsed: false
-    }
-  ]
-});
+const defaultFile = () => {
+  const now = new Date();
+  const pad = n => n.toString().padStart(2, '0');
+  const timeStr = `${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+  return {
+    id: Date.now(),
+    name: `未命名${timeStr}`,
+    tasks: [
+      {
+        id: 1,
+        title: "第一个任务",
+        position: { x: 100, y: 100 },
+        links: [],
+        lock: true,
+        parentId: null,
+        level: 0,
+        date: new Date().toISOString(),
+        collapsed: false
+      }
+    ]
+  };
+};
 
 const CanvasFileToolbar = ({ canvasProps, setCanvasProps }) => {
   // 多文件（Tab）本地状态
@@ -394,18 +399,18 @@ const CanvasFileToolbar = ({ canvasProps, setCanvasProps }) => {
             key={file.id}
             className={`file-tab${file.id === activeFileId ? ' active' : ''}`}
             style={{
-              padding: '4px 16px',
-              marginRight: 4,
-              borderRadius: 6,
-              background: file.id === activeFileId ? '#e3eaff' : 'transparent',
-              color: file.id === activeFileId ? '#1251a5' : 'var(--tab-text-color, #333)',
+              padding: '1px 6px',
+              marginRight: 2,
+              borderRadius: 10,
+              background: file.id === activeFileId ? '#316acb' : 'transparent',
+              color: file.id === activeFileId ? '#fff' : 'var(--tab-text-color, #333)',
               fontWeight: 500,
               display: 'flex',
               alignItems: 'center',
               cursor: 'pointer',
-              border: file.id === activeFileId ? '1.5px solid #1251a5' : '1.5px solid transparent',
+              border: file.id === activeFileId ? 'none' : '1.5px solid transparent',
               position: 'relative',
-              minWidth: 80
+              minWidth: 56
             }}
             onClick={() => switchFile(file.id)}
           >
@@ -422,19 +427,20 @@ const CanvasFileToolbar = ({ canvasProps, setCanvasProps }) => {
                 }}
                 style={{
                   maxWidth: 120,
-                  fontSize: 15,
-                  border: '1px solid #1251a5',
+                  fontSize: 14,
+                  fontWeight: 400,
+                  border: '1px solid #316acb',
                   borderRadius: 4,
                   padding: '2px 6px',
                   outline: 'none',
-                  color: '#1251a5',
+                  color: '#316acb',
                   background: '#fff',
                   marginRight: 4
                 }}
               />
             ) : (
               <span
-                style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 14, fontWeight: 400 }}
                 onDoubleClick={e => {
                   e.stopPropagation();
                   setRenamingId(file.id);
@@ -537,7 +543,7 @@ const CanvasFileToolbar = ({ canvasProps, setCanvasProps }) => {
             width: 340,
             height: 'calc(100vh - 256px)',
             // VisionOS毛玻璃半透明背景
-            background: 'rgba(255,255,255,0.85)',
+            background: 'rgba(255,255,255,0.95)',
             backdropFilter: 'blur(48px) saturate(1.5)',
             WebkitBackdropFilter: 'blur(48px) saturate(1.5)',
             boxShadow: '-2px 0 32px #0003',
@@ -559,7 +565,7 @@ const CanvasFileToolbar = ({ canvasProps, setCanvasProps }) => {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
-            <span style={{ fontSize: 20, fontWeight: 700, color: '#1251a5', flex: 1 }}>最近打开</span>
+            <span style={{ fontSize: 20, fontWeight: 700, color: '#316acb', flex: 1 }}>最近打开</span>
             <button
               style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#888' }}
               onClick={() => setShowRecent(false)}
@@ -579,7 +585,7 @@ const CanvasFileToolbar = ({ canvasProps, setCanvasProps }) => {
                   background: '#f6f8ff',
                   boxShadow: '0 1px 4px #0001',
                   cursor: 'pointer',
-                  border: file.id === activeFileId ? '1.5px solid #1251a5' : '1.5px solid #e3eaff',
+                  border: file.id === activeFileId ? '1.5px solid #316acb' : '1.5px solid #e3eaff',
                   display: 'flex',
                   flexDirection: 'column',
                   position: 'relative',
@@ -607,7 +613,7 @@ const CanvasFileToolbar = ({ canvasProps, setCanvasProps }) => {
                   onMouseEnter={e => (e.currentTarget.style.color = '#f44336')}
                   onMouseLeave={e => (e.currentTarget.style.color = '#bbb')}
                 >×</button>
-                <span style={{ fontWeight: 600, color: '#1251a5', fontSize: 16 }}>{file.name}</span>
+                <span style={{ fontWeight: 600, color: '#316acb', fontSize: 16 }}>{file.name}</span>
                 <span style={{ color: '#888', fontSize: 13, marginTop: 2 }}>最近编辑：{file.lastOpen ? new Date(file.lastOpen).toLocaleString() : ''}</span>
               </div>
             ))

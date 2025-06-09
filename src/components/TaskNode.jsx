@@ -52,7 +52,7 @@ const CalendarIcon = ({ size = 16 }) => (
   </svg>
 );
 
-const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, multiSelected, isFirst }) => {
+const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, multiSelected, isFirst, onEditingChange }) => {
   const updateTask = useTaskStore((state) => state.updateTask);
   const addTask = useTaskStore((state) => state.addTask);
   const deleteTask = useTaskStore((state) => state.deleteTask);
@@ -77,6 +77,12 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
     setLocked(task.lock || false);
     setDate(task.date ? new Date(task.date) : null);
   }, [task.lock, task.date]);
+
+  useEffect(() => {
+    if (typeof onEditingChange === 'function') {
+      onEditingChange(editing);
+    }
+  }, [editing, onEditingChange]);
 
   // 拖拽逻辑
   const handleMouseDown = (e) => {
@@ -325,7 +331,7 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
       onMouseDown={handleMouseDown}
       onClick={onClick}
       style={{ cursor: editing ? 'default' : 'move' }}
-      filter={selected ? 'drop-shadow(0 4px 16px rgba(0,0,0,0.10))' : multiSelected ? 'drop-shadow(0 0 0 2px #1251a5)' : 'drop-shadow(0 2px 6px rgba(0,0,0,0.06))'}
+      filter={selected ? 'drop-shadow(0 4px 16px rgba(0,0,0,0.10))' : multiSelected ? 'drop-shadow(0 0 0 2px #316acb)' : 'drop-shadow(0 2px 6px rgba(0,0,0,0.06))'}
       data-task-id={task.id}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
@@ -334,8 +340,8 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
         width={NODE_WIDTH} 
         height={NODE_HEIGHT} 
         rx={18} 
-        fill={isFirst ? "#0051A8" : "#f8f8fa"}
-        stroke={selected ? "#1251a5" : multiSelected ? "#1251a5" : "#e0e0e5"} 
+        fill={isFirst ? "#222" : "#f8f8fa"}
+        stroke={selected ? "#316acb" : multiSelected ? "#316acb" : "#e0e0e5"} 
         strokeWidth={multiSelected ? 2.5 : 1.5} 
         style={{
           transition: 'all 0.2s cubic-bezier(.4,0,.2,1)',
@@ -436,7 +442,7 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
             <div
               style={{
                 fontSize: 10,
-                color: '#666',
+                color: '#555',
                 background: '#f3f3f6',
                 borderRadius: 6,
                 padding: '2px 8px',
@@ -488,10 +494,10 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
         >
           <circle cx="10" cy="10" r="9" fill="#fff" stroke="#e0e0e5" strokeWidth="1" />
           {/* 横线，始终显示 */}
-          <line x1="6" y1="10" x2="14" y2="10" stroke="#1251a5" strokeWidth="2" strokeLinecap="round" />
+          <line x1="6" y1="10" x2="14" y2="10" stroke="#316acb" strokeWidth="2" strokeLinecap="round" />
           {/* 竖线，仅在折叠时显示（即+号） */}
           {task.collapsed && (
-            <line x1="10" y1="6" x2="10" y2="14" stroke="#1251a5" strokeWidth="2" strokeLinecap="round" />
+            <line x1="10" y1="6" x2="10" y2="14" stroke="#316acb" strokeWidth="2" strokeLinecap="round" />
           )}
         </g>
       )}

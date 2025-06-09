@@ -13,7 +13,7 @@
   left: 24px;
   z-index: 1000;
   background: rgba(255, 255, 255, 0.7);
-  border-radius: 10px;
+  border-radius: 20px;
   box-shadow: 0 4px 24px 0 rgba(0,0,0,0.08);
   padding: 6px 12px;
   display: flex;
@@ -61,7 +61,7 @@
   left: 24px;
   z-index: 1000;
   background: rgba(255, 255, 255, 0.7);
-  border-radius: 10px;
+  border-radius: 20px;
   box-shadow: 0 2px 12px 0 rgba(0,0,0,0.08);
   padding: 6px 12px;
   display: flex;
@@ -189,4 +189,9 @@
   left: auto;
   right: 24px;
   top: 24px;
+}
+
+.toolbar-btn:focus, .zoom-btn:focus {
+  outline: none;
+  box-shadow: none;
 } 

@@ -2,8 +2,10 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
+let mainWindow = null; // 新增全局变量
+
 function createWindow() {
-  const win = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     webPreferences: {
@@ -14,7 +16,12 @@ function createWindow() {
   });
 
   // 加载你的前端页面（开发环境用 Vite，生产环境请替换为 build 后的 index.html 路径）
-  win.loadURL('http://localhost:5173');
+  mainWindow.loadURL('http://localhost:5173');
+
+  // 监听窗口关闭，释放引用
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
 }
 
 // 任务导出 IPC
@@ -35,4 +42,11 @@ app.whenReady().then(createWindow);
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
+});
+
+// 监听 activate 事件，macOS 下点击 Dock 图标时触发
+app.on('activate', () => {
+  if (mainWindow === null) {
+    createWindow();
+  }
 }); 

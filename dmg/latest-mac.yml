@@ -1,0 +1,11 @@
+version: 0.0.0
+files:
+  - url: MooPlan-0.0.0.dmg
+    sha512: /UVK06y3RZ4G/sus3rToygDwCpzmXh0tPpBRD3+xXubo9esu9DEtP4+qGDGjY9NcrcHBX7MXNc9wFgpfWElG4Q==
+    size: 119635902
+  - url: MooPlan-0.0.0-arm64.dmg
+    sha512: kuidefrFfijFD89i6SeErQ3+lAG4P71UiPRECExZ/tJWWfDnJEZKB+Fca4hYechILEz40s09TjQVUG/UgxPKdw==
+    size: 113300876
+path: MooPlan-0.0.0.dmg
+sha512: /UVK06y3RZ4G/sus3rToygDwCpzmXh0tPpBRD3+xXubo9esu9DEtP4+qGDGjY9NcrcHBX7MXNc9wFgpfWElG4Q==
+releaseDate: '2025-06-07T14:25:08.866Z'

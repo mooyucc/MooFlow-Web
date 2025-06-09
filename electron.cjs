@@ -12,10 +12,17 @@ function createWindow () {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      webSecurity: false // 允许本地资源加载
     }
   });
-  win.loadFile(path.join(__dirname, 'dist/index.html'));
-  win.webContents.openDevTools();
+  if (app.isPackaged) {
+    // 生产环境，加载打包后的页面
+    win.loadFile(path.join(__dirname, 'dist/index.html'));
+  } else {
+    // 开发环境，加载 Vite 本地服务
+    win.loadURL('http://localhost:5173');
+  }
+  // win.webContents.openDevTools(); // 正式版可以注释掉
 }
 
 // 导入文件

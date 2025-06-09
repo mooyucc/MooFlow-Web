@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { SketchPicker } from 'react-color';
 
 const COLOR_SCHEMES = [
   { name: '彩虹', colors: ['#f44336', '#ff9800', '#ffeb3b', '#4caf50', '#2196f3', '#9c27b0', '#00bcd4'] },
@@ -51,6 +52,8 @@ const FormatSidebar = ({
     return () => document.removeEventListener('mousedown', handleClick);
   }, [visible, onClose]);
 
+  const [colorPickerOpen, setColorPickerOpen] = useState(false);
+
   if (!visible) return null;
 
   return (
@@ -95,13 +98,13 @@ const FormatSidebar = ({
             marginBottom: 0,
             border: 'none',
             background: tab === 'canvas' ? '#fff' : 'transparent',
-            color: tab === 'canvas' ? '#1251a5' : '#222',
+            color: tab === 'canvas' ? '#316acb' : '#222',
             fontWeight: tab === 'canvas' ? 700 : 500,
             fontSize: 17,
             borderRadius: '12px 12px 0 0',
             cursor: 'pointer',
             transition: 'background 0.2s',
-            boxShadow: tab === 'canvas' ? '0 2px 8px #1251a511' : 'none',
+            boxShadow: tab === 'canvas' ? '0 2px 8px #316acb11' : 'none',
           }}
         >画布</button>
         <button
@@ -113,13 +116,13 @@ const FormatSidebar = ({
             marginBottom: 0,
             border: 'none',
             background: tab === 'style' ? '#fff' : 'transparent',
-            color: tab === 'style' ? '#1251a5' : '#222',
+            color: tab === 'style' ? '#316acb' : '#222',
             fontWeight: tab === 'style' ? 700 : 500,
             fontSize: 17,
             borderRadius: '12px 12px 0 0',
             cursor: 'pointer',
             transition: 'background 0.2s',
-            boxShadow: tab === 'style' ? '0 2px 8px #1251a511' : 'none',
+            boxShadow: tab === 'style' ? '0 2px 8px #316acb11' : 'none',
           }}
         >样式</button>
         <button
@@ -135,14 +138,46 @@ const FormatSidebar = ({
         {tab === 'canvas' && (
           <>
             {/* 背景颜色 */}
-            <div style={{ marginBottom: 28 }}>
+            <div style={{ marginBottom: 28, position: 'relative' }}>
               <div style={{ fontWeight: 700, fontSize: 15, color: '#222', marginBottom: 10 }}>背景颜色</div>
-              <input
-                type="color"
-                value={localProps.backgroundColor}
-                onChange={e => handleChange('backgroundColor', e.target.value)}
-                style={{ width: 40, height: 28, border: '1.5px solid #e3eaff', background: '#fff', borderRadius: 8, cursor: 'pointer', verticalAlign: 'middle' }}
+              <button
+                style={{
+                  width: 40,
+                  height: 28,
+                  border: '1.5px solid #e3eaff',
+                  background: localProps.backgroundColor,
+                  borderRadius: 8,
+                  cursor: 'pointer',
+                  verticalAlign: 'middle',
+                  position: 'relative',
+                }}
+                onClick={() => setColorPickerOpen(v => !v)}
+                aria-label="选择背景颜色"
               />
+              {colorPickerOpen && (
+                <div style={{
+                  position: 'absolute',
+                  zIndex: 10,
+                  top: 40,
+                  left: 0,
+                  boxShadow: '0 4px 24px #0002',
+                  background: '#fff',
+                  borderRadius: 10,
+                  padding: 16,
+                }}>
+                  <SketchPicker
+                    color={localProps.backgroundColor}
+                    onChange={color => handleChange('backgroundColor', color.hex)}
+                    disableAlpha
+                    presetColors={[
+                      '#ffffff', '#f44336', '#ff9800', '#ffeb3b', '#4caf50', '#2196f3', '#9c27b0', '#00bcd4', '#222222'
+                    ]}
+                  />
+                  <div style={{textAlign: 'right', marginTop: 8}}>
+                    <button onClick={() => setColorPickerOpen(false)} style={{fontSize: 13, color: '#316acb', background: 'none', border: 'none', cursor: 'pointer'}}>关闭</button>
+                  </div>
+                </div>
+              )}
             </div>
             <div style={{ borderTop: '1.5px solid #f0f1f5', margin: '0 -24px 24px', height: 0 }} />
             {/* 全局字体 */}
@@ -181,7 +216,7 @@ const FormatSidebar = ({
                   type="checkbox"
                   checked={!!localProps.showGrid}
                   onChange={e => handleChange('showGrid', e.target.checked)}
-                  style={{ width: 18, height: 18, accentColor: '#1251a5' }}
+                  style={{ width: 18, height: 18, accentColor: '#316acb' }}
                 />
                 <span style={{ fontWeight: 500, fontSize: 15, color: '#222' }}>显示网格</span>
               </label>

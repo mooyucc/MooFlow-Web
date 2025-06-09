@@ -23,6 +23,7 @@ MooPlan 是一款基于 React + Electron 的智能项目计划与任务管理平
 MooPlan/
 ├── electron-main.js           # Electron 主进程入口，负责窗口与文件导出
 ├── preload.js                 # Electron 预加载脚本，安全暴露 IPC
+├── electron.cjs               # Electron 配置或辅助脚本
 ├── package.json               # 项目依赖与脚本
 ├── package-lock.json          # 依赖锁定文件
 ├── vite.config.js             # Vite 构建配置
@@ -35,7 +36,7 @@ MooPlan/
 │   ├── App.css                # 应用样式
 │   ├── index.css              # 全局样式
 │   ├── main.jsx               # 前端入口文件
-│   ├── assets/                # 图片等资源
+│   ├── assets/                # 前端图片等资源
 │   │   └── react.svg          # React 标志图片
 │   ├── store/                 # 状态管理
 │   │   └── taskStore.js       # 任务状态管理
@@ -50,6 +51,10 @@ MooPlan/
 │        ├── DatePickerPortal.jsx   # 日期选择弹窗
 │        ├── CollapseButton.jsx     # 折叠按钮组件
 │        └── FormatSidebar.jsx      # 右侧格式栏组件
+├── assets/                    # 应用图标等资源（如icon.ico, icon.icns, icon.png）
+├── dist/                      # 打包输出目录
+├── .github/                   # GitHub 工作流等配置
+├── .gitignore                 # Git 忽略文件配置
 ├── MooPlan 开发技术栈.md      # 详细技术方案与开发手册
 ├── 「MooPlan」智能项目计划平台.md # 产品文档
 └── README.md                  # 项目说明文档
@@ -72,66 +77,69 @@ If you are developing a production application, we recommend using TypeScript wi
 
 # MooPlan 打包与部署说明
 
-## 一、安装依赖
-
+##本地打包部署
+1、安装依赖
 ```bash
 npm install
 ```
 
-## 二、开发环境启动
-
+2、删除 dist 目录：
 ```bash
-npm run dev
+rm -rf dist
 ```
 
-## 三、项目打包
-
+3、新建dist文件夹，检查文件夹大小
 ```bash
 npm run build
 ```
 
-打包完成后，生成的静态文件会在 `dist` 目录下。
-
-## 四、本地预览打包结果
-
+4、开始打包
 ```bash
-npm run preview
+npm run build:electron
 ```
+5、打包完成后，生成的静态文件会在 `dmg` 目录下。
 
-或使用 serve 工具：
 
-```bash
-npm install -g serve
-serve -s dist
-```
+## Github 打包部署
 
-## 五、部署到生产环境
+### 将本地代码推送到 GitHub 仓库
 
-将 `dist` 目录下的所有文件上传到你的静态服务器或云服务（如 Vercel、Netlify、阿里云 OSS、腾讯云 COS、GitHub Pages 等）。
-
-### Nginx 示例配置
-
-```
-server {
-    listen 80;
-    server_name your-domain.com;
-    root /path/to/your/dist;
-    index index.html;
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-}
-```
-
-## 六、常见问题
-
-1. **API 地址与跨域**：如有后端接口，注意生产环境的 API 地址和跨域设置。
-2. **部署到子路径**：如需部署到非根路径，需在 `vite.config.js` 设置 `base`，如：
-   ```js
-   export default defineConfig({
-     base: '/your-sub-path/',
-   })
+1. 打开终端，进入项目目录：
+   ```bash
+   cd "/Users/kevinx/Documents/Ai Project/MooPlan"
    ```
+2. 初始化 Git（如未初始化）：
+   ```bash
+   git init
+   ```
+3. 添加远程仓库（如未添加）：
+   ```bash
+   git remote add origin https://github.com/xkevin430/MooPlan.git
+   ```
+   > 如果已添加过，可跳过此步。如需更新远程地址：
+   > ```bash
+   > git remote set-url origin https://github.com/xkevin430/MooPlan.git
+   > ```
+4. 添加所有更改的文件：
+   ```bash
+   git add .
+   ```
+5. 提交更改：
+   ```bash
+   git commit -m "更新：同步本地更改到GitHub"
+   ```
+   > 可自定义提交信息。
+6. 推送到 GitHub：
+   ```bash
+   git push origin main
+   ```
+   > 如提示分支不存在，可先执行：
+   > ```bash
+   > git branch -M main
+   > ```
+   > 然后再推送。
+
+推送完成后，可在 GitHub 仓库查看：[https://github.com/xkevin430/MooPlan](https://github.com/xkevin430/MooPlan)
 
 ---
 

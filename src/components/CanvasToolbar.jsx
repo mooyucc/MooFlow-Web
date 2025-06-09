@@ -55,19 +55,15 @@ const RefreshIcon = () => (
 // 子任务图标
 const ChildTaskIcon = () => (
   <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="6" y="14" width="12" height="8" rx="3" />
-    <circle cx="8.5" cy="11.5" r="1.5" fill="currentColor" />
-    <rect x="20" y="16" width="6" height="4" rx="2" />
-    <circle cx="22" cy="14" r="1" fill="currentColor" />
+    <circle cx="16" cy="9" r="5" fill="currentColor" />
+    <circle cx="16" cy="23" r="5" fill="none" stroke="currentColor" strokeWidth="2.2" />
   </svg>
 );
 // 同级任务图标
 const SiblingTaskIcon = () => (
   <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="6" y="14" width="8" height="8" rx="3" />
-    <circle cx="8.5" cy="11.5" r="1.5" fill="currentColor" />
-    <rect x="18" y="14" width="8" height="8" rx="3" />
-    <circle cx="25.5" cy="11.5" r="1.5" fill="currentColor" />
+    <circle cx="9" cy="16" r="5" fill="currentColor" />
+    <circle cx="23" cy="16" r="5" fill="none" stroke="currentColor" strokeWidth="2.2" />
   </svg>
 );
 
@@ -120,19 +116,19 @@ const CanvasToolbar = ({ onStartLink, onSetScale, onFitView, onAlignToTimeline, 
   return (
     <div className="canvas-toolbar minimal">
       <button className="toolbar-btn" title="撤销" onClick={undo} disabled={undoStack.length === 0} style={undoStack.length === 0 ? {opacity: 0.4, cursor: 'not-allowed'} : {}}>
-        <UndoIcon />
+        <div style={{marginTop:-3}}><UndoIcon /></div>
       </button>
       <button className="toolbar-btn" title="重做" onClick={redo} disabled={redoStack.length === 0} style={redoStack.length === 0 ? {opacity: 0.4, cursor: 'not-allowed'} : {}}>
-        <RedoIcon />
+        <div style={{marginTop:-3}}><RedoIcon /></div>
       </button>
       <div className="toolbar-divider" />
       <button className="toolbar-btn" title="添加子任务" onClick={onAddChildTask} disabled={!hasSelectedTask} style={!hasSelectedTask ? {opacity: 0.4, cursor: 'not-allowed'} : {}}>
         <ChildTaskIcon />
-        <div style={{fontSize:12,marginTop:2}}>子任务</div>
+        <div style={{fontSize:12,marginTop:-1}}>子任务</div>
       </button>
       <button className="toolbar-btn" title="添加同级任务" onClick={onAddSiblingTask} disabled={!hasSelectedTask} style={!hasSelectedTask ? {opacity: 0.4, cursor: 'not-allowed'} : {}}>
         <SiblingTaskIcon />
-        <div style={{fontSize:12,marginTop:2}}>同级任务</div>
+        <div style={{fontSize:12,marginTop:-1}}>同级任务</div>
       </button>
       <div className="toolbar-divider" />
       <div className="zoom-toolbar">

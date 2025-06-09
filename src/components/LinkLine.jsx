@@ -281,11 +281,11 @@ const LinkLine = ({ source, target, fromId, toId, fromAnchor, toAnchor, onDelete
   }, [selected, onDelete, fromId, toId]);
 
   // 主线颜色
-  const mainColor = color || '#9ca3af';
+  const mainColor = color || '#333';
   // 高亮色
-  const highlightColor = '#1251a5';
+  const highlightColor = '#316acb';
   // 箭头颜色（动态）
-  const arrowColor = effectiveHovered ? highlightColor : mainColor;
+  const arrowColor = mainColor;
   // 箭头markerId唯一化
   const markerId = `arrowhead-${fromId}-${toId}-${mainColor.replace('#','')}`;
 
@@ -327,7 +327,7 @@ const LinkLine = ({ source, target, fromId, toId, fromAnchor, toAnchor, onDelete
       {/* 真实可见线 */}
       <path
         d={path}
-        stroke={effectiveHovered ? highlightColor : mainColor}
+        stroke={mainColor}
         strokeWidth={effectiveHovered ? 3.5 : 2}
         fill="none"
         markerEnd={`url(#${markerId})`}
