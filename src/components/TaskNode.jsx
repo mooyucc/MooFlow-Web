@@ -52,6 +52,9 @@ const CalendarIcon = ({ size = 16 }) => (
   </svg>
 );
 
+const CARD_PADDING_X = 18;
+const CARD_TEXT_WIDTH = NODE_WIDTH - CARD_PADDING_X * 2;
+
 const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, multiSelected, isFirst, onEditingChange }) => {
   const updateTask = useTaskStore((state) => state.updateTask);
   const addTask = useTaskStore((state) => state.addTask);
@@ -395,7 +398,7 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
               outline: 'none',
               background: 'transparent',
               fontWeight: 500,
-              color: '#222',
+              color: isFirst ? '#fff' : '#222',
               fontFamily: 'SF Pro, Helvetica Neue, Arial, sans-serif',
               borderRadius: 18,
               cursor: 'text',
@@ -410,35 +413,59 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
           />
         </foreignObject>
       ) : (
-        <foreignObject x={0} y={0} width={NODE_WIDTH} height={NODE_HEIGHT}>
-          <div style={{
-            width: '100%',
-            height: '100%',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            alignItems: 'flex-start',
-            padding: 12,
-            boxSizing: 'border-box',
-          }}>
-            {/* 标题 */}
-            <div
-              style={{
-                fontSize: 14,
-                fontWeight: 600,
-                color: isFirst ? '#fff' : '#222',
-                marginBottom: 8,
-                width: '100%',
-                textAlign: 'left',
-                userSelect: 'none',
-                lineHeight: 1.3,
-                wordBreak: 'break-all',
-              }}
-              onDoubleClick={handleDoubleClick}
-            >
-              {task.title}
-            </div>
-            {/* 时间模块 */}
+        <>
+          {/* SVG <text> 替代标题div，自动换行处理 */}
+          <text
+            x={CARD_PADDING_X}
+            y={(() => {
+              // 自动换行算法（提前算一次，供y和内容共用）
+              const ctx = document.createElement('canvas').getContext('2d');
+              ctx.font = '600 14px -apple-system, BlinkMacSystemFont, "SF Pro", "Helvetica Neue", Arial, sans-serif';
+              const words = (task.title || '').split('');
+              let lines = [], line = '';
+              for (let i = 0; i < words.length; i++) {
+                const testLine = line + words[i];
+                const w = ctx.measureText(testLine).width;
+                if (w > CARD_TEXT_WIDTH && line) {
+                  lines.push(line);
+                  line = words[i];
+                } else {
+                  line = testLine;
+                }
+              }
+              if (line) lines.push(line);
+              return lines.length > 1 ? 20 : 32;
+            })()}
+            fontSize={14}
+            fontWeight={600}
+            fill={isFirst ? '#fff' : '#222'}
+            fontFamily="-apple-system, BlinkMacSystemFont, 'SF Pro', 'Helvetica Neue', Arial, sans-serif"
+            style={{ userSelect: 'none', cursor: 'pointer' }}
+            onDoubleClick={handleDoubleClick}
+          >
+            {(() => {
+              const ctx = document.createElement('canvas').getContext('2d');
+              ctx.font = '600 14px -apple-system, BlinkMacSystemFont, "SF Pro", "Helvetica Neue", Arial, sans-serif';
+              const words = (task.title || '').split('');
+              let lines = [], line = '';
+              for (let i = 0; i < words.length; i++) {
+                const testLine = line + words[i];
+                const w = ctx.measureText(testLine).width;
+                if (w > CARD_TEXT_WIDTH && line) {
+                  lines.push(line);
+                  line = words[i];
+                } else {
+                  line = testLine;
+                }
+              }
+              if (line) lines.push(line);
+              return lines.map((l, idx) => (
+                <tspan key={idx} x={CARD_PADDING_X} dy={idx === 0 ? 0 : 18}>{l}</tspan>
+              ));
+            })()}
+          </text>
+          {/* 时间模块依然用foreignObject，保持原有布局 */}
+          <foreignObject x={CARD_PADDING_X} y={40} width={NODE_WIDTH - CARD_PADDING_X} height={28}>
             <div
               style={{
                 fontSize: 10,
@@ -450,6 +477,7 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
                 alignItems: 'center',
                 cursor: 'pointer',
                 userSelect: 'none',
+                marginTop: 0,
               }}
               onClick={handleTimeClick}
               ref={timeTextRef}
@@ -459,8 +487,8 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
               </span>
               {date ? format(date, 'yyyy年M月d日') : '设置日期'}
             </div>
-          </div>
-        </foreignObject>
+          </foreignObject>
+        </>
       )}
       {showDatePicker && anchorRect && (
         <DatePickerPortal anchorRect={anchorRect}>

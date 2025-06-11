@@ -522,6 +522,12 @@ const MainCanvas = () => {
   // 挂载到window，便于TaskNode调用
   window.cascadeUpdateDates = cascadeUpdateDates;
 
+  // 挂载到window，便于导出PNG
+  useEffect(() => {
+    window.mooPlanSvgRef = svgRef;
+    return () => { if (window.mooPlanSvgRef === svgRef) window.mooPlanSvgRef = null; };
+  }, []);
+
   return (
     <div
       className="canvas-container bg-white dark:bg-[#242424]"

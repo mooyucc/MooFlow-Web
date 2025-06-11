@@ -16,12 +16,19 @@
     "build:electron": "electron-builder"
   },
   "dependencies": {
+    "canvg": "^4.0.3",
+    "dom-to-image-more": "^3.6.0",
+    "fontkit": "^2.0.4",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^2.4.0",
     "papaparse": "^5.5.3",
+    "pdf-lib": "^1.17.1",
     "react": "^19.1.0",
     "react-color": "^2.19.3",
     "react-colorful": "^5.6.1",
     "react-datepicker": "^8.4.0",
     "react-dom": "^19.1.0",
+    "svg2pdf.js": "^2.5.0",
     "zustand": "^5.0.5"
   },
   "devDependencies": {

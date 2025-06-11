@@ -371,6 +371,85 @@ const CanvasFileToolbar = ({ canvasProps, setCanvasProps }) => {
     setExportMenuOpen(false);
   };
 
+  // 导出PNG
+  const handleExportPNG = async () => {
+    const svgNode = window.mooPlanSvgRef?.current;
+    if (!svgNode) {
+      alert('未找到画布SVG节点');
+      return;
+    }
+    // 克隆SVG，去除工具栏等干扰
+    const clone = svgNode.cloneNode(true);
+    // ====== 核心：内联所有样式，保证导出效果一致 ======
+    // 1. 画布背景色
+    const bgColor = canvasProps?.backgroundColor || '#fff';
+    clone.style.background = bgColor;
+    // 2. 字体
+    const fontFamily = canvasProps?.fontFamily && canvasProps.fontFamily !== '默认' ? canvasProps.fontFamily : '-apple-system, BlinkMacSystemFont, \'SF Pro\', \'Helvetica Neue\', Arial, sans-serif';
+    clone.style.fontFamily = fontFamily;
+    // 3. 递归内联所有text/rect/line等颜色属性
+    function inlineSvgStyles(node) {
+      if (node.nodeType !== 1) return;
+      // 文字
+      if (node.tagName === 'text') {
+        if (!node.hasAttribute('fill')) {
+          const computed = window.getComputedStyle(svgNode);
+          node.setAttribute('fill', computed.color || '#222');
+        }
+        node.setAttribute('font-family', fontFamily);
+      }
+      // rect背景
+      if (node.tagName === 'rect' && !node.hasAttribute('fill')) {
+        node.setAttribute('fill', '#fff');
+      }
+      // 线条
+      if (node.tagName === 'line' && !node.hasAttribute('stroke')) {
+        node.setAttribute('stroke', '#222');
+      }
+      // 递归
+      for (let i = 0; i < node.childNodes.length; i++) {
+        inlineSvgStyles(node.childNodes[i]);
+      }
+    }
+    inlineSvgStyles(clone);
+    // ====== END 核心 ======
+    // 创建独立容器
+    const container = document.createElement('div');
+    container.style.position = 'fixed';
+    container.style.left = '-99999px';
+    container.style.top = '0';
+    container.appendChild(clone);
+    document.body.appendChild(container);
+    // 用html2canvas渲染
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      // 计算SVG实际像素尺寸
+      const width = svgNode.clientWidth || window.innerWidth;
+      const height = svgNode.clientHeight || window.innerHeight;
+      clone.setAttribute('width', width);
+      clone.setAttribute('height', height);
+      clone.setAttribute('viewBox', svgNode.getAttribute('viewBox'));
+      // 用html2canvas渲染div
+      const canvas = await html2canvas(container, {
+        backgroundColor: null,
+        useCORS: true,
+        logging: false,
+        width,
+        height,
+        scale: 2
+      });
+      const url = canvas.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'MooPlan-画布.png';
+      a.click();
+    } catch (e) {
+      alert('导出PNG失败：' + e.message);
+    } finally {
+      document.body.removeChild(container);
+    }
+  };
+
   return (
     <div className="canvas-toolbar minimal filebar" style={{ display: 'flex', alignItems: 'center' }}>
       {/* Home按钮 */}
@@ -494,6 +573,12 @@ const CanvasFileToolbar = ({ canvasProps, setCanvasProps }) => {
               onMouseEnter={e => e.currentTarget.style.background = '#f3f3f6'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >导出为CSV</div>
+            <div
+              style={{ padding: '8px 16px', cursor: 'pointer', color: '#333', fontSize: 12 }}
+              onClick={handleExportPNG}
+              onMouseEnter={e => e.currentTarget.style.background = '#f3f3f6'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            >导出为PNG</div>
           </div>
         )}
       </div>
