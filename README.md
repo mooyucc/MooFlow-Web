@@ -99,45 +99,41 @@ npm run build:electron
 ```
 5、打包完成后，生成的静态文件会在 `dmg` 目录下。
 
+6、Windows程序打包
+```bash
+npx electron-builder --win
+```
 
 ## Github 打包部署
 
 ### 将本地代码推送到 GitHub 仓库
 
 1. 打开终端，进入项目目录：
-   ```bash
-   cd "/Users/kevinx/Documents/Ai Project/MooPlan"
-   ```
+```bash
+cd "/Users/kevinx/Documents/Ai Project/MooPlan"
+```
 2. 初始化 Git（如未初始化）：
-   ```bash
-   git init
-   ```
+```bash
+git init
+```
 3. 添加远程仓库（如未添加）：
-   ```bash
-   git remote add origin https://github.com/xkevin430/MooPlan.git
-   ```
+```bash
+git remote add origin https://github.com/xkevin430/MooPlan.git
+```
    > 如果已添加过，可跳过此步。如需更新远程地址：
    > ```bash
    > git remote set-url origin https://github.com/xkevin430/MooPlan.git
    > ```
-4. 添加所有更改的文件：
-   ```bash
-   git add .
-   ```
-5. 提交更改：
-   ```bash
-   git commit -m "更新：同步本地更改到GitHub"
-   ```
-   > 可自定义提交信息。
-6. 推送到 GitHub：
-   ```bash
-   git push origin main
-   ```
-   > 如提示分支不存在，可先执行：
-   > ```bash
-   > git branch -M main
-   > ```
-   > 然后再推送。
+4. 推送到 GitHub：
+```bash
+git rm -r --cached dmg/
+git rm --cached *.dmg
+git rm --cached *.app
+git rm --cached *.asar
+git add .gitignore
+git commit -m "chore: 忽略大文件，优化推送"
+git push
+```
 
 推送完成后，可在 GitHub 仓库查看：[https://github.com/xkevin430/MooPlan](https://github.com/xkevin430/MooPlan)
 
