@@ -78,28 +78,29 @@ If you are developing a production application, we recommend using TypeScript wi
 # MooPlan 打包与部署说明
 
 ##本地打包部署
+一、打包网页版程序
 1、安装依赖
 ```bash
 npm install
 ```
-
 2、删除 dist 目录：
 ```bash
 rm -rf dist
 ```
-
 3、新建dist文件夹，检查文件夹大小
 ```bash
 npm run build
 ```
 
-4、开始打包
+二、打包dmg文件
+1、开始打包
 ```bash
 npm run build:electron
 ```
-5、打包完成后，生成的静态文件会在 `dmg` 目录下。
+2、打包完成后，生成的静态文件会在 `dmg` 目录下。
 
-6、Windows程序打包
+三、打包exe文件
+1、Windows程序打包
 ```bash
 npx electron-builder --win
 ```

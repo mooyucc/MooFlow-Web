@@ -344,7 +344,7 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
         height={NODE_HEIGHT} 
         rx={18} 
         fill={isFirst ? "#222" : "#f8f8fa"}
-        stroke={selected ? "#316acb" : multiSelected ? "#316acb" : "#e0e0e5"} 
+        stroke={multiSelected ? "#316acb" : "#e0e0e5"} 
         strokeWidth={multiSelected ? 2.5 : 1.5} 
         style={{
           transition: 'all 0.2s cubic-bezier(.4,0,.2,1)',
@@ -528,6 +528,22 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
             <line x1="10" y1="6" x2="10" y2="14" stroke="#316acb" strokeWidth="2" strokeLinecap="round" />
           )}
         </g>
+      )}
+      {(selected || hover) && (
+        <rect
+          x={-3}
+          y={-3}
+          width={NODE_WIDTH + 6}
+          height={NODE_HEIGHT + 6}
+          rx={21}
+          fill="none"
+          stroke="#1251a580"
+          strokeWidth={2}
+          style={{
+            pointerEvents: 'none',
+            transition: 'all 0.18s cubic-bezier(.4,0,.2,1)',
+          }}
+        />
       )}
     </g>
   );

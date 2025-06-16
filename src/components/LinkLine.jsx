@@ -199,7 +199,7 @@ const LinkLine = ({ source, target, fromId, toId, fromAnchor, toAnchor, onDelete
   const dx = x2 - x1;
   const dy = y2 - y1;
   const mainDist = Math.sqrt(dx * dx + dy * dy);
-  const ctrlLen = Math.max(40, Math.min(mainDist * 0.5, 120));
+  const ctrlLen = Math.max(20, Math.min(mainDist * 0.5, 80));
   // 起点控制点
   let c1x = x1, c1y = y1;
   if (startEdge === 'left') c1x -= ctrlLen;
@@ -304,14 +304,14 @@ const LinkLine = ({ source, target, fromId, toId, fromAnchor, toAnchor, onDelete
       <defs>
         <marker
           id={markerId}
-          markerWidth="8"
-          markerHeight="8"
-          refX="7"
-          refY="4"
+          markerWidth="5"
+          markerHeight="5"
+          refX="4.5"
+          refY="2.5"
           orient="auto"
           markerUnits="strokeWidth"
         >
-          <path d="M 0 0 L 8 4 L 0 8 z" fill={arrowColor} />
+          <path d="M 0 0 L 5 2.5 L 0 5 z" fill={arrowColor} />
         </marker>
       </defs>
       {highlightElement}
@@ -319,7 +319,7 @@ const LinkLine = ({ source, target, fromId, toId, fromAnchor, toAnchor, onDelete
       <path
         d={path}
         stroke={mainColor}
-        strokeWidth={effectiveHovered ? 4 : 10}
+        strokeWidth={10}
         fill="none"
         opacity={0}
         style={{ cursor: 'pointer' }}
