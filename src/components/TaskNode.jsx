@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useTaskStore } from '../store/taskStore';
+import { useTaskStore, defaultTaskStyle } from '../store/taskStore';
 import ReactDatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { zhCN } from 'date-fns/locale';
@@ -55,6 +55,56 @@ const CalendarIcon = ({ size = 16 }) => (
 const CARD_PADDING_X = 18;
 const CARD_TEXT_WIDTH = NODE_WIDTH - CARD_PADDING_X * 2;
 
+// 渲染多种流程图形状
+function renderShape(shape, props) {
+  switch (shape) {
+    case 'roundRect':
+      return <rect width={NODE_WIDTH} height={NODE_HEIGHT} rx={18} {...props} />;
+    case 'rect':
+      return <rect width={NODE_WIDTH} height={NODE_HEIGHT} rx={0} {...props} />;
+    case 'circle':
+      return <ellipse cx={NODE_WIDTH/2} cy={NODE_HEIGHT/2} rx={NODE_HEIGHT/2} ry={NODE_HEIGHT/2} {...props} />;
+    case 'ellipse':
+      return <ellipse cx={NODE_WIDTH/2} cy={NODE_HEIGHT/2} rx={NODE_WIDTH/2} ry={NODE_HEIGHT/2} {...props} />;
+    case 'diamond':
+      return <polygon points="90,0 180,36 90,72 0,36" {...props} />;
+    case 'parallelogram':
+      return <polygon points="36,0 180,0 144,72 0,72" {...props} />;
+    case 'hexagon':
+      return <polygon points="45,0 135,0 180,36 135,72 45,72 0,36" {...props} />;
+    case 'pentagon':
+      return <polygon points="90,0 180,36 146,72 34,72 0,36" {...props} />;
+    case 'trapezoid':
+      return <polygon points="36,0 144,0 180,72 0,72" {...props} />;
+    case 'document':
+      return <path d="M8,8 H172 Q180,8 180,24 V56 Q180,72 164,72 H16 Q8,72 8,56 V24 Q8,8 24,8 Z" {...props} />;
+    case 'cloud':
+      return <path d="M50,60 Q30,60 30,40 Q10,40 20,25 Q20,10 40,15 Q50,0 70,10 Q90,0 100,15 Q120,10 120,25 Q130,40 110,40 Q110,60 90,60 Q80,70 70,60 Q60,70 50,60 Z" transform="scale(1.5 1.1) translate(10,5)" {...props} />;
+    case 'flag':
+      return <path d="M20,10 L160,10 L140,40 L160,70 L20,70 Z" {...props} />;
+    case 'arrowRight':
+      return <polygon points="20,36 120,36 120,16 180,36 120,56 120,36 20,36" {...props} />;
+    case 'arrowLeft':
+      return <polygon points="160,36 60,36 60,16 0,36 60,56 60,36 160,36" {...props} />;
+    case 'doubleArrow':
+      return <polygon points="0,36 40,16 40,30 140,30 140,16 180,36 140,56 140,42 40,42 40,56 0,36" {...props} />;
+    case 'star':
+      return <polygon points="90,10 105,60 180,60 120,90 140,150 90,110 40,150 60,90 0,60 75,60" {...props} />;
+    case 'heart':
+      return <path d="M90,72 Q0,24 45,0 Q90,24 135,0 Q180,24 90,72 Z" {...props} />;
+    case 'quote':
+      return <g><text x="40" y="50" fontSize="48" fontFamily="serif" {...props}>""</text></g>;
+    case 'brace':
+      return <g><text x="40" y="50" fontSize="48" fontFamily="serif" {...props}>{}</text></g>;
+    case 'bracket':
+      return <g><text x="40" y="50" fontSize="48" fontFamily="serif" {...props}>[ ]</text></g>;
+    case 'parenthesis':
+      return <g><text x="40" y="50" fontSize="48" fontFamily="serif" {...props}>( )</text></g>;
+    default:
+      return <rect width={NODE_WIDTH} height={NODE_HEIGHT} rx={18} {...props} />;
+  }
+}
+
 const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, multiSelected, isFirst, onEditingChange }) => {
   const updateTask = useTaskStore((state) => state.updateTask);
   const addTask = useTaskStore((state) => state.addTask);
@@ -75,6 +125,15 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
   const toggleCollapse = useTaskStore(state => state.toggleCollapse);
   const hasChildren = allTasks.some(t => t.parentId === task.id);
   const [hover, setHover] = useState(false);
+
+  // 读取样式属性，提供默认值
+  const {
+    shape = defaultTaskStyle.shape,
+    fillColor = isFirst ? "#222" : defaultTaskStyle.fillColor,
+    borderColor = multiSelected ? "#316acb" : defaultTaskStyle.borderColor,
+    borderWidth = multiSelected ? 2.5 : defaultTaskStyle.borderWidth,
+    borderStyle = defaultTaskStyle.borderStyle,
+  } = task;
 
   useEffect(() => {
     setLocked(task.lock || false);
@@ -328,6 +387,13 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
     }
   }
 
+  // 主体形状渲染
+  function getShapeStrokeDasharray(style) {
+    if (style === 'dashed') return '8,4';
+    if (style === 'none') return '0';
+    return undefined;
+  }
+
   return (
     <g
       transform={`translate(${task.position.x}, ${task.position.y})`}
@@ -339,18 +405,9 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
     >
-      <rect 
-        width={NODE_WIDTH} 
-        height={NODE_HEIGHT} 
-        rx={18} 
-        fill={isFirst ? "#222" : "#f8f8fa"}
-        stroke={multiSelected ? "#316acb" : "#e0e0e5"} 
-        strokeWidth={multiSelected ? 2.5 : 1.5} 
-        style={{
-          transition: 'all 0.2s cubic-bezier(.4,0,.2,1)',
-          filter: selected ? 'blur(0.5px)' : 'none',
-        }}
-      />
+      {/* 主体形状：支持多种流程图形状 */}
+      {borderStyle !== 'none' && renderShape(shape, {fill: fillColor, stroke: borderColor, strokeWidth: borderWidth, style: {transition: 'all 0.2s cubic-bezier(.4,0,.2,1)', filter: selected ? 'blur(0.5px)' : 'none'}, strokeDasharray: getShapeStrokeDasharray(borderStyle) })}
+      {borderStyle === 'none' && renderShape(shape, {fill: fillColor, stroke: 'none', strokeWidth: 0 })}
       {/* 工具栏：仅选中时显示 */}
       {selected && !editing && (
         <g transform="translate(90, -24)">
@@ -392,16 +449,18 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
             style={{
               width: '100%',
               height: '100%',
-              textAlign: 'center',
-              fontSize: 18,
+              textAlign: task.textAlign || 'center',
+              fontSize: task.fontSize || 16,
               border: 'none',
               outline: 'none',
               background: 'transparent',
-              fontWeight: 500,
-              color: isFirst ? '#fff' : '#222',
-              fontFamily: 'SF Pro, Helvetica Neue, Arial, sans-serif',
+              fontWeight: task.fontWeight || 500,
+              color: isFirst ? '#fff' : (task.color || '#222'),
+              fontFamily: task.fontFamily || '思源黑体',
               borderRadius: 18,
               cursor: 'text',
+              fontStyle: task.fontStyle || 'normal',
+              textDecoration: task.textDecoration || 'none',
             }}
             value={title}
             autoFocus
@@ -414,13 +473,13 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
         </foreignObject>
       ) : (
         <>
-          {/* SVG <text> 替代标题div，自动换行处理 */}
+          {/* 居中标题 */}
           <text
-            x={CARD_PADDING_X}
+            x={task.textAlign === 'left' ? CARD_PADDING_X : task.textAlign === 'right' ? NODE_WIDTH - CARD_PADDING_X : NODE_WIDTH / 2}
             y={(() => {
               // 自动换行算法（提前算一次，供y和内容共用）
               const ctx = document.createElement('canvas').getContext('2d');
-              ctx.font = '600 14px -apple-system, BlinkMacSystemFont, "SF Pro", "Helvetica Neue", Arial, sans-serif';
+              ctx.font = `${task.fontWeight || 600} ${task.fontSize || 14}px ${task.fontFamily || '-apple-system, BlinkMacSystemFont, "SF Pro", "Helvetica Neue", Arial, sans-serif'}`;
               const words = (task.title || '').split('');
               let lines = [], line = '';
               for (let i = 0; i < words.length; i++) {
@@ -434,18 +493,25 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
                 }
               }
               if (line) lines.push(line);
+              // 居中：首行y=32，第二行y=32+18=50
               return lines.length > 1 ? 20 : 32;
             })()}
-            fontSize={14}
-            fontWeight={600}
-            fill={isFirst ? '#fff' : '#222'}
-            fontFamily="-apple-system, BlinkMacSystemFont, 'SF Pro', 'Helvetica Neue', Arial, sans-serif"
-            style={{ userSelect: 'none', cursor: 'pointer' }}
+            fontSize={task.fontSize || 16}
+            fontWeight={task.fontWeight || 600}
+            fontStyle={task.fontStyle || 'normal'}
+            fill={isFirst ? '#fff' : (task.color || '#222')}
+            fontFamily={task.fontFamily || '-apple-system, BlinkMacSystemFont, "SF Pro", "Helvetica Neue", Arial, sans-serif'}
+            style={{
+              userSelect: 'none',
+              cursor: 'pointer',
+              textAnchor: task.textAlign === 'left' ? 'start' : task.textAlign === 'right' ? 'end' : 'middle',
+              textDecoration: task.textDecoration || 'none',
+            }}
             onDoubleClick={handleDoubleClick}
           >
             {(() => {
               const ctx = document.createElement('canvas').getContext('2d');
-              ctx.font = '600 14px -apple-system, BlinkMacSystemFont, "SF Pro", "Helvetica Neue", Arial, sans-serif';
+              ctx.font = `${task.fontWeight || 600} ${task.fontSize || 14}px ${task.fontFamily || '-apple-system, BlinkMacSystemFont, "SF Pro", "Helvetica Neue", Arial, sans-serif'}`;
               const words = (task.title || '').split('');
               let lines = [], line = '';
               for (let i = 0; i < words.length; i++) {
@@ -460,32 +526,44 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
               }
               if (line) lines.push(line);
               return lines.map((l, idx) => (
-                <tspan key={idx} x={CARD_PADDING_X} dy={idx === 0 ? 0 : 18}>{l}</tspan>
+                <tspan key={idx} x={task.textAlign === 'left' ? CARD_PADDING_X : task.textAlign === 'right' ? NODE_WIDTH - CARD_PADDING_X : NODE_WIDTH / 2} dy={idx === 0 ? 0 : 18}>{l}</tspan>
               ));
             })()}
           </text>
-          {/* 时间模块依然用foreignObject，保持原有布局 */}
-          <foreignObject x={CARD_PADDING_X} y={40} width={NODE_WIDTH - CARD_PADDING_X} height={28}>
+          {/* 居中时间模块，保持胶囊自适应宽度 */}
+          <foreignObject x={0} y={40} width={NODE_WIDTH} height={28}>
             <div
               style={{
-                fontSize: 10,
-                color: '#555',
-                background: '#f3f3f6',
-                borderRadius: 6,
-                padding: '2px 8px',
-                display: 'inline-flex',
+                width: '100%',
+                height: '100%',
+                display: 'flex',
                 alignItems: 'center',
-                cursor: 'pointer',
-                userSelect: 'none',
-                marginTop: 0,
+                justifyContent: 'center',
               }}
-              onClick={handleTimeClick}
-              ref={timeTextRef}
             >
-              <span style={{ display: 'flex', alignItems: 'center', marginRight: 4 }}>
-                <CalendarIcon size={12} />
-              </span>
-              {date ? format(date, 'yyyy年M月d日') : '设置日期'}
+              <div
+                style={{
+                  fontSize: 10,
+                  color: '#555',
+                  background: 'rgba(243, 243, 246, 0.8)',
+                  borderRadius: 6,
+                  padding: '2px 8px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  marginTop: 0,
+                  maxWidth: '100%',
+                  whiteSpace: 'nowrap',
+                }}
+                onClick={handleTimeClick}
+                ref={timeTextRef}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', marginRight: 4 }}>
+                  <CalendarIcon size={12} />
+                </span>
+                {date ? format(date, 'yyyy年M月d日') : '设置日期'}
+              </div>
             </div>
           </foreignObject>
         </>
@@ -549,4 +627,4 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
   );
 };
 
-export default TaskNode; 
+export default TaskNode;

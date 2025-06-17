@@ -68,7 +68,7 @@ const defaultFile = () => {
   };
 };
 
-const CanvasFileToolbar = ({ canvasProps, setCanvasProps }) => {
+const CanvasFileToolbar = ({ canvasProps, setCanvasProps, selectedTaskId, setSelectedTaskId }) => {
   // 多文件（Tab）本地状态
   const [files, setFiles] = useState(() => {
     // 尝试从 localStorage 恢复
@@ -109,6 +109,30 @@ const CanvasFileToolbar = ({ canvasProps, setCanvasProps }) => {
 
   // 新增：格式侧边栏显示状态
   const [showFormatSidebar, setShowFormatSidebar] = useState(false);
+  // 获取所有任务
+  const tasksAll = useTaskStore(state => state.tasks);
+  // 获取updateTask
+  const updateTask = useTaskStore(state => state.updateTask);
+  // 选中卡片对象
+  const selectedTask = tasksAll.find(t => t.id === selectedTaskId);
+  // 处理卡片样式变更
+  const handleTaskStyleChange = (task) => {
+    if (!task || !task.id) return;
+    updateTask(task.id, {
+      shape: task.shape,
+      fillColor: task.fillColor,
+      borderColor: task.borderColor,
+      borderWidth: task.borderWidth,
+      borderStyle: task.borderStyle,
+      fontFamily: task.fontFamily,
+      fontSize: task.fontSize,
+      fontWeight: task.fontWeight,
+      fontStyle: task.fontStyle,
+      textDecoration: task.textDecoration,
+      color: task.color,
+      textAlign: task.textAlign,
+    });
+  };
 
   // 新增：导出/导入下拉菜单状态
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
@@ -540,10 +564,10 @@ const CanvasFileToolbar = ({ canvasProps, setCanvasProps }) => {
             position: 'fixed',
             top: 64,
             right: 0,
-            width: 340,
+            width: 300,
             height: 'calc(100vh - 256px)',
             // VisionOS毛玻璃半透明背景
-            background: 'rgba(255,255,255,0.95)',
+            background: 'rgba(255,255,255,1)',
             backdropFilter: 'blur(48px) saturate(1.5)',
             WebkitBackdropFilter: 'blur(48px) saturate(1.5)',
             boxShadow: '-2px 0 32px #0003',
@@ -554,7 +578,7 @@ const CanvasFileToolbar = ({ canvasProps, setCanvasProps }) => {
             borderLeft: '1.5px solid #e3eaff',
             display: 'flex',
             flexDirection: 'column',
-            borderRadius: '18px 0 0 18px',
+            borderRadius: '18px 18px 18px 18px',
             marginBottom: 0,
             opacity: recentPopupVisible ? 1 : 0,
             transform: recentPopupVisible ? 'translateX(0)' : 'translateX(100%)',
@@ -626,6 +650,8 @@ const CanvasFileToolbar = ({ canvasProps, setCanvasProps }) => {
         onClose={() => setShowFormatSidebar(false)}
         canvasProps={canvasProps}
         onCanvasChange={handleCanvasChange}
+        selectedTask={selectedTask}
+        onTaskStyleChange={handleTaskStyleChange}
       />
     </div>
   );

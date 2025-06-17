@@ -8,13 +8,41 @@
   font-weight: 400;
 
   color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  color: rgba(28,28,30,0.85); /* 主文本色，浅色更柔和 */
+  background-color: #f2f2f7; /* 浅色模式下，macOS窗口背景色 */
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  --sidebar-bg: #f2f2f7; /* 浅色模式下，类似 macOS 窗口背景 */
+  --sidebar-text: #1c1c1e;  /* 浅色模式下，主文本色 */
+  --sidebar-border: #d1d1d6; /* 浅色模式下，边框色 */
+  --shape-stroke: #3a3a3c; /* 浅色模式下，形状描边色 */
+  --shape-bg: #ffffff; /* 浅色模式下，形状背景色 */
+  --dropdown-bg: #ffffff;         /* 浅色模式下，下拉菜单背景 */
+  --dropdown-text: #1c1c1e;    /* 浅色模式下，下拉菜单文字 */
+  --dropdown-border: #d1d1d6;  /* 浅色模式下，下拉菜单边框 */
+  --dropdown-hover-bg: #f5f5f7; /* 浅色模式下，下拉菜单悬停色，macOS风格 */
+  --tab-underline: #333; /* 浅色模式下，标签底部线条色 */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color: rgba(242,242,247,0.85); /* 主文本色，深色更柔和 */
+    background-color: #1c1c1e; /* 深色模式下，macOS窗口背景色 */
+    --sidebar-bg: #222323; /* 深色模式下，类似 macOS 窗口背景 */
+    --sidebar-text: #f2f2f7; /* 深色模式下，主文本色 */
+    --sidebar-border: #464646; /* 深色模式下，边框色 */
+    --shape-stroke: #f2f2f7; /* 深色模式下，形状描边色 */
+    --shape-bg: #2c2c2e; /* 深色模式下，形状背景色 */
+    --dropdown-bg: #242426;    /* 深色模式下，下拉菜单背景 */
+    --dropdown-text: #f2f2f7;  /* 深色模式下，下拉菜单文字 */
+    --dropdown-border: #3a3a3c;/* 深色模式下，下拉菜单边框 */
+    --dropdown-hover-bg: #35363a; /* 深色模式下，下拉菜单悬停色，macOS风格 */
+    --tab-underline: #fff; /* 深色模式下，标签底部线条色 */
+  }
 }
 
 a {

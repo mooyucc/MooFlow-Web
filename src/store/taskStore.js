@@ -40,7 +40,14 @@ function loadTasksFromStorage() {
       parentId: null,
       level: 0,
       date: new Date().toISOString(), // 默认当天
-      collapsed: false
+      collapsed: false,
+      fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, Microsoft YaHei, Arial, sans-serif',
+      fontSize: 16,
+      fontWeight: '500',
+      fontStyle: 'normal',
+      textDecoration: 'none',
+      color: '#222222',
+      textAlign: 'center',
     }
   ]);
 }
@@ -218,4 +225,20 @@ window.addEventListener('storage', (event) => {
   if (event.key === TASKS_KEY) {
     useTaskStore.setState({ tasks: loadTasksFromStorage() });
   }
-}); 
+});
+
+// 全局默认卡片样式
+export const defaultTaskStyle = {
+  shape: 'roundRect',
+  fillColor: '#f8f8fa',
+  borderColor: '#e0e0e5',
+  borderWidth: 1.5,
+  borderStyle: 'solid',
+  fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, Microsoft YaHei, Arial, sans-serif',
+  fontSize: 16,
+  fontWeight: '500',
+  fontStyle: 'normal',
+  textDecoration: 'none',
+  color: '#222222',
+  textAlign: 'center',
+}; 

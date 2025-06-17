@@ -560,6 +560,8 @@ const MainCanvas = () => {
       <CanvasFileToolbar 
         canvasProps={canvasProps}
         setCanvasProps={setCanvasProps}
+        selectedTaskId={selectedTaskId}
+        setSelectedTaskId={setSelectedTaskId}
       />
       <svg
         ref={svgRef}
