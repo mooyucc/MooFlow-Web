@@ -68,7 +68,7 @@ const defaultFile = () => {
   };
 };
 
-const CanvasFileToolbar = ({ canvasProps, setCanvasProps, selectedTaskId, setSelectedTaskId }) => {
+const CanvasFileToolbar = ({ canvasProps, setCanvasProps, selectedTaskId, setSelectedTaskId, selectedTaskIds = [] }) => {
   // 多文件（Tab）本地状态
   const [files, setFiles] = useState(() => {
     // 尝试从 localStorage 恢复
@@ -115,23 +115,17 @@ const CanvasFileToolbar = ({ canvasProps, setCanvasProps, selectedTaskId, setSel
   const updateTask = useTaskStore(state => state.updateTask);
   // 选中卡片对象
   const selectedTask = tasksAll.find(t => t.id === selectedTaskId);
-  // 处理卡片样式变更
-  const handleTaskStyleChange = (task) => {
-    if (!task || !task.id) return;
-    updateTask(task.id, {
-      shape: task.shape,
-      fillColor: task.fillColor,
-      borderColor: task.borderColor,
-      borderWidth: task.borderWidth,
-      borderStyle: task.borderStyle,
-      fontFamily: task.fontFamily,
-      fontSize: task.fontSize,
-      fontWeight: task.fontWeight,
-      fontStyle: task.fontStyle,
-      textDecoration: task.textDecoration,
-      color: task.color,
-      textAlign: task.textAlign,
-    });
+  // 新增：多选卡片对象数组
+  const selectedTasks = tasksAll.filter(t => selectedTaskIds.includes(t.id));
+  // 批量处理卡片样式变更
+  const handleTaskStyleChange = (key, value) => {
+    if (selectedTaskIds.length > 1) {
+      selectedTaskIds.forEach(id => {
+        updateTask(id, { [key]: value });
+      });
+    } else if (selectedTask) {
+      updateTask(selectedTask.id, { [key]: value });
+    }
   };
 
   // 新增：导出/导入下拉菜单状态
@@ -368,14 +362,27 @@ const CanvasFileToolbar = ({ canvasProps, setCanvasProps, selectedTaskId, setSel
       alert('没有可导出的任务');
       return;
     }
-    // 构建id到title的映射
-    const idTitleMap = Object.fromEntries(tasks.map(t => [t.id, t.title]));
-    // 导出title、date、parentTitle
+    // 导出title、date、importantLevel
     const csvRows = [
-      'title,date,parentTitle',
+      '任务内容,完成时间,重要程度',
       ...tasks.map(t => {
-        const parentTitle = t.parentId ? (idTitleMap[t.parentId] ?? '') : '';
-        return `${JSON.stringify(t.title ?? '')},${t.date ?? ''},${JSON.stringify(parentTitle)}`;
+        // 日期格式化为YYYY/MM/DD
+        let dateStr = '';
+        if (t.date) {
+          const d = new Date(t.date);
+          if (!isNaN(d.getTime())) {
+            const y = d.getFullYear();
+            const m = (d.getMonth() + 1).toString().padStart(2, '0');
+            const day = d.getDate().toString().padStart(2, '0');
+            dateStr = `${y}/${m}/${day}`;
+          }
+        }
+        // 重要性映射为中文
+        let level = t.importantLevel;
+        if (level === 'important') level = '重要';
+        else if (level === 'secondary') level = '次要';
+        else level = '一般';
+        return `${JSON.stringify(t.title ?? '')},${dateStr},${level}`;
       })
     ];
     const csvStr = csvRows.join('\n');
@@ -651,6 +658,8 @@ const CanvasFileToolbar = ({ canvasProps, setCanvasProps, selectedTaskId, setSel
         canvasProps={canvasProps}
         onCanvasChange={handleCanvasChange}
         selectedTask={selectedTask}
+        selectedTasks={selectedTasks}
+        selectedTaskIds={selectedTaskIds}
         onTaskStyleChange={handleTaskStyleChange}
       />
     </div>

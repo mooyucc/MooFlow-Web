@@ -70,6 +70,33 @@ const MainCanvas = () => {
 
   const [isEditing, setIsEditing] = useState(false);
 
+  const touchState = useRef({
+    lastTouches: [],
+    lastDistance: 0,
+    mode: null, // 'pan' | 'zoom' | 'node-drag'
+    dragNodeId: null,
+    dragNodeOffset: { x: 0, y: 0 },
+  });
+
+  // 计算两点间距离
+  function getTouchDistance(touches) {
+    if (touches.length < 2) return 0;
+    const [a, b] = touches;
+    return Math.sqrt(
+      Math.pow(a.clientX - b.clientX, 2) + Math.pow(a.clientY - b.clientY, 2)
+    );
+  }
+
+  // 计算两点中心
+  function getTouchCenter(touches) {
+    if (touches.length < 2) return { x: 0, y: 0 };
+    const [a, b] = touches;
+    return {
+      x: (a.clientX + b.clientX) / 2,
+      y: (a.clientY + b.clientY) / 2,
+    };
+  }
+
   useEffect(() => {
     if (hasInitRef.current) return;
     if (tasks.length === 0) return;
@@ -528,6 +555,96 @@ const MainCanvas = () => {
     return () => { if (window.mooPlanSvgRef === svgRef) window.mooPlanSvgRef = null; };
   }, []);
 
+  const handleTouchStart = (e) => {
+    if (e.touches.length === 1) {
+      // 判断是否点在节点上
+      const touch = e.touches[0];
+      const el = document.elementFromPoint(touch.clientX, touch.clientY);
+      const pt = el && el.closest && el.closest('[data-task-id]');
+      if (pt) {
+        // 节点拖动
+        const id = Number(pt.dataset.taskId);
+        const t = tasks.find(t => t.id === id);
+        if (t) {
+          touchState.current.mode = 'node-drag';
+          touchState.current.dragNodeId = id;
+          touchState.current.dragNodeOffset = {
+            x: t.position.x - (touch.clientX - transform.offsetX) / transform.scale,
+            y: t.position.y - (touch.clientY - transform.offsetY) / transform.scale,
+          };
+        }
+      } else {
+        // 画布平移
+        touchState.current.mode = 'pan';
+      }
+      touchState.current.lastTouches = [
+        { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY },
+      ];
+    } else if (e.touches.length === 2) {
+      // 缩放
+      touchState.current.mode = 'zoom';
+      touchState.current.lastDistance = getTouchDistance(e.touches);
+      touchState.current.lastTouches = [
+        { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY },
+        { clientX: e.touches[1].clientX, clientY: e.touches[1].clientY },
+      ];
+      touchState.current.lastCenter = getTouchCenter(e.touches);
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (touchState.current.mode === 'pan' && e.touches.length === 1) {
+      const touch = e.touches[0];
+      const last = touchState.current.lastTouches[0];
+      const dx = touch.clientX - last.clientX;
+      const dy = touch.clientY - last.clientY;
+      setTransform(prev => ({ ...prev, offsetX: prev.offsetX + dx, offsetY: prev.offsetY + dy }));
+      touchState.current.lastTouches = [
+        { clientX: touch.clientX, clientY: touch.clientY },
+      ];
+    } else if (touchState.current.mode === 'zoom' && e.touches.length === 2) {
+      const newDistance = getTouchDistance(e.touches);
+      const scaleDelta = newDistance / (touchState.current.lastDistance || 1);
+      setTransform(prev => {
+        let newScale = Math.max(0.1, Math.min(5, prev.scale * scaleDelta));
+        // 缩放中心点保持不变
+        const center = getTouchCenter(e.touches);
+        const canvasX = (center.x - prev.offsetX) / prev.scale;
+        const canvasY = (center.y - prev.offsetY) / prev.scale;
+        const newOffsetX = center.x - canvasX * newScale;
+        const newOffsetY = center.y - canvasY * newScale;
+        return { scale: newScale, offsetX: newOffsetX, offsetY: newOffsetY };
+      });
+      touchState.current.lastDistance = newDistance;
+      touchState.current.lastTouches = [
+        { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY },
+        { clientX: e.touches[1].clientX, clientY: e.touches[1].clientY },
+      ];
+    } else if (touchState.current.mode === 'node-drag' && e.touches.length === 1) {
+      const touch = e.touches[0];
+      const id = touchState.current.dragNodeId;
+      if (id) {
+        const x = (touch.clientX - transform.offsetX) / transform.scale + touchState.current.dragNodeOffset.x;
+        const y = (touch.clientY - transform.offsetY) / transform.scale + touchState.current.dragNodeOffset.y;
+        useTaskStore.getState().updateTask(id, { position: { x, y } });
+        forceResetAnchors(id);
+        handleTaskDrag(id, x, y, 180, 72);
+      }
+      touchState.current.lastTouches = [
+        { clientX: touch.clientX, clientY: touch.clientY },
+      ];
+    }
+  };
+
+  const handleTouchEnd = (e) => {
+    // 结束拖动/缩放，重置状态
+    if (touchState.current.mode === 'node-drag') {
+      setAlignLines([]);
+    }
+    touchState.current.mode = null;
+    touchState.current.dragNodeId = null;
+  };
+
   return (
     <div
       className="canvas-container bg-white dark:bg-[#242424]"
@@ -540,12 +657,16 @@ const MainCanvas = () => {
         // 新增：画布背景色
         background: canvasProps.backgroundColor || '#fff',
         fontFamily: canvasProps.fontFamily === '默认' ? undefined : canvasProps.fontFamily,
+        touchAction: 'none', // 禁用默认手势，支持触屏
       }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
       onWheel={handleWheel}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
     >
       <CanvasToolbar 
         onStartLink={() => setLinking(true)} 
@@ -562,6 +683,7 @@ const MainCanvas = () => {
         setCanvasProps={setCanvasProps}
         selectedTaskId={selectedTaskId}
         setSelectedTaskId={setSelectedTaskId}
+        selectedTaskIds={selectedTaskIds}
       />
       <svg
         ref={svgRef}
@@ -699,8 +821,24 @@ const MainCanvas = () => {
           <TaskNode
             key={task.id}
             task={task}
-            onClick={() => {
-              setSelectedTaskId(task.id);
+            onClick={e => {
+              // 支持 Ctrl/Cmd 多选
+              if (e.ctrlKey || e.metaKey) {
+                setSelectedTaskIds(prev => {
+                  if (prev.includes(task.id)) {
+                    // 已选中则取消
+                    return prev.filter(id => id !== task.id);
+                  } else {
+                    // 未选中则加入
+                    return [...prev, task.id];
+                  }
+                });
+                setSelectedTaskId(null); // 多选时取消单选
+              } else {
+                // 单选
+                setSelectedTaskId(task.id);
+                setSelectedTaskIds([task.id]);
+              }
               handleNodeClick(task);
             }}
             onStartLink={handleStartLink}

@@ -48,6 +48,7 @@ function loadTasksFromStorage() {
       textDecoration: 'none',
       color: '#222222',
       textAlign: 'center',
+      importantLevel: 'normal',
     }
   ]);
 }
@@ -77,7 +78,7 @@ export const useTaskStore = create((set, get) => ({
   addTask: (task) => {
     get()._saveSnapshot();
     set((state) => {
-      const newTasks = ensureLinksLabel([...state.tasks, { ...task, date: task.date || null, collapsed: false }]);
+      const newTasks = ensureLinksLabel([...state.tasks, { ...task, date: task.date || null, collapsed: false, importantLevel: task.importantLevel || 'normal' }]);
       saveTasksToStorage(newTasks); // 保存到本地
       return { tasks: newTasks };
     });
@@ -241,4 +242,5 @@ export const defaultTaskStyle = {
   textDecoration: 'none',
   color: '#222222',
   textAlign: 'center',
+  importantLevel: 'normal',
 }; 

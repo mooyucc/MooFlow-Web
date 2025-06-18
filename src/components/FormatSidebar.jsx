@@ -31,27 +31,27 @@ const LINE_STYLES = [
 
 // 常用流程图形状及SVG
 const SHAPES = [
-  { type: 'roundRect', name: '圆角矩形', icon: <svg width="36" height="28"><rect x="4" y="4" width="28" height="20" rx="7" stroke="var(--shape-stroke)" strokeWidth="2" fill="none"/></svg> },
-  { type: 'rect', name: '矩形', icon: <svg width="36" height="28"><rect x="4" y="4" width="28" height="20" rx="0" stroke="var(--shape-stroke)" strokeWidth="2" fill="none"/></svg> },
-  { type: 'ellipse', name: '椭圆', icon: <svg width="36" height="28"><ellipse cx="18" cy="14" rx="14" ry="10" stroke="var(--shape-stroke)" strokeWidth="2" fill="none"/></svg> },
-  { type: 'circle', name: '圆形', icon: <svg width="36" height="28"><ellipse cx="18" cy="14" rx="10" ry="10" stroke="var(--shape-stroke)" strokeWidth="2" fill="none"/></svg> },
-  { type: 'diamond', name: '菱形', icon: <svg width="36" height="28"><polygon points="18,4 32,14 18,24 4,14" stroke="var(--shape-stroke)" strokeWidth="2" fill="none"/></svg> },
-  { type: 'parallelogram', name: '平行四边形', icon: <svg width="36" height="28"><polygon points="10,4 32,4 26,24 4,24" stroke="var(--shape-stroke)" strokeWidth="2" fill="none"/></svg> },
-  { type: 'hexagon', name: '六边形', icon: <svg width="36" height="28"><polygon points="9,4 27,4 32,14 27,24 9,24 4,14" stroke="var(--shape-stroke)" strokeWidth="2" fill="none"/></svg> },
-  { type: 'pentagon', name: '五边形', icon: <svg width="36" height="28"><polygon points="18,4 32,14 26,24 10,24 4,14" stroke="var(--shape-stroke)" strokeWidth="2" fill="none"/></svg> },
-  { type: 'trapezoid', name: '梯形', icon: <svg width="36" height="28"><polygon points="10,4 26,4 32,24 4,24" stroke="var(--shape-stroke)" strokeWidth="2" fill="none"/></svg> },
-  { type: 'document', name: '文档', icon: <svg width="36" height="28"><path d="M6,6 H30 Q32,6 32,10 V18 Q32,22 28,22 H8 Q6,22 6,18 V10 Q6,6 10,6 Z" stroke="var(--shape-stroke)" strokeWidth="2" fill="none"/></svg> },
-  { type: 'cloud', name: '云', icon: <svg width="36" height="28"><path d="M12,22 Q6,22 6,14 Q2,14 4,9 Q4,4 10,6 Q12,2 18,4 Q24,2 26,6 Q32,4 32,9 Q34,14 28,14 Q28,22 22,22 Q20,26 18,22 Q16,26 12,22 Z" stroke="var(--shape-stroke)" strokeWidth="2" fill="none"/></svg> },
-  { type: 'flag', name: '旗帜', icon: <svg width="36" height="28"><path d="M6,6 L30,6 L26,14 L30,22 L6,22 Z" stroke="var(--shape-stroke)" strokeWidth="2" fill="none"/></svg> },
-  { type: 'arrowRight', name: '右箭头', icon: <svg width="36" height="28"><polygon points="6,14 22,14 22,8 32,14 22,20 22,14 6,14" stroke="var(--shape-stroke)" strokeWidth="2" fill="none"/></svg> },
-  { type: 'arrowLeft', name: '左箭头', icon: <svg width="36" height="28"><polygon points="30,14 14,14 14,8 4,14 14,20 14,14 30,14" stroke="var(--shape-stroke)" strokeWidth="2" fill="none"/></svg> },
-  { type: 'doubleArrow', name: '双箭头', icon: <svg width="36" height="28"><polygon points="4,14 10,8 10,12 26,12 26,8 32,14 26,20 26,16 10,16 10,20 4,14" stroke="var(--shape-stroke)" strokeWidth="2" fill="none"/></svg> },
-  { type: 'star', name: '星形', icon: <svg width="36" height="28"><polygon points="18,6 21,18 32,18 23,22 26,32 18,26 10,32 13,22 4,18 15,18" stroke="var(--shape-stroke)" strokeWidth="2" fill="none"/></svg> },
-  { type: 'heart', name: '心形', icon: <svg width="36" height="28" viewBox="0 0 36 28"><path d="M18 6 C12 0, 4 4, 6 12 C4 18, 12 22, 18 26 C24 22, 32 18, 30 12 C32 4, 24 0, 18 6Z" stroke="var(--shape-stroke)" strokeWidth="2" fill="none"/></svg> },
-  { type: 'quote', name: '引号', icon: <svg width="36" height="28"><text x="8" y="22" fontSize="18" fill="var(--shape-stroke)">""</text></svg> },
-  { type: 'brace', name: '大括号', icon: <svg width="36" height="28"><text x="8" y="22" fontSize="18" fill="var(--shape-stroke)">{}</text></svg> },
-  { type: 'bracket', name: '方括号', icon: <svg width="36" height="28"><text x="8" y="22" fontSize="18" fill="var(--shape-stroke)">[ ]</text></svg> },
-  { type: 'parenthesis', name: '圆括号', icon: <svg width="36" height="28"><text x="8" y="22" fontSize="18" fill="var(--shape-stroke)">( )</text></svg> },
+  { type: 'roundRect', name: '圆角矩形', icon: <svg width="28" height="20"><rect x="3" y="3" width="22" height="14" rx="5" stroke="var(--shape-stroke)" strokeWidth="2" fill="none"/></svg> },
+  { type: 'rect', name: '矩形', icon: <svg width="28" height="20"><rect x="3" y="3" width="22" height="14" rx="0" stroke="var(--shape-stroke)" strokeWidth="2" fill="none"/></svg> },
+  { type: 'ellipse', name: '椭圆', icon: <svg width="28" height="20"><ellipse cx="14" cy="10" rx="11" ry="7" stroke="var(--shape-stroke)" strokeWidth="2" fill="none"/></svg> },
+  { type: 'circle', name: '圆形', icon: <svg width="28" height="20"><ellipse cx="14" cy="10" rx="8" ry="8" stroke="var(--shape-stroke)" strokeWidth="2" fill="none"/></svg> },
+  { type: 'diamond', name: '菱形', icon: <svg width="28" height="20"><polygon points="14,3 24,10 14,17 4,10" stroke="var(--shape-stroke)" strokeWidth="2" fill="none"/></svg> },
+  { type: 'parallelogram', name: '平行四边形', icon: <svg width="28" height="20"><polygon points="7,3 24,3 20,17 3,17" stroke="var(--shape-stroke)" strokeWidth="2" fill="none"/></svg> },
+  { type: 'hexagon', name: '六边形', icon: <svg width="28" height="20"><polygon points="7,3 21,3 24,10 21,17 7,17 4,10" stroke="var(--shape-stroke)" strokeWidth="2" fill="none"/></svg> },
+  { type: 'pentagon', name: '五边形', icon: <svg width="28" height="20"><polygon points="14,3 24,10 20,17 8,17 4,10" stroke="var(--shape-stroke)" strokeWidth="2" fill="none"/></svg> },
+  { type: 'trapezoid', name: '梯形', icon: <svg width="28" height="20"><polygon points="8,3 20,3 24,17 4,17" stroke="var(--shape-stroke)" strokeWidth="2" fill="none"/></svg> },
+  { type: 'document', name: '文档', icon: <svg width="28" height="20"><path d="M5,5 H23 Q24,5 24,8 V14 Q24,17 21,17 H7 Q5,17 5,14 V8 Q5,5 8,5 Z" stroke="var(--shape-stroke)" strokeWidth="2" fill="none"/></svg> },
+  { type: 'cloud', name: '云', icon: <svg width="28" height="20"><path d="M9,17 Q5,17 5,10 Q2,10 4,6 Q4,3 8,5 Q9,2 14,3 Q19,2 20,5 Q24,3 24,6 Q26,10 21,10 Q21,17 17,17 Q16,19 14,17 Q12,19 9,17 Z" stroke="var(--shape-stroke)" strokeWidth="2" fill="none"/></svg> },
+  { type: 'flag', name: '旗帜', icon: <svg width="28" height="20"><path d="M5,5 L23,5 L20,10 L23,15 L5,15 Z" stroke="var(--shape-stroke)" strokeWidth="2" fill="none"/></svg> },
+  { type: 'arrowRight', name: '右箭头', icon: <svg width="28" height="20"><polygon points="5,10 17,10 17,6 24,10 17,14 17,10 5,10" stroke="var(--shape-stroke)" strokeWidth="2" fill="none"/></svg> },
+  { type: 'arrowLeft', name: '左箭头', icon: <svg width="28" height="20"><polygon points="23,10 11,10 11,6 4,10 11,14 11,10 23,10" stroke="var(--shape-stroke)" strokeWidth="2" fill="none"/></svg> },
+  { type: 'doubleArrow', name: '双箭头', icon: <svg width="28" height="20"><polygon points="4,10 8,6 8,9 20,9 20,6 24,10 20,14 20,11 8,11 8,14 4,10" stroke="var(--shape-stroke)" strokeWidth="2" fill="none"/></svg> },
+  { type: 'star', name: '星形', icon: <svg width="28" height="20"><polygon points="14,5 16,14 24,14 17,17 19,25 14,20 9,25 11,17 4,14 12,14" stroke="var(--shape-stroke)" strokeWidth="2" fill="none"/></svg> },
+  { type: 'heart', name: '心形', icon: <svg width="28" height="20" viewBox="0 0 28 20"><path d="M14 5 C10 1, 4 4, 6 10 C4 15, 10 17, 14 20 C18 17, 24 15, 22 10 C24 4, 18 1, 14 5Z" stroke="var(--shape-stroke)" strokeWidth="2" fill="none"/></svg> },
+  { type: 'quote', name: '引号', icon: <svg width="28" height="20"><text x="6" y="16" fontSize="13" fill="var(--shape-stroke)">""</text></svg> },
+  { type: 'brace', name: '大括号', icon: <svg width="28" height="20"><text x="6" y="16" fontSize="13" fill="var(--shape-stroke)">{}</text></svg> },
+  { type: 'bracket', name: '方括号', icon: <svg width="28" height="20"><text x="6" y="16" fontSize="13" fill="var(--shape-stroke)">[ ]</text></svg> },
+  { type: 'parenthesis', name: '圆括号', icon: <svg width="28" height="20"><text x="6" y="16" fontSize="13" fill="var(--shape-stroke)">( )</text></svg> },
 ];
 
 const FormatSidebar = ({
@@ -60,6 +60,8 @@ const FormatSidebar = ({
   canvasProps,
   onCanvasChange,
   selectedTask,
+  selectedTasks = [],
+  selectedTaskIds = [],
   onTaskStyleChange,
 }) => {
   // Tab页状态：canvas/style
@@ -92,11 +94,17 @@ const FormatSidebar = ({
     setLocalProps(updated);
     onCanvasChange && onCanvasChange(updated);
   };
+  // 新增：多选属性辅助函数
+  function getMultiValue(key) {
+    if (!selectedTasks || selectedTasks.length === 0) return '';
+    const first = selectedTasks[0]?.[key];
+    if (selectedTasks.every(t => t[key] === first)) return first;
+    return '';
+  }
   // 处理卡片样式变更
   const handleTaskStyleChange = (key, value) => {
-    const updated = { ...localTaskStyle, [key]: value };
-    setLocalTaskStyle(updated);
-    onTaskStyleChange && onTaskStyleChange(updated);
+    setLocalTaskStyle(prev => ({ ...prev, [key]: value }));
+    onTaskStyleChange && onTaskStyleChange(key, value);
   };
 
   // 动画控制
@@ -159,7 +167,7 @@ const FormatSidebar = ({
         top: 64,
         right: 0,
         width: 300,
-        height: 'calc(100vh - 256px)',
+        height: 'calc(100vh - 200px)',
         background: 'var(--sidebar-bg)',
         color: 'var(--sidebar-text)',
         backdropFilter: 'blur(48px) saturate(1.5)',
@@ -259,7 +267,7 @@ const FormatSidebar = ({
                     position: 'absolute',
                     zIndex: 10,
                     top: 40,
-                    left: 0,
+                    right: 0,
                     borderRadius: 10,
                     border: '1.5px solid var(--sidebar-border)',
                     background: 'none',
@@ -322,158 +330,255 @@ const FormatSidebar = ({
             </div>
           </>
         )}
-        {tab === 'style' && selectedTask && (
+        {tab === 'style' && (selectedTask || (selectedTasks && selectedTasks.length > 1)) && (
           <div>
-            {/* 形状选择器：下拉菜单方式 */}
-            <div style={{ marginBottom: 18, position: 'relative', display: 'flex', alignItems: 'center', height: 36 }}>
-              <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--sidebar-text)', minWidth: 48, flex: 'none' }}>形状</div>
-               {/* 形状选择器 */}
-              <button
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px',
-                  border: '1.5px solid var(--sidebar-border)', borderRadius: 8,
-                  background: 'var(--sidebar-bg)', color: 'var(--sidebar-text)', cursor: 'pointer',
-                  fontSize: 14, fontWeight: 500, height: 32, width: '100%', marginLeft: 12,
+            {/* 多选提示 */}
+            {selectedTasks && selectedTasks.length > 1 && (
+              <div style={{ color: '#316acb', fontWeight: 600, marginBottom: 10, fontSize: 15 }}>
+                已选中{selectedTasks.length}个卡片，批量设置样式
+              </div>
+            )}
+            {/* 重要性选择器 */}
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14, height: 36 }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--sidebar-text)', minWidth: 48 }}>重要性</div>
+              <select
+                value={(() => {
+                  const level = (selectedTasks && selectedTasks.length > 1)
+                    ? getMultiValue('importantLevel')
+                    : localTaskStyle?.importantLevel;
+                  return level || 'normal';
+                })()}
+                onChange={e => {
+                  let fill, color;
+                  if (e.target.value === 'important') {
+                    fill = '#f44336'; color = '#fff';
+                  } else if (e.target.value === 'secondary') {
+                    fill = '#ff9800'; color = '#fff';
+                  } else {
+                    fill = '#f8f8fa'; color = '#222222';
+                  }
+                  handleTaskStyleChange('importantLevel', e.target.value);
+                  handleTaskStyleChange('fillColor', fill);
+                  handleTaskStyleChange('color', color);
                 }}
-                onClick={() => setShapeMenuOpen(v => !v)}
+                style={{
+                  flex: 1,
+                  marginLeft: 12,
+                  fontSize: 14,
+                  borderRadius: 8,
+                  padding: '0 12px',
+                  height: 32,
+                  lineHeight: '32px',
+                  border: '1.5px solid var(--sidebar-border)',
+                  background: 'var(--sidebar-bg)',
+                  color: 'var(--sidebar-text)',
+                  fontWeight: 400,
+                  appearance: 'none',
+                  WebkitAppearance: 'none',
+                  outline: 'none',
+                  boxShadow: 'none',
+                  transition: 'border-color 0.2s',
+                  minWidth: 80,
+                  boxSizing: 'border-box',
+                }}
               >
-                {currentShape.icon}
-                <span style={{ fontSize: 14 }}>{currentShape.name}</span>
-              </button>
-              {shapeMenuOpen && (
-                <div
-                  className="shape-dropdown-menu"
+                <option value="important">重要</option>
+                <option value="secondary">次要</option>
+                <option value="normal">一般</option>
+              </select>
+            </div>
+            <div style={{ borderTop: '1.5px solid var(--sidebar-border)', margin: '10px 0', height: 0 }} />
+            {/* 第一排：形状标题+形状选择器 */}
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14, height: 36 }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--sidebar-text)', minWidth: 48 }}>形状</div>
+              <div style={{ flex: 1, marginLeft: 12, position: 'relative' }}>
+                <button
                   style={{
-                    position: 'absolute', zIndex: 10, top: 44, left: 0, width: '100%',
-                    background: 'var(--dropdown-bg)', border: '1.5px solid var(--dropdown-border)', borderRadius: 10,
-                    boxShadow: '0 4px 24px #0002', padding: 8,
-                    color: 'var(--dropdown-text)',
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
-                    gap: 2,
+                    display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px',
+                    border: '1.5px solid var(--sidebar-border)', borderRadius: 8,
+                    background: 'var(--sidebar-bg)', color: 'var(--sidebar-text)', cursor: 'pointer',
+                    fontSize: 14, fontWeight: 500, height: 32, width: '100%',
+                  }}
+                  onClick={() => setShapeMenuOpen(v => !v)}
+                >
+                  {(selectedTasks && selectedTasks.length > 1)
+                    ? (SHAPES.find(s => s.type === getMultiValue('shape'))?.icon || SHAPES[0].icon)
+                    : currentShape.icon}
+                  <span style={{ fontSize: 13 }}>
+                    {(selectedTasks && selectedTasks.length > 1)
+                      ? (SHAPES.find(s => s.type === getMultiValue('shape'))?.name || '-')
+                      : currentShape.name}
+                  </span>
+                </button>
+                {shapeMenuOpen && (
+                  <div
+                    className="shape-dropdown-menu"
+                    style={{
+                      position: 'absolute',
+                      zIndex: 10,
+                      top: 44,
+                      left: 'auto',
+                      right: 0,
+                      width: 220,
+                      background: 'var(--dropdown-bg)',
+                      border: '1.5px solid var(--dropdown-border)',
+                      borderRadius: 10,
+                      boxShadow: '0 4px 24px #0002',
+                      padding: 8,
+                      color: 'var(--dropdown-text)',
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: 8,
+                      fontSize: 14,
+                      maxHeight: 400,
+                      overflowY: 'auto',
+                    }}
+                  >
+                    {SHAPES.map((s, idx) => {
+                      const isSelected = getMultiValue('shape') === s.type;
+                      const isHovered = hoveredShapeIdx === idx;
+                      return (
+                        <div
+                          key={s.type}
+                          onClick={() => { handleTaskStyleChange('shape', s.type); setShapeMenuOpen(false); }}
+                          onMouseEnter={() => setHoveredShapeIdx(idx)}
+                          onMouseLeave={() => setHoveredShapeIdx(-1)}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 4, padding: '0 4px', borderRadius: 6,
+                            background: isHovered ? 'var(--dropdown-hover-bg)' : (isSelected ? 'var(--shape-bg)' : 'transparent'),
+                            cursor: 'pointer', color: 'var(--dropdown-text)', fontSize: 13,
+                            fontWeight: isSelected ? 700 : 400,
+                            transition: 'background 0.18s',
+                            height: 28,
+                          }}
+                        >
+                          {s.icon}
+                          <span style={{ fontSize: 13 }}>{s.name}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+            {/* 第二排：填充标题+卡片颜色选择器 */}
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14, height: 32 }}>
+              <div style={{ fontWeight: 400, fontSize: 14, color: 'var(--sidebar-text)', minWidth: 48 }}>填充</div>
+              <div style={{ flex: 1, marginLeft: 12, position: 'relative' }}>
+                <button
+                  style={{
+                    width: '100%', height: 32,
+                    border: '1.5px solid var(--sidebar-border)',
+                    background: (selectedTasks && selectedTasks.length > 1)
+                      ? (getMultiValue('fillColor') || '#f8f8fa')
+                      : (localTaskStyle?.fillColor || '#f8f8fa'),
+                    borderRadius: 8, cursor: 'pointer', padding: 0,
+                  }}
+                  onClick={() => setColorPickerOpen(v => v === 'fill' ? null : 'fill')}
+                  aria-label="选择填充颜色"
+                />
+                {colorPickerOpen === 'fill' && (
+                  <div
+                    ref={fillPickerRef}
+                    style={{
+                      position: 'absolute', zIndex: 10, top: 40, right: 0,
+                      borderRadius: 10, border: '1.5px solid var(--sidebar-border)',
+                      background: 'none', boxShadow: '0 4px 24px #0002', padding: 0,
+                    }}
+                  >
+                    <SketchPicker
+                      color={(selectedTasks && selectedTasks.length > 1)
+                        ? (getMultiValue('fillColor') || '#f8f8fa')
+                        : (localTaskStyle?.fillColor || '#f8f8fa')}
+                      onChange={color => handleTaskStyleChange('fillColor', color.hex)}
+                      disableAlpha
+                      presetColors={['#ffffff', '#f44336', '#ff9800', '#ffeb3b', '#4caf50', '#2196f3', '#9c27b0', '#00bcd4', '#222222']}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+            {/* 第三排：边框标题+线形选择器+边框颜色选择器 */}
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14, height: 32 }}>
+              <div style={{ fontWeight: 400, fontSize: 14, color: 'var(--sidebar-text)', minWidth: 48 }}>边框</div>
+              <div style={{ flex: 1, marginLeft: 12, display: 'flex', gap: 8 }}>
+                {/* 线形选择器 */}
+                <select
+                  value={localTaskStyle?.borderStyle || 'solid'}
+                  onChange={e => handleTaskStyleChange('borderStyle', e.target.value)}
+                  style={{
+                    flex: 1,
                     fontSize: 14,
-                  }}
-                >
-                  {SHAPES.map((s, idx) => {
-                    const isSelected = localTaskStyle?.shape === s.type;
-                    const isHovered = hoveredShapeIdx === idx;
-                    return (
-                      <div
-                        key={s.type}
-                        onClick={() => { handleTaskStyleChange('shape', s.type); setShapeMenuOpen(false); }}
-                        onMouseEnter={() => setHoveredShapeIdx(idx)}
-                        onMouseLeave={() => setHoveredShapeIdx(-1)}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: 8, padding: '0 8px', borderRadius: 6,
-                          background: isHovered ? 'var(--dropdown-hover-bg)' : (isSelected ? 'var(--shape-bg)' : 'transparent'),
-                          cursor: 'pointer', color: 'var(--dropdown-text)', fontSize: 14,
-                          fontWeight: isSelected ? 700 : 400,
-                          transition: 'background 0.18s',
-                          height: 32,
-                        }}
-                      >
-                        {s.icon}
-                        <span style={{ fontSize: 14 }}>{s.name}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-            {/* 填充颜色 */}
-            <div style={{ marginBottom: 14, display: 'flex', alignItems: 'center', height: 32 }}>
-              <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--sidebar-text)', minWidth: 48, flex: 'none' }}>填充</div>
-              <button
-                style={{
-                  width: '100%',
-                  height: 32,
-                  border: '1.5px solid var(--sidebar-border)',
-                  background: localTaskStyle?.fillColor || '#f8f8fa',
-                  borderRadius: 8,
-                  cursor: 'pointer',
-                  padding: 0,
-                  marginLeft: 12,
-                  position: 'relative',
-                }}
-                onClick={() => setColorPickerOpen(v => v === 'fill' ? null : 'fill')}
-                aria-label="选择填充颜色"
-              />
-              {colorPickerOpen === 'fill' && (
-                <div
-                  ref={fillPickerRef}
-                  style={{
-                    position: 'absolute',
-                    zIndex: 10,
-                    top: 44,
-                    left: 0,
-                    borderRadius: 10,
+                    borderRadius: 8,
+                    padding: '0 12px',
+                    height: 32,
+                    lineHeight: '32px',
                     border: '1.5px solid var(--sidebar-border)',
-                    background: 'none',
-                    boxShadow: '0 4px 24px #0002',
-                    padding: 0,
+                    background: 'var(--sidebar-bg)',
+                    color: 'var(--sidebar-text)',
+                    fontWeight: 400,
+                    appearance: 'none',
+                    WebkitAppearance: 'none',
+                    outline: 'none',
+                    boxShadow: 'none',
+                    transition: 'border-color 0.2s',
+                    minWidth: 80,
+                    margin: 0,
+                    boxSizing: 'border-box',
                   }}
                 >
-                  <SketchPicker
-                    color={localTaskStyle?.fillColor || '#f8f8fa'}
-                    onChange={color => handleTaskStyleChange('fillColor', color.hex)}
-                    disableAlpha
-                    presetColors={['#ffffff', '#f44336', '#ff9800', '#ffeb3b', '#4caf50', '#2196f3', '#9c27b0', '#00bcd4', '#222222']}
+                  {LINE_STYLES.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+                {/* 边框颜色选择器 */}
+                <div style={{ flex: 1, position: 'relative', height: 32 }}>
+                  <button
+                    style={{
+                      width: '100%',
+                      height: 32,
+                      border: '1.5px solid var(--sidebar-border)',
+                      background: localTaskStyle?.borderColor || '#e0e0e5',
+                      borderRadius: 8,
+                      cursor: 'pointer',
+                      padding: 0,
+                      margin: 0,
+                      boxSizing: 'border-box',
+                      fontSize: 14,
+                      fontWeight: 400,
+                      lineHeight: '32px',
+                    }}
+                    onClick={() => setColorPickerOpen(v => v === 'border' ? null : 'border')}
+                    aria-label="选择边框颜色"
                   />
+                  {colorPickerOpen === 'border' && (
+                    <div
+                      ref={borderPickerRef}
+                      style={{
+                        position: 'absolute', zIndex: 10, top: 40, right: 0,
+                        borderRadius: 10, border: '1.5px solid var(--sidebar-border)',
+                        background: 'none', boxShadow: '0 4px 24px #0002', padding: 0,
+                      }}
+                    >
+                      <SketchPicker
+                        color={localTaskStyle?.borderColor || '#e0e0e5'}
+                        onChange={color => handleTaskStyleChange('borderColor', color.hex)}
+                        disableAlpha
+                        presetColors={['#ffffff', '#f44336', '#ff9800', '#ffeb3b', '#4caf50', '#2196f3', '#9c27b0', '#00bcd4', '#222222']}
+                      />
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
-            {/* 分割线 */}
-            <div style={{ borderTop: '1.5px solid var(--sidebar-border)', margin: '0 0 14px 0', height: 0 }} />
-            {/* 边框颜色 */}
-            <div style={{ marginBottom: 14, display: 'flex', alignItems: 'center', height: 32 }}>
-              <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--sidebar-text)', minWidth: 48, flex: 'none' }}>边框</div>
-              <button
-                style={{
-                  width: '100%',
-                  height: 32,
-                  border: '1.5px solid var(--sidebar-border)',
-                  background: localTaskStyle?.borderColor || '#e0e0e5',
-                  borderRadius: 8,
-                  cursor: 'pointer',
-                  padding: 0,
-                  marginLeft: 12,
-                  position: 'relative',
-                }}
-                onClick={() => setColorPickerOpen(v => v === 'border' ? null : 'border')}
-                aria-label="选择边框颜色"
-              />
-              {colorPickerOpen === 'border' && (
-                <div
-                  ref={borderPickerRef}
-                  style={{
-                    position: 'absolute',
-                    zIndex: 10,
-                    top: 44,
-                    left: 0,
-                    borderRadius: 10,
-                    border: '1.5px solid var(--sidebar-border)',
-                    background: 'none',
-                    boxShadow: '0 4px 24px #0002',
-                    padding: 0,
-                  }}
-                >
-                  <SketchPicker
-                    color={localTaskStyle?.borderColor || '#e0e0e5'}
-                    onChange={color => handleTaskStyleChange('borderColor', color.hex)}
-                    disableAlpha
-                    presetColors={['#ffffff', '#f44336', '#ff9800', '#ffeb3b', '#4caf50', '#2196f3', '#9c27b0', '#00bcd4', '#222222']}
-                  />
-                </div>
-              )}
-            </div>
-            {/* 边框粗细 */}
-            <div style={{ marginBottom: 14, display: 'flex', alignItems: 'center', height: 32 }}>
-              <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--sidebar-text)', minWidth: 48, flex: 'none' }}>粗细</div>
+            {/* 第四排：粗细标题+边框粗细选择器 */}
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14, height: 32 }}>
+              <div style={{ fontWeight: 400, fontSize: 14, color: 'var(--sidebar-text)', minWidth: 48 }}>粗细</div>
               <select
                 value={String(localTaskStyle?.borderWidth ?? 1.5)}
                 onChange={e => handleTaskStyleChange('borderWidth', Number(e.target.value))}
                 style={{
-                  width: '100%',
+                  flex: 1,
                   fontSize: 14,
                   borderRadius: 8,
                   padding: '4px 12px',
@@ -489,7 +594,7 @@ const FormatSidebar = ({
                   boxShadow: 'none',
                   transition: 'border-color 0.2s',
                   marginLeft: 12,
-                  minWidth: 100,
+                  minWidth: 80,
                 }}
               >
                 {LINE_WIDTHS.map(opt => (
@@ -497,38 +602,7 @@ const FormatSidebar = ({
                 ))}
               </select>
             </div>
-            {/* 边框线形 */}
-            <div style={{ marginBottom: 14, display: 'flex', alignItems: 'center', height: 32 }}>
-              <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--sidebar-text)', minWidth: 48, flex: 'none' }}>线形</div>
-              <select
-                value={localTaskStyle?.borderStyle || 'solid'}
-                onChange={e => handleTaskStyleChange('borderStyle', e.target.value)}
-                style={{
-                  width: '100%',
-                  fontSize: 14,
-                  borderRadius: 8,
-                  padding: '4px 12px',
-                  height: 32,
-                  lineHeight: '24px',
-                  border: '1.5px solid var(--sidebar-border)',
-                  background: 'var(--sidebar-bg)',
-                  color: 'var(--sidebar-text)',
-                  fontWeight: 400,
-                  appearance: 'none',
-                  WebkitAppearance: 'none',
-                  outline: 'none',
-                  boxShadow: 'none',
-                  transition: 'border-color 0.2s',
-                  marginLeft: 12,
-                  minWidth: 100,
-                }}
-              >
-                {LINE_STYLES.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            </div>
-            {/* 新分割线：线形与文本之间 */}
+            {/* 分割线 */}
             <div style={{ borderTop: '1.5px solid var(--sidebar-border)', margin: '18px 0', height: 0 }} />
             {/* 文本属性设置区域 */}
             <div style={{ marginBottom: 18 }}>
@@ -643,7 +717,7 @@ const FormatSidebar = ({
                         position: 'absolute',
                         zIndex: 10,
                         top: 40,
-                        left: 0,
+                        right: 0,
                         borderRadius: 10,
                         border: '1.5px solid var(--sidebar-border)',
                         background: 'none',
@@ -788,7 +862,14 @@ const FormatSidebar = ({
             {/* 恢复默认样式按钮 */}
             <div style={{ marginTop: 32, textAlign: 'center' }}>
               <button
-                onClick={() => { setLocalTaskStyle({ ...selectedTask, ...defaultTaskStyle }); onTaskStyleChange && onTaskStyleChange(Object.assign({}, selectedTask, defaultTaskStyle)); }}
+                onClick={() => {
+                  setLocalTaskStyle({ ...selectedTask, ...defaultTaskStyle });
+                  if (onTaskStyleChange) {
+                    Object.entries(defaultTaskStyle).forEach(([key, value]) => {
+                      onTaskStyleChange(key, value);
+                    });
+                  }
+                }}
                 style={{
                   padding: '8px 24px',
                   borderRadius: 8,

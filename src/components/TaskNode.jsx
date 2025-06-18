@@ -607,21 +607,38 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
           )}
         </g>
       )}
-      {(selected || hover) && (
-        <rect
-          x={-3}
-          y={-3}
-          width={NODE_WIDTH + 6}
-          height={NODE_HEIGHT + 6}
-          rx={21}
-          fill="none"
-          stroke="#1251a580"
-          strokeWidth={2}
-          style={{
-            pointerEvents: 'none',
+      {hover && (
+        renderShape(shape, {
+          // 对于rect/ellipse/circle等，扩大尺寸
+          ...(shape === 'rect' || shape === 'roundRect' ? {
+            x: -4,
+            y: -4,
+            width: NODE_WIDTH + 8,
+            height: NODE_HEIGHT + 8,
+            rx: shape === 'roundRect' ? 22 : 0,
+          } : shape === 'ellipse' ? {
+            cx: NODE_WIDTH / 2,
+            cy: NODE_HEIGHT / 2,
+            rx: NODE_WIDTH / 2 + 4,
+            ry: NODE_HEIGHT / 2 + 4,
+          } : shape === 'circle' ? {
+            cx: NODE_WIDTH / 2,
+            cy: NODE_HEIGHT / 2,
+            rx: NODE_HEIGHT / 2 + 4,
+            ry: NODE_HEIGHT / 2 + 4,
+          } : {
+            // 其它多边形/路径，整体放大1.08倍并中心缩放
+            style: { transform: `scale(1.08) translate(${NODE_WIDTH * 0.04},${NODE_HEIGHT * 0.04})` }
+          }),
+          fill: 'none',
+          stroke: '#1251a580',
+          strokeWidth: 2,
+          pointerEvents: 'none',
+          style: {
             transition: 'all 0.18s cubic-bezier(.4,0,.2,1)',
-          }}
-        />
+            ...(shape !== 'rect' && shape !== 'roundRect' && shape !== 'ellipse' && shape !== 'circle' ? { transform: `scale(1.08) translate(${NODE_WIDTH * 0.04},${NODE_HEIGHT * 0.04})` } : {})
+          }
+        })
       )}
     </g>
   );
