@@ -68,7 +68,16 @@ const defaultFile = () => {
   };
 };
 
-const CanvasFileToolbar = ({ canvasProps, setCanvasProps, selectedTaskId, setSelectedTaskId, selectedTaskIds = [] }) => {
+const CanvasFileToolbar = ({
+  canvasProps,
+  setCanvasProps,
+  selectedTaskId,
+  setSelectedTaskId,
+  selectedTaskIds,
+  // 新增：分支样式属性
+  branchStyle,
+  onBranchStyleChange
+}) => {
   // 多文件（Tab）本地状态
   const [files, setFiles] = useState(() => {
     // 尝试从 localStorage 恢复
@@ -414,7 +423,12 @@ const CanvasFileToolbar = ({ canvasProps, setCanvasProps, selectedTaskId, setSel
         </svg>
       </button>
       {/* 新增：格式按钮 */}
-      <button className="toolbar-btn" title="格式" onClick={() => setShowFormatSidebar(v => !v)} style={{ marginRight: 8 }}>
+      <button
+        className="toolbar-btn format-btn"
+        title="格式"
+        onClick={() => setShowFormatSidebar(v => !v)}
+        style={{ marginRight: 8, background: showFormatSidebar ? 'var(--format-btn-active-bg)' : 'none' }}
+      >
         {/* 侧边栏/面板风格图标SVG */}
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="4" width="18" height="16" rx="2.5"/>
@@ -661,6 +675,9 @@ const CanvasFileToolbar = ({ canvasProps, setCanvasProps, selectedTaskId, setSel
         selectedTasks={selectedTasks}
         selectedTaskIds={selectedTaskIds}
         onTaskStyleChange={handleTaskStyleChange}
+        // 新增：传递分支样式属性
+        branchStyle={branchStyle}
+        onBranchStyleChange={onBranchStyleChange}
       />
     </div>
   );

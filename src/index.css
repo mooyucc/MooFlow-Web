@@ -26,6 +26,9 @@
   --dropdown-border: #d1d1d6;  /* 浅色模式下，下拉菜单边框 */
   --dropdown-hover-bg: #f5f5f7; /* 浅色模式下，下拉菜单悬停色，macOS风格 */
   --tab-underline: #333; /* 浅色模式下，标签底部线条色 */
+  --card-bg: rgba(255, 255, 255, 0.7);
+  --button-border: rgba(0, 0, 0, 0.12);
+  --button-hover-bg: rgba(0, 0, 0, 0.05);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -42,6 +45,9 @@
     --dropdown-border: #3a3a3c;/* 深色模式下，下拉菜单边框 */
     --dropdown-hover-bg: #35363a; /* 深色模式下，下拉菜单悬停色，macOS风格 */
     --tab-underline: #fff; /* 深色模式下，标签底部线条色 */
+    --card-bg: rgba(40, 40, 40, 0.7);
+    --button-border: rgba(255, 255, 255, 0.12);
+    --button-hover-bg: rgba(255, 255, 255, 0.05);
   }
 }
 

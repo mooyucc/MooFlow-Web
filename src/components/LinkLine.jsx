@@ -21,7 +21,26 @@ const getEdgePoint = (rect, target) => {
   return closest;
 };
 
-const LinkLine = ({ source, target, fromId, toId, fromAnchor, toAnchor, onDelete, onUpdateLink, tasks, svgRef, color, label = '', onUpdateLabel, isMainChain = false }) => {
+const LinkLine = ({
+  source,
+  target,
+  fromId,
+  toId,
+  fromAnchor,
+  toAnchor,
+  onDelete,
+  onUpdateLink,
+  tasks,
+  svgRef,
+  color = '#333',
+  label = '',
+  onUpdateLabel,
+  isMainChain = false,
+  // 新增属性
+  lineStyle = 'solid',      // 线形：solid, dashed, dotted
+  arrowStyle = 'normal',    // 箭头：normal, triangle, diamond, none
+  lineWidth = 2,            // 线宽：默认2
+}) => {
   // source/target: {position, ...}
   // 任务卡片尺寸
   const nodeRect = { width: 180, height: 72 };
@@ -286,13 +305,33 @@ const LinkLine = ({ source, target, fromId, toId, fromAnchor, toAnchor, onDelete
   const highlightColor = '#316acb';
   // 箭头颜色（动态）
   const arrowColor = mainColor;
-  // 箭头markerId唯一化
-  const markerId = `arrowhead-${fromId}-${toId}-${mainColor.replace('#','')}`;
 
   // 新增：本地输入状态
   const [inputValue, setInputValue] = useState(label);
   // label变化时同步inputValue
   React.useEffect(() => { setInputValue(label); }, [label]);
+
+  // 修改连线样式
+  const getStrokeDasharray = () => {
+    switch (lineStyle) {
+      case 'dashed': return '8 4';
+      case 'dotted': return '3 3';
+      default: return 'none';
+    }
+  };
+
+  // 修改箭头样式
+  const getArrowPath = () => {
+    switch (arrowStyle) {
+      case 'triangle': return 'M 0 0 L 5 2.5 L 0 5 z';
+      case 'diamond': return 'M 0 2.5 L 2.5 0 L 5 2.5 L 2.5 5 z';
+      case 'none': return '';
+      default: return 'M 0 0 L 5 2.5 L 0 5 z';
+    }
+  };
+
+  // 箭头markerId唯一化（增加lineStyle和arrowStyle）
+  const markerId = `arrowhead-${fromId}-${toId}-${color.replace('#','')}-${lineStyle}-${arrowStyle}`;
 
   return (
     <g
@@ -311,14 +350,14 @@ const LinkLine = ({ source, target, fromId, toId, fromAnchor, toAnchor, onDelete
           orient="auto"
           markerUnits="strokeWidth"
         >
-          <path d="M 0 0 L 5 2.5 L 0 5 z" fill={arrowColor} />
+          <path d={getArrowPath()} fill={arrowColor} />
         </marker>
       </defs>
       {highlightElement}
       {/* 判定区：粗透明线，提升悬停体验 */}
       <path
         d={path}
-        stroke={mainColor}
+        stroke={color}
         strokeWidth={10}
         fill="none"
         opacity={0}
@@ -327,10 +366,11 @@ const LinkLine = ({ source, target, fromId, toId, fromAnchor, toAnchor, onDelete
       {/* 真实可见线 */}
       <path
         d={path}
-        stroke={mainColor}
-        strokeWidth={effectiveHovered ? 3.5 : 2}
+        stroke={color}
+        strokeWidth={effectiveHovered ? lineWidth * 1.5 : lineWidth}
+        strokeDasharray={getStrokeDasharray()}
         fill="none"
-        markerEnd={`url(#${markerId})`}
+        markerEnd={arrowStyle !== 'none' ? `url(#${markerId})` : ''}
         style={{ cursor: 'pointer', transition: 'stroke 0.2s, stroke-width 0.2s' }}
       />
       {/* 连线中点文本输入框 */}

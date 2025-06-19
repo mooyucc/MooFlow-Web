@@ -18,7 +18,7 @@ MooPlan 是一款基于 React + Electron 的智能项目计划与任务管理平
   - tailwindcss（样式，部分组件）
 - **其他**：支持本地存储、Electron 文件导出等
 
-## 主要文件结构
+## 主要目录结构与核心组件说明
 ```
 MooPlan/
 ├── electron-main.js           # Electron 主进程入口，负责窗口与文件导出
@@ -42,17 +42,17 @@ MooPlan/
 │   │   └── taskStore.js       # 任务状态管理
 │   └── components/            # 主要功能组件
 │        ├── MainCanvas.jsx         # 无限画布与任务可视化核心
-│        ├── TaskNode.jsx           # 任务节点组件
+│        ├── TaskNode.jsx           # 单个任务节点，支持拖拽、编辑
 │        ├── LinkLine.jsx           # 任务依赖连线组件
-│        ├── CanvasToolbar.jsx      # 画布工具栏
-│        ├── CanvasToolbar.css      # 工具栏样式
+│        ├── CanvasToolbar.jsx      # 画布工具栏，常用操作入口
 │        ├── CanvasFileToolbar.jsx  # 文件导入导出工具栏
-│        ├── TaskTree.jsx           # 任务树结构组件
+│        ├── TaskTree.jsx           # 任务树结构，层级展示任务
 │        ├── DatePickerPortal.jsx   # 日期选择弹窗
-│        ├── CollapseButton.jsx     # 折叠按钮组件
-│        └── FormatSidebar.jsx      # 右侧格式栏组件
+│        ├── CollapseButton.jsx     # 折叠/展开按钮
+│        └── FormatSidebar.jsx      # 右侧格式栏，任务属性编辑
 ├── assets/                    # 应用图标等资源（如icon.ico, icon.icns, icon.png）
 ├── dist/                      # 打包输出目录
+├── dmg/                       # Mac DMG 安装包输出目录
 ├── .github/                   # GitHub 工作流等配置
 ├── .gitignore                 # Git 忽略文件配置
 ├── MooPlan 开发技术栈.md      # 详细技术方案与开发手册
@@ -105,10 +105,23 @@ npm run build:electron
 npx electron-builder --win
 ```
 
-## Github 
-
+## Github 推送
+1、查看当前远程仓库地址
+```bash
+git remote -v
+```
+2、切换仓库
+先移除原有的远程仓库，再添加正确的仓库地址：
+```bash
+git remote remove origin
+git remote add origin https://github.com/xkevin430/MooPlan.git
+```
+或者
+```bash
+git remote remove origin
+git remote add origin https://github.com/xkevin430/MooPlanPages.git
+```
 ### 将本地代码推送到 GitHub MooPlan仓库
-
 1. 打开终端，进入项目目录：
 ```bash
 cd "/Users/kevinx/Documents/Ai Project/MooPlan"
@@ -128,11 +141,7 @@ git commit -m "YYMMDD代码更新"
 git push origin main
 ```
 
-推送完成后，可在 GitHub 仓库查看：[https://github.com/xkevin430/MooPlan](https://github.com/xkevin430/MooPlan)
-
----
 ### 将本地代码推送到 GitHub MooPlanPages仓库
-
 1. 打开终端，进入项目目录：
 ```bash
 cd "/Users/kevinx/Documents/Ai Project/MooPlan/dist"
@@ -154,12 +163,32 @@ git push origin main
 
 如有其他问题，欢迎联系开发者。
 
-
 Color颜色标准
-深色模式
-文字：e8e8ed（灰白色），86868b（灰色）
-背景：161617（深灰色）
 
-浅色模式
-文字：484848（深灰色）
-背景：f0f0ee（浅白色），ececea（浅灰色），d0d0cd（中灰色），c2c3c1（深中灰色）
+| 模式   | 文字颜色         | 背景色           | 说明         |
+|--------|------------------|------------------|--------------|
+| 深色   | #e8e8ed（灰白）  | #161617（深灰）  | 主色         |
+| 深色   | #86868b（灰）    |                  | 次要文字     |
+| 浅色   | #484848（深灰）  | #f0f0ee（浅白）  | 主色         |
+| 浅色   |                  | #ececea（浅灰）  | 次要背景     |
+| 浅色   |                  | #d0d0cd（中灰）  | 辅助背景     |
+| 浅色   |                  | #c2c3c1（深中灰）| 辅助背景     |
+
+## 贡献指南
+
+欢迎提交 Issue 或 PR 参与项目共建！如有建议或问题，欢迎联系开发者。
+
+## 联系方式
+
+- GitHub: [xkevin430/MooPlan](https://github.com/xkevin430/MooPlan)
+- 邮箱: xkevin430@gmail.com
+
+## 常用脚本
+
+| 命令                        | 说明                   |
+|-----------------------------|------------------------|
+| npm install                 | 安装依赖               |
+| npm run dev                 | 启动开发环境           |
+| npm run build               | 构建网页版静态文件      |
+| npm run build:electron      | 构建 Electron 应用      |
+| npx electron-builder --win  | 打包 Windows 可执行文件 |

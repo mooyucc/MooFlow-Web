@@ -62,6 +62,14 @@ function saveTasksToStorage(tasks) {
   }
 }
 
+// 默认连线样式
+export const defaultLinkStyle = {
+  lineStyle: 'solid',
+  arrowStyle: 'normal',
+  lineWidth: 2,
+  color: '#333'
+};
+
 export const useTaskStore = create((set, get) => ({
   // 初始化时从 localStorage 恢复
   tasks: loadTasksFromStorage(),
@@ -100,13 +108,13 @@ export const useTaskStore = create((set, get) => ({
           if (idx !== -1) {
             // 已存在则更新锚点和label
             const newLinks = [...t.links];
-            newLinks[idx] = { ...newLinks[idx], fromAnchor, toAnchor, label: typeof newLinks[idx].label === 'string' ? newLinks[idx].label : '' };
+            newLinks[idx] = { ...newLinks[idx], fromAnchor, toAnchor, label: typeof newLinks[idx].label === 'string' ? newLinks[idx].label : '', ...defaultLinkStyle };
             return { ...t, links: newLinks };
           } else {
             // 不存在则添加
             return {
               ...t,
-              links: [...t.links, { toId, fromAnchor, toAnchor, label: typeof label === 'string' ? label : '' }]
+              links: [...t.links, { toId, fromAnchor, toAnchor, label: typeof label === 'string' ? label : '', ...defaultLinkStyle }]
             };
           }
         }
@@ -215,6 +223,21 @@ export const useTaskStore = create((set, get) => ({
   moveTaskSilently: (id, position) => {
     set((state) => {
       const newTasks = ensureLinksLabel(state.tasks.map((t) => (t.id === id ? { ...t, position } : t)));
+      saveTasksToStorage(newTasks);
+      return { tasks: newTasks };
+    });
+  },
+  updateLinkStyle: (fromId, toId, style) => {
+    set((state) => {
+      const newTasks = ensureLinksLabel(state.tasks.map((t) => {
+        if (t.id === fromId) {
+          const links = t.links.map(l =>
+            l.toId === toId ? { ...l, ...style } : l
+          );
+          return { ...t, links };
+        }
+        return t;
+      }));
       saveTasksToStorage(newTasks);
       return { tasks: newTasks };
     });

@@ -130,8 +130,8 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
   const {
     shape = defaultTaskStyle.shape,
     fillColor = isFirst ? "#222" : defaultTaskStyle.fillColor,
-    borderColor = multiSelected ? "#316acb" : defaultTaskStyle.borderColor,
-    borderWidth = multiSelected ? 2.5 : defaultTaskStyle.borderWidth,
+    borderColor = defaultTaskStyle.borderColor,
+    borderWidth = defaultTaskStyle.borderWidth,
     borderStyle = defaultTaskStyle.borderStyle,
   } = task;
 
@@ -400,13 +400,13 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
       onMouseDown={handleMouseDown}
       onClick={onClick}
       style={{ cursor: editing ? 'default' : 'move' }}
-      filter={selected ? 'drop-shadow(0 4px 16px rgba(0,0,0,0.10))' : multiSelected ? 'drop-shadow(0 0 0 2px #316acb)' : 'drop-shadow(0 2px 6px rgba(0,0,0,0.06))'}
+      filter={editing ? 'drop-shadow(0 4px 16px rgba(0,0,0,0.10))' : 'drop-shadow(0 2px 6px rgba(0,0,0,0.06))'}
       data-task-id={task.id}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
     >
       {/* 主体形状：支持多种流程图形状 */}
-      {borderStyle !== 'none' && renderShape(shape, {fill: fillColor, stroke: borderColor, strokeWidth: borderWidth, style: {transition: 'all 0.2s cubic-bezier(.4,0,.2,1)', filter: selected ? 'blur(0.5px)' : 'none'}, strokeDasharray: getShapeStrokeDasharray(borderStyle) })}
+      {borderStyle !== 'none' && renderShape(shape, {fill: fillColor, stroke: borderColor, strokeWidth: borderWidth, style: {transition: 'all 0.2s cubic-bezier(.4,0,.2,1)'}, strokeDasharray: getShapeStrokeDasharray(borderStyle) })}
       {borderStyle === 'none' && renderShape(shape, {fill: fillColor, stroke: 'none', strokeWidth: 0 })}
       {/* 工具栏：仅选中时显示 */}
       {selected && !editing && (
@@ -607,7 +607,7 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
           )}
         </g>
       )}
-      {hover && (
+      {(hover || selected || multiSelected) && (
         renderShape(shape, {
           // 对于rect/ellipse/circle等，扩大尺寸
           ...(shape === 'rect' || shape === 'roundRect' ? {

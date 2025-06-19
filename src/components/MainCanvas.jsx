@@ -18,6 +18,7 @@ const MainCanvas = () => {
   const deleteLink = useTaskStore((state) => state.deleteLink);
   const forceResetAnchors = useTaskStore((state) => state.forceResetAnchors);
   const updateLinkLabel = useTaskStore((state) => state.updateLinkLabel);
+  const updateLinkStyle = useTaskStore((state) => state.updateLinkStyle);
 
   // 连线模式
   const [linking, setLinking] = useState(false);
@@ -40,6 +41,59 @@ const MainCanvas = () => {
 
   // 对齐辅助线状态
   const [alignLines, setAlignLines] = useState([]);
+
+  // 新增：磁吸算法
+  function getSnappedPosition(dragId, x, y, width = 180, height = 72, threshold = 6) {
+    let snapX = x, snapY = y;
+    let minDeltaX = threshold, minDeltaY = threshold;
+    tasks.forEach(t => {
+      if (t.id === dragId) return;
+      const tWidth = 180, tHeight = 72;
+      const tX = t.position.x, tY = t.position.y;
+      const tCenterX = tX + tWidth / 2;
+      const tCenterY = tY + tHeight / 2;
+      const tLeft = tX, tRight = tX + tWidth;
+      const tTop = tY, tBottom = tY + tHeight;
+
+      // 本节点中心/边缘
+      const thisCenterX = x + width / 2;
+      const thisCenterY = y + height / 2;
+      const thisLeft = x, thisRight = x + width;
+      const thisTop = y, thisBottom = y + height;
+
+      // 中心对齐
+      if (Math.abs(thisCenterX - tCenterX) < minDeltaX) {
+        snapX = tCenterX - width / 2;
+        minDeltaX = Math.abs(thisCenterX - tCenterX);
+      }
+      if (Math.abs(thisCenterY - tCenterY) < minDeltaY) {
+        snapY = tCenterY - height / 2;
+        minDeltaY = Math.abs(thisCenterY - tCenterY);
+      }
+
+      // 左右对齐
+      if (Math.abs(thisLeft - tLeft) < minDeltaX) {
+        snapX = tLeft;
+        minDeltaX = Math.abs(thisLeft - tLeft);
+      }
+      if (Math.abs(thisRight - tRight) < minDeltaX) {
+        snapX = tRight - width;
+        minDeltaX = Math.abs(thisRight - tRight);
+      }
+
+      // 上下对齐
+      if (Math.abs(thisTop - tTop) < minDeltaY) {
+        snapY = tTop;
+        minDeltaY = Math.abs(thisTop - tTop);
+      }
+      if (Math.abs(thisBottom - tBottom) < minDeltaY) {
+        snapY = tBottom - height;
+        minDeltaY = Math.abs(thisBottom - tBottom);
+      }
+    });
+
+    return { x: snapX, y: snapY };
+  }
 
   // 获取第一个任务的日期作为时间轴起点
   const firstTask = tasks[0];
@@ -193,18 +247,55 @@ const MainCanvas = () => {
     dragMode.current = null;
   };
 
+  // 禁用浏览器默认缩放
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // 禁用 Ctrl/Cmd + 加号/减号/0 的浏览器默认缩放
+      if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '-' || e.key === '0')) {
+        e.preventDefault();
+      }
+    };
+
+    const handleWheel = (e) => {
+      // 禁用浏览器默认的 Ctrl/Cmd + 滚轮缩放
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('wheel', handleWheel, { passive: false });
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('wheel', handleWheel);
+    };
+  }, []);
+
   // 缩放/平移
   const handleWheel = (e) => {
     e.preventDefault();
-    if (e.ctrlKey) {
-      // 捏合缩放
+    if (e.ctrlKey || e.metaKey) {
+      // 缩放操作
       const scaleDelta = e.deltaY < 0 ? 1.1 : 0.9;
       setTransform((prev) => {
-        let newScale = Math.max(0.1, Math.min(5, prev.scale * scaleDelta));
-        return { ...prev, scale: newScale };
+        // 计算以鼠标位置为中心的缩放
+        const mouseX = e.clientX;
+        const mouseY = e.clientY;
+        const newScale = Math.max(0.1, Math.min(5, prev.scale * scaleDelta));
+        
+        // 计算鼠标在画布上的位置
+        const canvasX = (mouseX - prev.offsetX) / prev.scale;
+        const canvasY = (mouseY - prev.offsetY) / prev.scale;
+        
+        // 计算新的偏移量，保持鼠标位置不变
+        const newOffsetX = mouseX - canvasX * newScale;
+        const newOffsetY = mouseY - canvasY * newScale;
+        
+        return { scale: newScale, offsetX: newOffsetX, offsetY: newOffsetY };
       });
     } else {
-      // 触控板两指滑动，平移画布
+      // 平移操作
       setTransform((prev) => ({
         ...prev,
         offsetX: prev.offsetX - e.deltaX,
@@ -624,8 +715,11 @@ const MainCanvas = () => {
       const touch = e.touches[0];
       const id = touchState.current.dragNodeId;
       if (id) {
-        const x = (touch.clientX - transform.offsetX) / transform.scale + touchState.current.dragNodeOffset.x;
-        const y = (touch.clientY - transform.offsetY) / transform.scale + touchState.current.dragNodeOffset.y;
+        const rawX = (touch.clientX - transform.offsetX) / transform.scale + touchState.current.dragNodeOffset.x;
+        const rawY = (touch.clientY - transform.offsetY) / transform.scale + touchState.current.dragNodeOffset.y;
+        
+        // 新增：应用磁吸算法
+        const { x, y } = getSnappedPosition(id, rawX, rawY);
         useTaskStore.getState().updateTask(id, { position: { x, y } });
         forceResetAnchors(id);
         handleTaskDrag(id, x, y, 180, 72);
@@ -643,6 +737,53 @@ const MainCanvas = () => {
     }
     touchState.current.mode = null;
     touchState.current.dragNodeId = null;
+  };
+
+  // 新增：分支样式状态
+  const [branchStyle, setBranchStyle] = useState({
+    lineStyle: 'solid',
+    arrowStyle: 'normal',
+    lineWidth: 2,
+    color: '#333'
+  });
+
+  // 修改分支样式更新函数
+  const handleBranchStyleChange = (key, value) => {
+    setBranchStyle(prev => {
+      const newStyle = { ...prev, [key]: value };
+      // 更新选中任务的所有相关连线样式
+      if (selectedTaskId) {
+        const task = tasks.find(t => t.id === selectedTaskId);
+        if (task && task.links) {
+          task.links.forEach(link => {
+            updateLinkStyle(task.id, link.toId, newStyle);
+          });
+        }
+        // 更新指向该任务的连线
+        tasks.forEach(t => {
+          if (t.links && t.links.some(l => l.toId === selectedTaskId)) {
+            t.links.forEach(link => {
+              if (link.toId === selectedTaskId) {
+                updateLinkStyle(t.id, selectedTaskId, newStyle);
+              }
+            });
+          }
+        });
+      } else if (selectedTaskIds.length > 0) {
+        // 多选情况：更新选中任务之间的连线
+        selectedTaskIds.forEach(fromId => {
+          const task = tasks.find(t => t.id === fromId);
+          if (task && task.links) {
+            task.links.forEach(link => {
+              if (selectedTaskIds.includes(link.toId)) {
+                updateLinkStyle(fromId, link.toId, newStyle);
+              }
+            });
+          }
+        });
+      }
+      return newStyle;
+    });
   };
 
   return (
@@ -684,6 +825,8 @@ const MainCanvas = () => {
         selectedTaskId={selectedTaskId}
         setSelectedTaskId={setSelectedTaskId}
         selectedTaskIds={selectedTaskIds}
+        branchStyle={branchStyle}
+        onBranchStyleChange={handleBranchStyleChange}
       />
       <svg
         ref={svgRef}
@@ -756,6 +899,14 @@ const MainCanvas = () => {
             }
             if (!visibleTaskIds.has(task.id) || !visibleTaskIds.has(link.toId)) return null;
             const target = tasks.find((t) => t.id === link.toId);
+
+            // 判断是否应用分支样式：
+            // 1. 当前连线的起点或终点是选中的任务卡片
+            // 2. 如果是多选，则检查是否在选中列表中
+            const isSelectedLink = selectedTaskId 
+              ? (task.id === selectedTaskId || link.toId === selectedTaskId)
+              : (selectedTaskIds.includes(task.id) || selectedTaskIds.includes(link.toId));
+
             return target ? (
               <LinkLine
                 key={`${task.id}-${link.toId}`}
@@ -771,6 +922,11 @@ const MainCanvas = () => {
                 svgRef={svgRef}
                 label={typeof link.label === 'string' ? link.label : ''}
                 onUpdateLabel={handleUpdateLinkLabel}
+                // 使用保存的样式，如果没有则使用默认值
+                lineStyle={link.lineStyle || 'solid'}
+                arrowStyle={link.arrowStyle || 'normal'}
+                lineWidth={link.lineWidth || 2}
+                color={link.color || '#333'}
               />
             ) : null;
           }) : []
