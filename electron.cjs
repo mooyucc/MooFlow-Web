@@ -79,6 +79,66 @@ ipcMain.handle('load-auto-save', (event, { filename }) => {
   return { success: false };
 });
 
+// 聊天历史记录处理
+ipcMain.handle('append-chat-history', async (event, chatData) => {
+  const historyPath = path.join(__dirname, 'ChatHistory.md');
+  const today = new Date();
+  const dateStr = today.toISOString().split('T')[0];
+  
+  try {
+    let content = '';
+    if (fs.existsSync(historyPath)) {
+      content = fs.readFileSync(historyPath, 'utf-8');
+    }
+
+    // 检查今天的日期是否已存在
+    const dateHeader = `## ${dateStr}`;
+    if (!content.includes(dateHeader)) {
+      // 如果是新的一天，在文件开头添加新的日期部分（在文件头和第一个日期标题之间）
+      const lines = content.split('\n');
+      const firstDateIndex = lines.findIndex(line => line.startsWith('## '));
+      
+      if (firstDateIndex === -1) {
+        // 如果没有任何日期标题，直接添加到文件末尾
+        content += `\n${dateHeader}\n`;
+      } else {
+        // 在第一个日期标题之前插入新的日期部分
+        lines.splice(firstDateIndex, 0, `${dateHeader}\n`);
+        content = lines.join('\n');
+      }
+    }
+
+    // 在对应的日期下添加新的聊天记录
+    const lines = content.split('\n');
+    const dateIndex = lines.findIndex(line => line === dateHeader);
+    if (dateIndex !== -1) {
+      // 在日期标题后插入新的聊天记录
+      lines.splice(dateIndex + 1, 0, `- ${chatData.title}`);
+      content = lines.join('\n');
+    }
+
+    fs.writeFileSync(historyPath, content, 'utf-8');
+    return { success: true };
+  } catch (error) {
+    console.error('Error appending chat history:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('load-chat-history', async () => {
+  const historyPath = path.join(__dirname, 'ChatHistory.md');
+  try {
+    if (fs.existsSync(historyPath)) {
+      const content = fs.readFileSync(historyPath, 'utf-8');
+      return { success: true, content };
+    }
+    return { success: false, error: 'History file not found' };
+  } catch (error) {
+    console.error('Error loading chat history:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 app.whenReady().then(createWindow);
 
 app.on('window-all-closed', () => {

@@ -20,5 +20,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   loadAutoSave: async (filename) => {
     return await ipcRenderer.invoke('load-auto-save', { filename });
+  },
+  appendChatHistory: async (chatData) => {
+    return await ipcRenderer.invoke('append-chat-history', chatData);
+  },
+  loadChatHistory: async () => {
+    return await ipcRenderer.invoke('load-chat-history');
   }
 }); 
