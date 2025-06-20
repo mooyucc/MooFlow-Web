@@ -4,6 +4,7 @@ import TaskNode from './TaskNode';
 import CanvasToolbar from './CanvasToolbar';
 import LinkLine from './LinkLine';
 import CanvasFileToolbar from './CanvasFileToolbar';
+import CanvasThemeToolbar from './CanvasThemeToolbar';
 import { addDays } from 'date-fns';
 
 const CANVAS_SIZE = 100000; // 无限画布逻辑尺寸
@@ -52,14 +53,10 @@ const MainCanvas = () => {
       const tX = t.position.x, tY = t.position.y;
       const tCenterX = tX + tWidth / 2;
       const tCenterY = tY + tHeight / 2;
-      const tLeft = tX, tRight = tX + tWidth;
-      const tTop = tY, tBottom = tY + tHeight;
 
-      // 本节点中心/边缘
+      // 本节点中心
       const thisCenterX = x + width / 2;
       const thisCenterY = y + height / 2;
-      const thisLeft = x, thisRight = x + width;
-      const thisTop = y, thisBottom = y + height;
 
       // 中心对齐
       if (Math.abs(thisCenterX - tCenterX) < minDeltaX) {
@@ -69,26 +66,6 @@ const MainCanvas = () => {
       if (Math.abs(thisCenterY - tCenterY) < minDeltaY) {
         snapY = tCenterY - height / 2;
         minDeltaY = Math.abs(thisCenterY - tCenterY);
-      }
-
-      // 左右对齐
-      if (Math.abs(thisLeft - tLeft) < minDeltaX) {
-        snapX = tLeft;
-        minDeltaX = Math.abs(thisLeft - tLeft);
-      }
-      if (Math.abs(thisRight - tRight) < minDeltaX) {
-        snapX = tRight - width;
-        minDeltaX = Math.abs(thisRight - tRight);
-      }
-
-      // 上下对齐
-      if (Math.abs(thisTop - tTop) < minDeltaY) {
-        snapY = tTop;
-        minDeltaY = Math.abs(thisTop - tTop);
-      }
-      if (Math.abs(thisBottom - tBottom) < minDeltaY) {
-        snapY = tBottom - height;
-        minDeltaY = Math.abs(thisBottom - tBottom);
       }
     });
 
@@ -406,33 +383,21 @@ const MainCanvas = () => {
     const lines = [];
     const dragCenterX = x + width / 2;
     const dragCenterY = y + height / 2;
-    const dragLeft = x, dragRight = x + width, dragTop = y, dragBottom = y + height;
     tasks.forEach(t => {
       if (t.id === dragId) return;
       const tWidth = 180, tHeight = 72;
       const tX = t.position.x, tY = t.position.y;
       const tCenterX = tX + tWidth / 2;
       const tCenterY = tY + tHeight / 2;
-      const tLeft = tX, tRight = tX + tWidth, tTop = tY, tBottom = tY + tHeight;
-      // 水平对齐
+
+      // 水平中心对齐
       if (Math.abs(dragCenterY - tCenterY) < threshold) {
         lines.push({ type: 'horizontal', y: tCenterY });
       }
-      if (Math.abs(dragTop - tTop) < threshold) {
-        lines.push({ type: 'horizontal', y: tTop });
-      }
-      if (Math.abs(dragBottom - tBottom) < threshold) {
-        lines.push({ type: 'horizontal', y: tBottom });
-      }
-      // 垂直对齐
+
+      // 垂直中心对齐
       if (Math.abs(dragCenterX - tCenterX) < threshold) {
         lines.push({ type: 'vertical', x: tCenterX });
-      }
-      if (Math.abs(dragLeft - tLeft) < threshold) {
-        lines.push({ type: 'vertical', x: tLeft });
-      }
-      if (Math.abs(dragRight - tRight) < threshold) {
-        lines.push({ type: 'vertical', x: tRight });
       }
     });
     setAlignLines(lines);
@@ -744,7 +709,7 @@ const MainCanvas = () => {
     lineStyle: 'solid',
     arrowStyle: 'normal',
     lineWidth: 2,
-    color: '#333'
+    color: '#86868b'
   });
 
   // 修改分支样式更新函数
@@ -828,6 +793,7 @@ const MainCanvas = () => {
         branchStyle={branchStyle}
         onBranchStyleChange={handleBranchStyleChange}
       />
+      <CanvasThemeToolbar canvasProps={canvasProps} setCanvasProps={setCanvasProps} />
       <svg
         ref={svgRef}
         className="canvas-content"
@@ -926,7 +892,7 @@ const MainCanvas = () => {
                 lineStyle={link.lineStyle || 'solid'}
                 arrowStyle={link.arrowStyle || 'normal'}
                 lineWidth={link.lineWidth || 2}
-                color={link.color || '#333'}
+                color={link.color || '#86868b'}
               />
             ) : null;
           }) : []

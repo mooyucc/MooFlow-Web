@@ -73,7 +73,7 @@ function renderShape(shape, props) {
     case 'hexagon':
       return <polygon points="45,0 135,0 180,36 135,72 45,72 0,36" {...props} />;
     case 'pentagon':
-      return <polygon points="90,0 180,36 146,72 34,72 0,36" {...props} />;
+      return <polygon points="90,-36 165.4,18.6 136.6,108 43.4,108 14.6,18.6" {...props} />;
     case 'trapezoid':
       return <polygon points="36,0 144,0 180,72 0,72" {...props} />;
     case 'document':
@@ -83,9 +83,9 @@ function renderShape(shape, props) {
     case 'flag':
       return <path d="M20,10 L160,10 L140,40 L160,70 L20,70 Z" {...props} />;
     case 'arrowRight':
-      return <polygon points="20,36 120,36 120,16 180,36 120,56 120,36 20,36" {...props} />;
+      return <polygon points="20,31 140,31 140,21 180,36 140,51 140,41 20,41" {...props} />;
     case 'arrowLeft':
-      return <polygon points="160,36 60,36 60,16 0,36 60,56 60,36 160,36" {...props} />;
+      return <polygon points="160,31 40,31 40,21 0,36 40,51 40,41 160,41" {...props} />;
     case 'doubleArrow':
       return <polygon points="0,36 40,16 40,30 140,30 140,16 180,36 140,56 140,42 40,42 40,56 0,36" {...props} />;
     case 'star':
@@ -607,39 +607,48 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
           )}
         </g>
       )}
-      {(hover || selected || multiSelected) && (
-        renderShape(shape, {
-          // 对于rect/ellipse/circle等，扩大尺寸
-          ...(shape === 'rect' || shape === 'roundRect' ? {
+      {(hover || selected || multiSelected) && (() => {
+        const isPolygon = !['rect', 'roundRect', 'ellipse', 'circle'].includes(shape);
+        const commonProps = {
+          fill: 'none',
+          stroke: '#1251a580',
+          strokeWidth: 2,
+          pointerEvents: 'none',
+        };
+
+        let shapeProps = {};
+        if (shape === 'rect' || shape === 'roundRect') {
+          shapeProps = {
             x: -4,
             y: -4,
             width: NODE_WIDTH + 8,
             height: NODE_HEIGHT + 8,
             rx: shape === 'roundRect' ? 22 : 0,
-          } : shape === 'ellipse' ? {
+            style: { transition: 'all 0.18s cubic-bezier(.4,0,.2,1)' },
+          };
+        } else if (shape === 'ellipse' || shape === 'circle') {
+          shapeProps = {
             cx: NODE_WIDTH / 2,
             cy: NODE_HEIGHT / 2,
-            rx: NODE_WIDTH / 2 + 4,
+            rx: (shape === 'ellipse' ? NODE_WIDTH / 2 : NODE_HEIGHT / 2) + 4,
             ry: NODE_HEIGHT / 2 + 4,
-          } : shape === 'circle' ? {
-            cx: NODE_WIDTH / 2,
-            cy: NODE_HEIGHT / 2,
-            rx: NODE_HEIGHT / 2 + 4,
-            ry: NODE_HEIGHT / 2 + 4,
-          } : {
-            // 其它多边形/路径，整体放大1.08倍并中心缩放
-            style: { transform: `scale(1.08) translate(${NODE_WIDTH * 0.04},${NODE_HEIGHT * 0.04})` }
-          }),
-          fill: 'none',
-          stroke: '#1251a580',
-          strokeWidth: 2,
-          pointerEvents: 'none',
-          style: {
-            transition: 'all 0.18s cubic-bezier(.4,0,.2,1)',
-            ...(shape !== 'rect' && shape !== 'roundRect' && shape !== 'ellipse' && shape !== 'circle' ? { transform: `scale(1.08) translate(${NODE_WIDTH * 0.04},${NODE_HEIGHT * 0.04})` } : {})
-          }
-        })
-      )}
+            style: { transition: 'all 0.18s cubic-bezier(.4,0,.2,1)' },
+          };
+        } else {
+          // 对其他所有形状（多边形、路径等），使用transform属性进行中心缩放
+          const scaleFactor = 1.08;
+          const centerX = NODE_WIDTH / 2;
+          const centerY = NODE_HEIGHT / 2;
+          // transform属性的顺序：先移到原点，再缩放，再移回中心
+          const transform = `translate(${centerX}, ${centerY}) scale(${scaleFactor}) translate(${-centerX}, ${-centerY})`;
+          shapeProps = {
+            transform,
+            style: { transition: 'transform 0.18s cubic-bezier(.4,0,.2,1)' },
+          };
+        }
+        
+        return renderShape(shape, { ...commonProps, ...shapeProps });
+      })()}
     </g>
   );
 };

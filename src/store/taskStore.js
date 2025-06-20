@@ -67,7 +67,7 @@ export const defaultLinkStyle = {
   lineStyle: 'solid',
   arrowStyle: 'normal',
   lineWidth: 2,
-  color: '#333'
+  color: '#86868b'
 };
 
 export const useTaskStore = create((set, get) => ({

@@ -83,7 +83,7 @@ If you are developing a production application, we recommend using TypeScript wi
 ```bash
 npm install
 ```
-2、删除 dist 目录：
+2、删除 dist 目录：(一般不需要)
 ```bash
 rm -rf dist
 ```
@@ -114,12 +114,12 @@ git remote -v
 先移除原有的远程仓库，再添加正确的仓库地址：
 ```bash
 git remote remove origin
-git remote add origin https://github.com/xkevin430/MooPlan.git
+git remote add origin https://github.com/mooyucc/MooPlan.git
 ```
 或者
 ```bash
 git remote remove origin
-git remote add origin https://github.com/xkevin430/MooPlanPages.git
+git remote add origin https://github.com/mooyucc/MooPlanPages.git
 ```
 ### 将本地代码推送到 GitHub MooPlan仓库
 1. 打开终端，进入项目目录：
@@ -132,7 +132,7 @@ git init
 ```
 3. 添加远程仓库（如未添加）：
 ```bash
-git remote add origin https://github.com/xkevin430/MooPlan.git
+git remote add origin https://github.com/mooyucc/MooPlan.git
 ```
 4. 推送到 GitHub：
 ```bash
@@ -152,7 +152,7 @@ git init
 ```
 3. 添加远程仓库（如未添加）：
 ```bash
-git remote add origin https://github.com/xkevin430/MooPlanPages.git
+git remote add origin https://github.com/mooyucc/MooPlanPages.git
 ```
 4. 推送到 GitHub：
 ```bash

@@ -32,7 +32,7 @@ const LinkLine = ({
   onUpdateLink,
   tasks,
   svgRef,
-  color = '#333',
+  color = '#86868b',
   label = '',
   onUpdateLabel,
   isMainChain = false,
@@ -300,7 +300,7 @@ const LinkLine = ({
   }, [selected, onDelete, fromId, toId]);
 
   // 主线颜色
-  const mainColor = color || '#333';
+  const mainColor = color || '#86868b';
   // 高亮色
   const highlightColor = '#316acb';
   // 箭头颜色（动态）
@@ -323,7 +323,7 @@ const LinkLine = ({
   // 修改箭头样式
   const getArrowPath = () => {
     switch (arrowStyle) {
-      case 'triangle': return 'M 0 0 L 5 2.5 L 0 5 z';
+      case 'circle': return 'M 2.5 0.5 A 2 2 0 1 0 2.5 4.5 A 2 2 0 1 0 2.5 0.5 z';
       case 'diamond': return 'M 0 2.5 L 2.5 0 L 5 2.5 L 2.5 5 z';
       case 'none': return '';
       default: return 'M 0 0 L 5 2.5 L 0 5 z';

@@ -1,0 +1,53 @@
+.canvas-theme-toolbar {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    padding: 6px;
+    background-color: rgba(255, 255, 255, 0.9);
+    border-radius: 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    color: #333;
+}
+
+@media (prefers-color-scheme: dark) {
+    .canvas-theme-toolbar {
+        background-color: rgba(40, 40, 40, 0.8);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: #eee;
+    }
+}
+
+.canvas-theme-toolbar .toolbar-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border: none;
+    background-color: transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    color: inherit;
+    transition: background-color 0.2s;
+}
+
+.canvas-theme-toolbar .toolbar-btn:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+@media (prefers-color-scheme: dark) {
+    .canvas-theme-toolbar .toolbar-btn:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+}
+
+.canvas-theme-toolbar .toolbar-btn svg {
+    width: 22px;
+    height: 22px;
+} 

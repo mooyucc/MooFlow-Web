@@ -34,7 +34,7 @@ const LINE_STYLES = [
 // 箭头样式选项
 const ARROW_STYLES = [
   { label: '标准', value: 'normal', icon: <svg width="20" height="20" viewBox="0 0 20 20"><path d="M4 10h12m-4-4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" fill="none"/></svg> },
-  { label: '三角形', value: 'triangle', icon: <svg width="20" height="20" viewBox="0 0 20 20"><path d="M4 10h12l-6-4v8z" stroke="currentColor" strokeWidth="1.5" fill="none"/></svg> },
+  { label: '圆形', value: 'circle', icon: <svg width="20" height="20" viewBox="0 0 20 20"><path d="M4 10h9" stroke="currentColor" strokeWidth="1.5" fill="none"/><circle cx="15" cy="10" r="2" stroke="currentColor" strokeWidth="1.5" fill="none"/></svg> },
   { label: '菱形', value: 'diamond', icon: <svg width="20" height="20" viewBox="0 0 20 20"><path d="M4 10h12l-6-4 6 4-6 4z" stroke="currentColor" strokeWidth="1.5" fill="none"/></svg> },
   { label: '无箭头', value: 'none', icon: <svg width="20" height="20" viewBox="0 0 20 20"><path d="M4 10h12" stroke="currentColor" strokeWidth="1.5" fill="none"/></svg> }
 ];
@@ -48,7 +48,7 @@ const SHAPES = [
   { type: 'diamond', name: '菱形', icon: <svg width="28" height="20"><polygon points="14,3 24,10 14,17 4,10" stroke="var(--shape-stroke)" strokeWidth="1.5" fill="none"/></svg> },
   { type: 'parallelogram', name: '平行四边形', icon: <svg width="28" height="20"><polygon points="7,3 24,3 20,17 3,17" stroke="var(--shape-stroke)" strokeWidth="1.5" fill="none"/></svg> },
   { type: 'hexagon', name: '六边形', icon: <svg width="28" height="20"><polygon points="7,3 21,3 24,10 21,17 7,17 4,10" stroke="var(--shape-stroke)" strokeWidth="1.5" fill="none"/></svg> },
-  { type: 'pentagon', name: '五边形', icon: <svg width="28" height="20"><polygon points="14,3 24,10 20,17 8,17 4,10" stroke="var(--shape-stroke)" strokeWidth="1.5" fill="none"/></svg> },
+  { type: 'pentagon', name: '五边形', icon: <svg width="28" height="20"><polygon points="14,2 21.6,7.5 18.7,16.5 9.3,16.5 6.4,7.5" stroke="var(--shape-stroke)" strokeWidth="1.5" fill="none"/></svg> },
   { type: 'trapezoid', name: '梯形', icon: <svg width="28" height="20"><polygon points="8,3 20,3 24,17 4,17" stroke="var(--shape-stroke)" strokeWidth="1.5" fill="none"/></svg> },
   { type: 'document', name: '文档', icon: <svg width="28" height="20"><path d="M5,5 H23 Q24,5 24,8 V14 Q24,17 21,17 H7 Q5,17 5,14 V8 Q5,5 8,5 Z" stroke="var(--shape-stroke)" strokeWidth="1.5" fill="none"/></svg> },
   { type: 'flag', name: '旗帜', icon: <svg width="28" height="20"><path d="M5,5 L23,5 L20,10 L23,15 L5,15 Z" stroke="var(--shape-stroke)" strokeWidth="1.5" fill="none"/></svg> },
@@ -1208,13 +1208,13 @@ const FormatSidebar = ({
                       background: (() => {
                         if (selectedTasks && selectedTasks.length > 1) {
                           const firstTask = selectedTasks[0];
-                          if (!firstTask?.links?.length) return '#333';
+                          if (!firstTask?.links?.length) return '#86868b';
                           const firstColor = firstTask.links[0]?.color;
                           return selectedTasks.every(task => 
                             task.links?.every(link => link.color === firstColor)
-                          ) ? firstColor : '#333';
+                          ) ? firstColor : '#86868b';
                         }
-                        return selectedTask?.links?.[0]?.color || '#333';
+                        return selectedTask?.links?.[0]?.color || '#86868b';
                       })(),
                       borderRadius: 8,
                       cursor: 'pointer',
@@ -1245,13 +1245,13 @@ const FormatSidebar = ({
                           color={(() => {
                             if (selectedTasks && selectedTasks.length > 1) {
                               const firstTask = selectedTasks[0];
-                              if (!firstTask?.links?.length) return '#333';
+                              if (!firstTask?.links?.length) return '#86868b';
                               const firstColor = firstTask.links[0]?.color;
                               return selectedTasks.every(task => 
                                 task.links?.every(link => link.color === firstColor)
-                              ) ? firstColor : '#333';
+                              ) ? firstColor : '#86868b';
                             }
-                            return selectedTask?.links?.[0]?.color || '#333';
+                            return selectedTask?.links?.[0]?.color || '#86868b';
                           })()}
                           onChange={color => onBranchStyleChange?.('color', color.hex)}
                           disableAlpha
