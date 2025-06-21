@@ -447,8 +447,8 @@ const CanvasFileToolbar = ({
               padding: '1px 6px',
               marginRight: 2,
               borderRadius: 10,
-              background: file.id === activeFileId ? '#316acb' : 'transparent',
-              color: file.id === activeFileId ? '#fff' : 'var(--tab-text-color, #333)',
+              background: file.id === activeFileId ? 'var(--accent-color)' : 'transparent',
+              color: file.id === activeFileId ? '#fff' : 'var(--filebar-text)',
               fontWeight: 500,
               display: 'flex',
               alignItems: 'center',
@@ -474,11 +474,11 @@ const CanvasFileToolbar = ({
                   maxWidth: 120,
                   fontSize: 14,
                   fontWeight: 400,
-                  border: '1px solid #316acb',
+                  border: '1px solid var(--accent-color)',
                   borderRadius: 4,
                   padding: '2px 6px',
                   outline: 'none',
-                  color: '#316acb',
+                  color: 'var(--accent-color)',
                   background: '#fff',
                   marginRight: 4
                 }}
@@ -587,8 +587,8 @@ const CanvasFileToolbar = ({
             right: 0,
             width: 300,
             height: 'calc(100vh - 256px)',
-            // VisionOS毛玻璃半透明背景
-            background: 'rgba(255,255,255,1)',
+            background: 'var(--filebar-bg)',
+            color: 'var(--filebar-text)',
             backdropFilter: 'blur(48px) saturate(1.5)',
             WebkitBackdropFilter: 'blur(48px) saturate(1.5)',
             boxShadow: '-2px 0 32px #0003',
@@ -596,7 +596,7 @@ const CanvasFileToolbar = ({
             padding: 24,
             overflowY: 'auto',
             transition: 'transform 0.35s cubic-bezier(.4,1.6,.4,1), opacity 0.25s',
-            borderLeft: '1.5px solid #e3eaff',
+            borderLeft: '1px solid var(--filebar-border)',
             display: 'flex',
             flexDirection: 'column',
             borderRadius: '18px 18px 18px 18px',
@@ -604,21 +604,20 @@ const CanvasFileToolbar = ({
             opacity: recentPopupVisible ? 1 : 0,
             transform: recentPopupVisible ? 'translateX(0)' : 'translateX(100%)',
             // 视觉细节
-            borderTop: '1.5px solid #e3eaff',
-            borderBottom: '1.5px solid #e3eaff',
+            borderTop: '1px solid var(--filebar-border)',
             boxSizing: 'border-box',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
-            <span style={{ fontSize: 20, fontWeight: 700, color: '#316acb', flex: 1 }}>最近打开</span>
+            <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--filebar-text)', flex: 1 }}>最近打开</span>
             <button
-              style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#888' }}
+              style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: 'var(--filebar-text)', opacity: 0.6 }}
               onClick={() => setShowRecent(false)}
               title="关闭"
             >×</button>
           </div>
           {recentFiles.length === 0 ? (
-            <div style={{ color: '#aaa', textAlign: 'center', marginTop: 60 }}>暂无最近打开文件</div>
+            <div style={{ color: 'var(--filebar-text)', opacity: 0.6, textAlign: 'center', marginTop: 60 }}>暂无最近打开文件</div>
           ) : (
             recentFiles.map(file => (
               <div
@@ -627,10 +626,10 @@ const CanvasFileToolbar = ({
                   padding: '12px 10px',
                   borderRadius: 8,
                   marginBottom: 10,
-                  background: '#f6f8ff',
+                  background: file.id === activeFileId ? 'var(--accent-color)' : 'var(--card-bg)',
                   boxShadow: '0 1px 4px #0001',
                   cursor: 'pointer',
-                  border: file.id === activeFileId ? '1.5px solid #316acb' : '1.5px solid #e3eaff',
+                  border: file.id === activeFileId ? '1.5px solid var(--accent-color)' : '1.5px solid var(--filebar-border)',
                   display: 'flex',
                   flexDirection: 'column',
                   position: 'relative',
@@ -646,20 +645,27 @@ const CanvasFileToolbar = ({
                     right: 8,
                     background: 'none',
                     border: 'none',
-                    color: '#bbb',
+                    color: file.id === activeFileId ? '#fff' : 'var(--filebar-text)',
+                    opacity: 0.5,
                     fontSize: 18,
                     cursor: 'pointer',
                     zIndex: 2,
                     padding: 0,
                     lineHeight: 1,
-                    transition: 'color 0.2s',
+                    transition: 'color 0.2s, opacity 0.2s',
                   }}
                   title="从列表中移除"
-                  onMouseEnter={e => (e.currentTarget.style.color = '#f44336')}
-                  onMouseLeave={e => (e.currentTarget.style.color = '#bbb')}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.color = '#f44336';
+                    e.currentTarget.style.opacity = '1';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.color = file.id === activeFileId ? '#fff' : 'var(--filebar-text)';
+                    e.currentTarget.style.opacity = '0.5';
+                  }}
                 >×</button>
-                <span style={{ fontWeight: 600, color: '#316acb', fontSize: 16 }}>{file.name}</span>
-                <span style={{ color: '#888', fontSize: 13, marginTop: 2 }}>最近编辑：{file.lastOpen ? new Date(file.lastOpen).toLocaleString() : ''}</span>
+                <span style={{ fontWeight: 600, color: file.id === activeFileId ? '#fff' : 'var(--filebar-text)', fontSize: 16 }}>{file.name}</span>
+                <span style={{ color: file.id === activeFileId ? '#fff' : 'var(--filebar-text)', opacity: file.id === activeFileId ? 0.9 : 0.7, fontSize: 13, marginTop: 2 }}>最近编辑：{file.lastOpen ? new Date(file.lastOpen).toLocaleString() : ''}</span>
               </div>
             ))
           )}
