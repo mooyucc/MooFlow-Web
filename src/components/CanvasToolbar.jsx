@@ -59,7 +59,7 @@ const ChildTaskIcon = () => (
     <circle cx="16" cy="23" r="5" fill="none" stroke="currentColor" strokeWidth="2.2" />
   </svg>
 );
-// 同级任务图标
+// 细分任务图标
 const SiblingTaskIcon = () => (
   <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="9" cy="16" r="5" fill="currentColor" />
@@ -126,9 +126,9 @@ const CanvasToolbar = ({ onStartLink, onSetScale, onFitView, onAlignToTimeline, 
         <ChildTaskIcon />
         <div style={{fontSize:12,marginTop:-1}}>子任务</div>
       </button>
-      <button className="toolbar-btn" title="添加同级任务" onClick={onAddSiblingTask} disabled={!hasSelectedTask} style={!hasSelectedTask ? {opacity: 0.4, cursor: 'not-allowed'} : {}}>
+      <button className="toolbar-btn" title="添加细分任务" onClick={onAddSiblingTask} disabled={!hasSelectedTask} style={!hasSelectedTask ? {opacity: 0.4, cursor: 'not-allowed'} : {}}>
         <SiblingTaskIcon />
-        <div style={{fontSize:12,marginTop:-1}}>同级任务</div>
+        <div style={{fontSize:12,marginTop:-1}}>细分任务</div>
       </button>
       <div className="toolbar-divider" />
       <div className="zoom-toolbar">

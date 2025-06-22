@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SketchPicker } from 'react-color';
-import { defaultTaskStyle } from '../store/taskStore';
-import { defaultLinkStyle } from '../store/taskStore';
+import { useTaskStore, defaultTaskStyle, defaultLinkStyle } from '../store/taskStore';
 import PopupPortal from './PopupPortal';
 
 const COLOR_SCHEMES = [
@@ -69,6 +68,40 @@ const FormatSidebar = ({
   onBranchStyleChange,
   branchStyle = {}
 }) => {
+  const tasks = useTaskStore(state => state.tasks);
+
+  // 辅助函数：根据任务ID找到其父任务指向它的那条连线
+  const getParentLink = (taskId, allTasks) => {
+    if (!taskId) return null;
+    const task = allTasks.find(t => t.id === taskId);
+    if (!task || !task.parentId) return null;
+    const parentTask = allTasks.find(t => t.id === task.parentId);
+    if (!parentTask) return null;
+    return (parentTask.links || []).find(l => l.toId === taskId) || null;
+  };
+
+  // 辅助函数：获取分支样式，支持单选和多选
+  const getBranchStyleValue = (key) => {
+    if (selectedTasks && selectedTasks.length > 0) {
+      const firstLink = getParentLink(selectedTasks[0].id, tasks);
+      const firstValue = firstLink?.[key] ?? defaultLinkStyle[key];
+
+      if (selectedTasks.length === 1) {
+        return firstValue;
+      }
+
+      const allSame = selectedTasks.slice(1).every(task => {
+        const link = getParentLink(task.id, tasks);
+        return (link?.[key] ?? defaultLinkStyle[key]) === firstValue;
+      });
+      
+      // 对于下拉选择器和颜色按钮，如果值不同，返回一个可识别的 "混合" 状态
+      // 对于 select，返回一个默认值。对于 color，返回一个默认颜色。
+      return allSame ? firstValue : defaultLinkStyle[key];
+    }
+    return defaultLinkStyle[key];
+  };
+
   // Tab页状态：canvas/style
   const [tab, setTab] = useState('canvas');
   // 动画状态
@@ -1074,17 +1107,7 @@ const FormatSidebar = ({
               <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14, height: 32 }}>
                 <div style={{ fontWeight: 400, fontSize: 14, color: 'var(--sidebar-text)', minWidth: 48 }}>线条</div>
                 <select
-                  value={(() => {
-                    if (selectedTasks && selectedTasks.length > 1) {
-                      const firstTask = selectedTasks[0];
-                      if (!firstTask?.links?.length) return 'solid';
-                      const firstStyle = firstTask.links[0]?.lineStyle;
-                      return selectedTasks.every(task => 
-                        task.links?.every(link => link.lineStyle === firstStyle)
-                      ) ? firstStyle : 'solid';
-                    }
-                    return selectedTask?.links?.[0]?.lineStyle || 'solid';
-                  })()}
+                  value={getBranchStyleValue('lineStyle')}
                   onChange={e => onBranchStyleChange?.('lineStyle', e.target.value)}
                   style={{
                     flex: 1,
@@ -1115,17 +1138,7 @@ const FormatSidebar = ({
               <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14, height: 32 }}>
                 <div style={{ fontWeight: 400, fontSize: 14, color: 'var(--sidebar-text)', minWidth: 48 }}>终点</div>
                 <select
-                  value={(() => {
-                    if (selectedTasks && selectedTasks.length > 1) {
-                      const firstTask = selectedTasks[0];
-                      if (!firstTask?.links?.length) return 'normal';
-                      const firstStyle = firstTask.links[0]?.arrowStyle;
-                      return selectedTasks.every(task => 
-                        task.links?.every(link => link.arrowStyle === firstStyle)
-                      ) ? firstStyle : 'normal';
-                    }
-                    return selectedTask?.links?.[0]?.arrowStyle || 'normal';
-                  })()}
+                  value={getBranchStyleValue('arrowStyle')}
                   onChange={e => onBranchStyleChange?.('arrowStyle', e.target.value)}
                   style={{
                     flex: 1,
@@ -1158,17 +1171,7 @@ const FormatSidebar = ({
               <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14, height: 32 }}>
                 <div style={{ fontWeight: 400, fontSize: 14, color: 'var(--sidebar-text)', minWidth: 48 }}>粗细</div>
                 <select
-                  value={(() => {
-                    if (selectedTasks && selectedTasks.length > 1) {
-                      const firstTask = selectedTasks[0];
-                      if (!firstTask?.links?.length) return 2;
-                      const firstWidth = firstTask.links[0]?.lineWidth;
-                      return selectedTasks.every(task => 
-                        task.links?.every(link => link.lineWidth === firstWidth)
-                      ) ? firstWidth : 2;
-                    }
-                    return selectedTask?.links?.[0]?.lineWidth || 2;
-                  })()}
+                  value={getBranchStyleValue('lineWidth')}
                   onChange={e => onBranchStyleChange?.('lineWidth', Number(e.target.value))}
                   style={{
                     flex: 1,
@@ -1204,17 +1207,7 @@ const FormatSidebar = ({
                       width: '100%',
                       height: 32,
                       border: '1.5px solid var(--sidebar-border)',
-                      background: (() => {
-                        if (selectedTasks && selectedTasks.length > 1) {
-                          const firstTask = selectedTasks[0];
-                          if (!firstTask?.links?.length) return '#86868b';
-                          const firstColor = firstTask.links[0]?.color;
-                          return selectedTasks.every(task => 
-                            task.links?.every(link => link.color === firstColor)
-                          ) ? firstColor : '#86868b';
-                        }
-                        return selectedTask?.links?.[0]?.color || '#86868b';
-                      })(),
+                      background: getBranchStyleValue('color'),
                       borderRadius: 8,
                       cursor: 'pointer',
                       padding: 0,
@@ -1241,17 +1234,7 @@ const FormatSidebar = ({
                         }}
                       >
                         <SketchPicker
-                          color={(() => {
-                            if (selectedTasks && selectedTasks.length > 1) {
-                              const firstTask = selectedTasks[0];
-                              if (!firstTask?.links?.length) return '#86868b';
-                              const firstColor = firstTask.links[0]?.color;
-                              return selectedTasks.every(task => 
-                                task.links?.every(link => link.color === firstColor)
-                              ) ? firstColor : '#86868b';
-                            }
-                            return selectedTask?.links?.[0]?.color || '#86868b';
-                          })()}
+                          color={getBranchStyleValue('color')}
                           onChange={color => onBranchStyleChange?.('color', color.hex)}
                           disableAlpha
                           presetColors={COLOR_SCHEMES.flatMap(scheme => scheme.colors)}
@@ -1278,16 +1261,15 @@ const FormatSidebar = ({
               <button
                 onClick={() => {
                   // 恢复任务样式
-                  setLocalTaskStyle({ ...selectedTask, ...defaultTaskStyle });
-                  if (onTaskStyleChange) {
+                  if (onTaskStyleChange && (selectedTask || selectedTasks?.length > 0)) {
                     Object.entries(defaultTaskStyle).forEach(([key, value]) => {
                       onTaskStyleChange(key, value);
                     });
                   }
                   // 恢复分支样式
-                  if (onBranchStyleChange) {
+                  if (onBranchStyleChange && (selectedTask || selectedTasks?.length > 0)) {
                     Object.entries(defaultLinkStyle).forEach(([key, value]) => {
-                      onBranchStyleChange(key, value);
+                       onBranchStyleChange(key, value);
                     });
                   }
                 }}

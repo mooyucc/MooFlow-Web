@@ -123,7 +123,34 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
   const [dragStartPos, setDragStartPos] = useState(null);
   const allTasks = useTaskStore(state => state.tasks);
   const toggleCollapse = useTaskStore(state => state.toggleCollapse);
-  const hasChildren = allTasks.some(t => t.parentId === task.id);
+  
+  const rootTask = allTasks.length > 0 ? allTasks[0] : null;
+  const isMainTask = rootTask && task.parentId === rootTask.id;
+  const isSubTask = rootTask && task.id !== rootTask.id && task.parentId !== rootTask.id;
+
+  const children = allTasks.filter(t => t.parentId === task.id);
+  const hasChildren = children.length > 0;
+
+  const fineGrainedTasks = (task.links || [])
+    .map(link => {
+      const target = allTasks.find(t => t.id === link.toId);
+      // 确保是细分任务（同级且有连线）
+      if (target && target.parentId === task.parentId) {
+        return target;
+      }
+      return null;
+    })
+    .filter(Boolean);
+  const hasFineGrainedTasks = fineGrainedTasks.length > 0;
+
+  // 新增：判断当前任务自身是否为一个"细分任务"
+  const isFineGrainedTask = allTasks.some(t => 
+    t.id !== task.id &&
+    t.parentId === task.parentId &&
+    (t.links || []).some(link => link.toId === task.id)
+  );
+
+  const showCollapseButton = (hasChildren || (isSubTask && hasFineGrainedTasks)) && !isFineGrainedTask;
   const [hover, setHover] = useState(false);
 
   // 读取样式属性，提供默认值
@@ -164,6 +191,44 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
 
   const handleMouseMove = (e) => {
     if (!dragging) return;
+
+    // 统一的函数，用于获取一个折叠任务下所有被隐藏的后代
+    const getHiddenDescendants = (parentId, tasks) => {
+      let hidden = [];
+      const queue = [parentId];
+      const visited = new Set([parentId]);
+
+      while (queue.length > 0) {
+        const currentId = queue.shift();
+        const currentTask = tasks.find(t => t.id === currentId);
+        if (!currentTask) continue;
+
+        // 1. 获取并处理层级子任务 (parentId)
+        const children = tasks.filter(t => t.parentId === currentId);
+        for (const child of children) {
+          if (!visited.has(child.id)) {
+            visited.add(child.id);
+            hidden.push(child);
+            queue.push(child.id); // 总是加入队列以遍历其所有后代
+          }
+        }
+
+        // 2. 获取并处理细分任务 (同级并通过 link 连接)
+        (currentTask.links || []).forEach(link => {
+          const targetTask = tasks.find(t => t.id === link.toId);
+          // 细分任务是具有相同父ID的同级任务
+          if (targetTask && targetTask.parentId === currentTask.parentId) {
+            if (!visited.has(targetTask.id)) {
+              visited.add(targetTask.id);
+              hidden.push(targetTask);
+              queue.push(targetTask.id); // 总是加入队列以遍历其后续的细分任务链
+            }
+          }
+        });
+      }
+      return hidden;
+    };
+
     let x = e.clientX - offset.x;
     let y = e.clientY - offset.y;
     if (dragStartPos && (Math.abs(e.clientX - dragStartPos.x) > 2 || Math.abs(e.clientY - dragStartPos.y) > 2)) {
@@ -173,10 +238,14 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
     }
     // 磁性吸附
     const SNAP_THRESHOLD = 6;
-    const tasks = useTaskStore.getState().tasks;
+    const allTasks = useTaskStore.getState().tasks;
+    const taskBeforeMove = allTasks.find(t => t.id === task.id);
+    if (!taskBeforeMove) return;
+    const oldPos = taskBeforeMove.position;
+
     let snapX = x, snapY = y;
     let minDeltaX = SNAP_THRESHOLD, minDeltaY = SNAP_THRESHOLD;
-    tasks.forEach(t => {
+    allTasks.forEach(t => {
       if (t.id === task.id) return;
       // 计算对方的中心/边缘
       const tCenterX = t.position.x + NODE_WIDTH / 2;
@@ -216,8 +285,21 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
         minDeltaY = Math.abs(thisBottom - tBottom);
       }
     });
+
+    const dx = snapX - oldPos.x;
+    const dy = snapY - oldPos.y;
+
     // 拖动中只用静默方法，不触发快照
     moveTaskSilently(task.id, { x: snapX, y: snapY });
+
+    // 如果是折叠的，则移动所有隐藏的后代
+    if (task.collapsed && (dx !== 0 || dy !== 0)) {
+      const descendants = getHiddenDescendants(task.id, allTasks);
+      descendants.forEach(desc => {
+        const descOldPos = desc.position;
+        moveTaskSilently(desc.id, { x: descOldPos.x + dx, y: descOldPos.y + dy });
+      });
+    }
   };
 
   const handleMouseUp = () => {
@@ -288,12 +370,12 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
     addLink(task.id, newTask.id, { x: NODE_WIDTH / 2, y: NODE_HEIGHT }, { x: NODE_WIDTH / 2, y: 0 });
   };
 
-  // 添加同级任务
+  // 添加细分任务
   const handleAddSiblingTask = (e) => {
     e.stopPropagation();
     const newTask = {
       id: Date.now(),
-      title: '同级任务',
+      title: '细分任务',
       position: { x: task.position.x + 300, y: task.position.y }, // 右侧
       links: [],
       parentId: task.parentId, // 保持与当前节点一致
@@ -352,36 +434,36 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
 
   // 动态计算第一个子任务的实际方位，决定折叠/展开按钮和连线锚点
   let collapseBtnAnchor = { x: NODE_WIDTH / 2 - 10, y: NODE_HEIGHT + 4 }; // 默认下方
-  let dynamicFromAnchor = { x: NODE_WIDTH / 2, y: NODE_HEIGHT }; // 默认下边中点
-  let dynamicToAnchor = { x: NODE_WIDTH / 2, y: 0 }; // 默认上边中点
-  if (hasChildren) {
-    const children = allTasks.filter(t => t.parentId === task.id);
-    if (children.length > 0) {
-      const firstChild = children[0];
+  if (showCollapseButton) {
+    let targetNodeForPositioning = null;
+
+    // 如果是子任务且有细分任务，按钮位置由细分任务决定
+    if (isSubTask && hasFineGrainedTasks) {
+      targetNodeForPositioning = fineGrainedTasks.sort((a,b) => a.position.x - b.position.x || a.position.y - b.position.y)[0];
+    } 
+    // 否则，如果它有子任务（适用于主线任务等），由子任务决定
+    else if (hasChildren) {
+      targetNodeForPositioning = children.sort((a,b) => a.position.y - b.position.y || a.position.x - b.position.x)[0];
+    }
+
+    if (targetNodeForPositioning) {
+      const firstChild = targetNodeForPositioning;
       // 计算子任务中心与当前节点中心的相对位置
       const dx = (firstChild.position.x + NODE_WIDTH / 2) - (task.position.x + NODE_WIDTH / 2);
       const dy = (firstChild.position.y + NODE_HEIGHT / 2) - (task.position.y + NODE_HEIGHT / 2);
-      if (Math.abs(dx) > Math.abs(dy)) {
+      if (Math.abs(dx) > Math.abs(dy) * 1.5) { // 增强水平判断
         // 水平为主
         if (dx > 0) {
           collapseBtnAnchor = { x: NODE_WIDTH, y: NODE_HEIGHT / 2 - 10 }; // 右
-          dynamicFromAnchor = { x: NODE_WIDTH, y: NODE_HEIGHT / 2 };
-          dynamicToAnchor = { x: 0, y: NODE_HEIGHT / 2 };
         } else {
           collapseBtnAnchor = { x: -20, y: NODE_HEIGHT / 2 - 10 }; // 左
-          dynamicFromAnchor = { x: 0, y: NODE_HEIGHT / 2 };
-          dynamicToAnchor = { x: NODE_WIDTH, y: NODE_HEIGHT / 2 };
         }
       } else {
         // 垂直为主
         if (dy > 0) {
           collapseBtnAnchor = { x: NODE_WIDTH / 2 - 10, y: NODE_HEIGHT + 4 }; // 下
-          dynamicFromAnchor = { x: NODE_WIDTH / 2, y: NODE_HEIGHT };
-          dynamicToAnchor = { x: NODE_WIDTH / 2, y: 0 };
         } else {
           collapseBtnAnchor = { x: NODE_WIDTH / 2 - 10, y: -20 }; // 上
-          dynamicFromAnchor = { x: NODE_WIDTH / 2, y: 0 };
-          dynamicToAnchor = { x: NODE_WIDTH / 2, y: NODE_HEIGHT };
         }
       }
     }
@@ -441,7 +523,7 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
           </g>
         </g>
       )}
-      {/* 右侧添加同级任务按钮 */}
+      {/* 右侧添加细分任务按钮 */}
       {/* 下方添加子任务按钮 */}
       {editing ? (
         <foreignObject x={0} y={0} width={NODE_WIDTH} height={NODE_HEIGHT}>
@@ -581,7 +663,7 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
         </DatePickerPortal>
       )}
       {/* 悬停桥梁，覆盖卡片下方到按钮gap的区域，避免鼠标移到按钮时按钮消失，但不覆盖按钮本身 */}
-      {hasChildren && (
+      {showCollapseButton && (
         <rect
           x={NODE_WIDTH / 2 - 24}
           y={NODE_HEIGHT}
@@ -592,7 +674,7 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
         />
       )}
       {/* 折叠/展开按钮：有子任务且悬停时显示，或者有子任务且已折叠时始终显示，直接内联SVG */}
-      {(hasChildren && (hover || task.collapsed)) && (
+      {(showCollapseButton && (hover || task.collapsed)) && (
         <g
           transform={`translate(${collapseBtnAnchor.x}, ${collapseBtnAnchor.y})`}
           style={{ cursor: 'pointer' }}

@@ -55,7 +55,7 @@ const defaultFile = () => {
     tasks: [
       {
         id: 1,
-        title: "第一个任务",
+        title: "中心任务",
         position: { x: 100, y: 100 },
         links: [],
         lock: true,

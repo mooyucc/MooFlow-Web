@@ -6,6 +6,7 @@ import LinkLine from './LinkLine';
 import CanvasFileToolbar from './CanvasFileToolbar';
 import CanvasThemeToolbar from './CanvasThemeToolbar';
 import { addDays } from 'date-fns';
+import FormatSidebar from './FormatSidebar';
 
 const CANVAS_SIZE = 100000; // 无限画布逻辑尺寸
 
@@ -72,7 +73,7 @@ const MainCanvas = () => {
     return { x: snapX, y: snapY };
   }
 
-  // 获取第一个任务的日期作为时间轴起点
+  // 获取中心任务的日期作为时间轴起点
   const firstTask = tasks[0];
   const startDate = firstTask && firstTask.date ? new Date(firstTask.date) : new Date();
 
@@ -163,9 +164,58 @@ const MainCanvas = () => {
           dragMode.current = 'multiMove';
           setMultiDragging(true);
           multiDragStart.current = { x: e.clientX, y: e.clientY };
+          
+          const allTasks = useTaskStore.getState().tasks;
           multiDragOffset.current = {};
+
+          // 新增：可复用的函数，用于获取一个折叠任务下所有被隐藏的后代
+          const getHiddenDescendants = (parentId, tasks) => {
+            let hidden = [];
+            const queue = [parentId];
+            const visited = new Set([parentId]);
+
+            while (queue.length > 0) {
+              const currentId = queue.shift();
+              const currentTask = tasks.find(t => t.id === currentId);
+              if (!currentTask) continue;
+
+              // 1. 获取并处理层级子任务 (parentId)
+              const children = tasks.filter(t => t.parentId === currentId);
+              for (const child of children) {
+                if (!visited.has(child.id)) {
+                  visited.add(child.id);
+                  hidden.push(child);
+                  queue.push(child.id); // 总是加入队列以遍历其所有后代
+                }
+              }
+
+              // 2. 获取并处理细分任务 (同级并通过 link 连接)
+              (currentTask.links || []).forEach(link => {
+                const targetTask = tasks.find(t => t.id === link.toId);
+                // 细分任务是具有相同父ID的同级任务
+                if (targetTask && targetTask.parentId === currentTask.parentId) {
+                  if (!visited.has(targetTask.id)) {
+                    visited.add(targetTask.id);
+                    hidden.push(targetTask);
+                    queue.push(targetTask.id); // 总是加入队列以遍历其后续的细分任务链
+                  }
+                }
+              });
+            }
+            return hidden;
+          };
+
+          const tasksToTrack = new Set(selectedTaskIds);
           selectedTaskIds.forEach(id => {
-            const t = tasks.find(t => t.id === id);
+            const task = allTasks.find(t => t.id === id);
+            if (task && task.collapsed) {
+              const descendants = getHiddenDescendants(id, allTasks);
+              descendants.forEach(desc => tasksToTrack.add(desc.id));
+            }
+          });
+
+          tasksToTrack.forEach(id => {
+            const t = allTasks.find(t => t.id === id);
             if (t) multiDragOffset.current[id] = { x: t.position.x, y: t.position.y };
           });
         }
@@ -190,9 +240,11 @@ const MainCanvas = () => {
       const sy = (py) => (py - transform.offsetY) / transform.scale;
       setSelectBox(box => box ? { ...box, x2: sx(e.clientX), y2: sy(e.clientY) } : null);
     } else if (dragMode.current === 'multiMove' && multiDragging) {
-      const dx = e.clientX - multiDragStart.current.x;
-      const dy = e.clientY - multiDragStart.current.y;
-      selectedTaskIds.forEach(id => {
+      const dx = (e.clientX - multiDragStart.current.x) / transform.scale;
+      const dy = (e.clientY - multiDragStart.current.y) / transform.scale;
+
+      Object.keys(multiDragOffset.current).forEach(idStr => {
+        const id = Number(idStr);
         const base = multiDragOffset.current[id];
         if (base) {
           useTaskStore.getState().updateTask(id, { position: { x: base.x + dx, y: base.y + dy } });
@@ -436,16 +488,64 @@ const MainCanvas = () => {
 
   // 获取所有可见节点（未被折叠的任务）
   function getVisibleTasks(tasks, parentId = null) {
-    let result = [];
-    tasks
-      .filter(t => t.parentId === parentId)
-      .forEach(task => {
-        result.push(task);
-        if (!task.collapsed) {
-          result = result.concat(getVisibleTasks(tasks, task.id));
+    const rootTask = tasks.length > 0 ? tasks[0] : null;
+    if (!rootTask) return [];
+
+    const hiddenFineGrainedTaskIds = new Set();
+    const collapsedTasks = tasks.filter(t => t.collapsed);
+
+    // 递归函数：收集从一个起点开始的所有下游细分任务
+    function collectAllSubsequentFineGrainedTasks(startTaskId, allTasks, hiddenSet) {
+      const startTask = allTasks.find(t => t.id === startTaskId);
+      if (!startTask) return;
+
+      (startTask.links || []).forEach(link => {
+        const targetTask = allTasks.find(t => t.id === link.toId);
+        // 检查是否为同级细分任务
+        if (targetTask && targetTask.parentId === startTask.parentId) {
+          if (!hiddenSet.has(targetTask.id)) {
+            hiddenSet.add(targetTask.id);
+            // 递归查找下游的细分任务
+            collectAllSubsequentFineGrainedTasks(targetTask.id, allTasks, hiddenSet);
+          }
         }
       });
-    return result;
+    }
+
+    for (const collapsedTask of collapsedTasks) {
+      // 子任务的折叠只隐藏其下的所有细分任务链
+      const isSubTask = collapsedTask.parentId && collapsedTask.parentId !== rootTask.id;
+      if (isSubTask) {
+        collectAllSubsequentFineGrainedTasks(collapsedTask.id, tasks, hiddenFineGrainedTaskIds);
+      }
+    }
+    
+    // 递归获取可见任务
+    function getVisible(currentParentId) {
+      let result = [];
+      tasks
+        .filter(t => t.parentId === currentParentId && !hiddenFineGrainedTaskIds.has(t.id))
+        .forEach(task => {
+          result.push(task);
+          
+          const isSubTask = task.parentId && task.parentId !== rootTask.id;
+          
+          // 如果任务是折叠的
+          if (task.collapsed) {
+            // 如果是子任务，它的子任务分支依然要显示
+            if (isSubTask) {
+               result = result.concat(getVisible(task.id));
+            }
+            // 如果是主线任务或根任务，则不显示其任何子节点
+          } else {
+            // 如果任务没被折叠，正常显示其子节点
+            result = result.concat(getVisible(task.id));
+          }
+        });
+      return result;
+    }
+
+    return getVisible(parentId);
   }
 
   // 只渲染未被折叠的节点
@@ -489,14 +589,16 @@ const MainCanvas = () => {
     useTaskStore.getState().addTask(newTask);
     useTaskStore.getState().addLink(task.id, newTask.id, { x: 90, y: 72 }, { x: 90, y: 0 });
   };
-  // 工具栏：添加同级任务
+  // 工具栏：添加细分任务
   const handleAddSiblingTask = () => {
     if (!selectedTaskId) return;
     const task = tasks.find(t => t.id === selectedTaskId);
     if (!task) return;
+    // 主线任务是指没有父任务的顶层任务
+    const isMainlineTask = !task.parentId;
     const newTask = {
       id: Date.now(),
-      title: '同级任务',
+      title: isMainlineTask ? '主线任务' : '细分任务',
       position: { x: task.position.x + 300, y: task.position.y },
       links: [],
       parentId: task.parentId,
@@ -506,16 +608,22 @@ const MainCanvas = () => {
     // 自动为同级之间补充灰色连线（主线除外）
     const rootTask = tasks[0];
     if (!rootTask || task.parentId !== rootTask.parentId) {
-      // 只为非主线同级任务自动加连线
+      // 只为非主线细分任务自动加连线
       // 直接从当前任务连线到新任务
       useTaskStore.getState().addLink(task.id, newTask.id, { x: 180, y: 36 }, { x: 0, y: 36 });
     }
   };
 
-  // 键盘快捷键：Tab=同级任务，Enter=子任务
+  // 键盘快捷键：Tab=细分任务，Enter=子任务
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (!selectedTaskId) return;
+      const task = tasks.find(t => t.id === selectedTaskId);
+      if (!task) return;
+
+      // 检查是否为中心任务
+      const isCenterTask = tasks.length > 0 && task.id === tasks[0].id;
+
       if (e.key === 'Tab') {
         e.preventDefault();
         handleAddSiblingTask();
@@ -523,7 +631,12 @@ const MainCanvas = () => {
         // 只在不是输入框聚焦时生效
         if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;
         e.preventDefault();
-        handleAddChildTask();
+        // 只有中心任务的Enter键是创建主线任务
+        if (isCenterTask) {
+          handleAddSiblingTask();
+        } else {
+          handleAddChildTask();
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -704,51 +817,36 @@ const MainCanvas = () => {
     touchState.current.dragNodeId = null;
   };
 
-  // 新增：分支样式状态
-  const [branchStyle, setBranchStyle] = useState({
-    lineStyle: 'solid',
-    arrowStyle: 'normal',
-    lineWidth: 2,
-    color: '#86868b'
-  });
-
-  // 修改分支样式更新函数
+  // 处理分支样式变更（支持多选）
   const handleBranchStyleChange = (key, value) => {
-    setBranchStyle(prev => {
-      const newStyle = { ...prev, [key]: value };
-      // 更新选中任务的所有相关连线样式
-      if (selectedTaskId) {
-        const task = tasks.find(t => t.id === selectedTaskId);
-        if (task && task.links) {
-          task.links.forEach(link => {
-            updateLinkStyle(task.id, link.toId, newStyle);
-          });
-        }
-        // 更新指向该任务的连线
-        tasks.forEach(t => {
-          if (t.links && t.links.some(l => l.toId === selectedTaskId)) {
-            t.links.forEach(link => {
-              if (link.toId === selectedTaskId) {
-                updateLinkStyle(t.id, selectedTaskId, newStyle);
-              }
-            });
-          }
-        });
-      } else if (selectedTaskIds.length > 0) {
-        // 多选情况：更新选中任务之间的连线
-        selectedTaskIds.forEach(fromId => {
-          const task = tasks.find(t => t.id === fromId);
-          if (task && task.links) {
-            task.links.forEach(link => {
-              if (selectedTaskIds.includes(link.toId)) {
-                updateLinkStyle(fromId, link.toId, newStyle);
-              }
-            });
-          }
-        });
+    if (selectedTaskIds.length === 0) return;
+
+    selectedTaskIds.forEach(taskId => {
+      const task = tasks.find(t => t.id === taskId);
+      if (task && task.parentId) {
+        updateLinkStyle(task.parentId, taskId, { [key]: value });
       }
-      return newStyle;
     });
+  };
+
+  // 辅助函数：根据任务ID找到其父任务指向它的那条连线
+  const getParentLink = (taskId) => {
+    // ... existing code ...
+  };
+
+  const [showFormatSidebar, setShowFormatSidebar] = useState(false);
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [selectedTasks, setSelectedTasks] = useState([]);
+
+  const handleTaskStyleChange = (key, value) => {
+    const ids = selectedTaskIds.length > 0 ? selectedTaskIds : (selectedTaskId ? [selectedTaskId] : []);
+    if (ids.length === 0) return;
+    
+    ids.forEach(id => {
+      useTaskStore.getState().updateTask(id, { [key]: value }, false);
+    });
+    // For now, let's not save snapshot on every style change to avoid flooding undo stack.
+    // Consider adding a specific "save history" button or debouncing this.
   };
 
   return (
@@ -790,10 +888,20 @@ const MainCanvas = () => {
         selectedTaskId={selectedTaskId}
         setSelectedTaskId={setSelectedTaskId}
         selectedTaskIds={selectedTaskIds}
-        branchStyle={branchStyle}
         onBranchStyleChange={handleBranchStyleChange}
       />
       <CanvasThemeToolbar canvasProps={canvasProps} setCanvasProps={setCanvasProps} />
+      <FormatSidebar
+        visible={showFormatSidebar}
+        onClose={() => setShowFormatSidebar(false)}
+        canvasProps={canvasProps}
+        onCanvasChange={setCanvasProps}
+        selectedTask={selectedTask}
+        selectedTasks={selectedTasks}
+        selectedTaskIds={selectedTaskIds}
+        onTaskStyleChange={handleTaskStyleChange}
+        onBranchStyleChange={handleBranchStyleChange}
+      />
       <svg
         ref={svgRef}
         className="canvas-content"
@@ -810,7 +918,6 @@ const MainCanvas = () => {
         viewBox={`${-transform.offsetX / transform.scale} ${-transform.offsetY / transform.scale} ${window.innerWidth / transform.scale} ${window.innerHeight / transform.scale}`}
         onClick={handleCanvasClick}
       >
-        {/* 箭头 marker 定义 */}
         <defs>
           <marker
             id="arrowhead"
@@ -824,54 +931,76 @@ const MainCanvas = () => {
             <path d="M 0 0 L 10 5 L 0 10 z" fill="#9ca3af" />
           </marker>
         </defs>
-        {/* 主线链式连线：第一个任务的同级任务之间（紫色，不可编辑） */}
+        {/* 所有链式连线（主线和细分任务） */}
         {(() => {
-          const rootTask = tasks[0];
-          if (!rootTask) return null;
-          const mainSiblings = tasks.filter(t => t.parentId === rootTask.parentId);
-          mainSiblings.sort((a, b) => a.position.x - b.position.x);
-          let lines = [];
-          for (let i = 0; i < mainSiblings.length - 1; i++) {
-            const from = mainSiblings[i];
-            const to = mainSiblings[i + 1];
-            if (!visibleTaskIds.has(from.id) || !visibleTaskIds.has(to.id)) continue;
-            lines.push(
-              <LinkLine
-                key={`mainchain-${from.id}-${to.id}`}
-                source={from}
-                target={to}
-                fromId={from.id}
-                toId={to.id}
-                fromAnchor={{ x: 180, y: 36 }}
-                toAnchor={{ x: 0, y: 36 }}
-                tasks={tasks}
-                svgRef={svgRef}
-                color="#e11d48" // 红色主线
-                isMainChain={true}
-              />
-            );
-          }
+          // 获取所有唯一的parentId，包括null
+          const allParentIds = [...new Set(tasks.map(t => t.parentId))];
+          const lines = [];
+
+          allParentIds.forEach(pid => {
+            // 找出所有属于当前父节点的同级任务
+            const siblings = tasks.filter(t => t.parentId === pid);
+            if (siblings.length < 2) return; // 至少需要两个任务才能形成连线
+
+            // 按水平位置（x坐标）排序
+            siblings.sort((a, b) => a.position.x - b.position.x);
+
+            // 在排序后的同级任务之间创建连线
+            for (let i = 0; i < siblings.length - 1; i++) {
+              const from = siblings[i];
+              const to = siblings[i + 1];
+              if (!visibleTaskIds.has(from.id) || !visibleTaskIds.has(to.id)) continue;
+
+              // 判断是否为主线（parentId为null的是主线）
+              const isMainChain = pid === null;
+
+              // 从store中找到对应的link，以获取其样式和label
+              const linkData = (from.links || []).find(l => l.toId === to.id);
+
+              lines.push(
+                <LinkLine
+                  key={`chain-${from.id}-${to.id}`}
+                  source={from}
+                  target={to}
+                  fromId={from.id}
+                  toId={to.id}
+                  fromAnchor={{ x: 180, y: 36 }} // 右中
+                  toAnchor={{ x: 0, y: 36 }}    // 左中
+                  tasks={tasks}
+                  svgRef={svgRef}
+                  color={isMainChain ? "#e11d48" : (linkData?.color || "#86868b")} // 主线为红色，细分任务为灰色
+                  isMainChain={isMainChain} // 标记为自动链式连线，使其不可手动编辑
+                  label={linkData?.label || ''}
+                  lineStyle={linkData?.lineStyle || 'solid'}
+                  arrowStyle={linkData?.arrowStyle || 'normal'}
+                  lineWidth={linkData?.lineWidth || 2}
+                  onUpdateLabel={(fromId, toId, label) => {
+                    if (!isMainChain) {
+                      // 确保连线存在，以便更新或创建label
+                      useTaskStore.getState().addLink(fromId, toId, { x: 180, y: 36 }, { x: 0, y: 36 }, label);
+                      handleUpdateLinkLabel(fromId, toId, label);
+                    }
+                  }}
+                />
+              );
+            }
+          });
+          
           return lines;
         })()}
-        {/* 其它所有连线（灰色，可编辑、可保存） */}
+        {/* 其它所有连线（父子任务等手动创建的连线） */}
         {tasks.flatMap((task) =>
           Array.isArray(task.links) ? task.links.map((link) => {
-            // 主线同级任务之间的灰色连线不渲染（避免重复）
-            const rootTask = tasks[0];
-            if (rootTask && task.parentId === rootTask.parentId) {
-              const mainSiblings = tasks.filter(t => t.parentId === rootTask.parentId);
-              const isMainLine = mainSiblings.some(t => t.id === task.id) && mainSiblings.some(t => t.id === link.toId);
-              if (isMainLine) return null;
-            }
-            if (!visibleTaskIds.has(task.id) || !visibleTaskIds.has(link.toId)) return null;
             const target = tasks.find((t) => t.id === link.toId);
+            if (!target) return null;
 
-            // 判断是否应用分支样式：
-            // 1. 当前连线的起点或终点是选中的任务卡片
-            // 2. 如果是多选，则检查是否在选中列表中
-            const isSelectedLink = selectedTaskId 
-              ? (task.id === selectedTaskId || link.toId === selectedTaskId)
-              : (selectedTaskIds.includes(task.id) || selectedTaskIds.includes(link.toId));
+            // 如果是同级任务之间的连线，则不渲染，因为已经由上面的"链式连线"逻辑自动处理
+            const fromTask = tasks.find(t => t.id === task.id);
+            if (fromTask && fromTask.parentId === target.parentId) {
+              return null;
+            }
+
+            if (!visibleTaskIds.has(task.id) || !visibleTaskIds.has(link.toId)) return null;
 
             return target ? (
               <LinkLine

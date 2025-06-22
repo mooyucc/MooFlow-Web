@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import tinycolor from 'tinycolor2';
 
 // 优先从 sessionStorage 获取 fileId，没有则从 localStorage 获取，没有则新生成
 let fileId = sessionStorage.getItem('moo_file_id') || localStorage.getItem('moo_file_id');
@@ -33,7 +34,7 @@ function loadTasksFromStorage() {
   return ensureLinksLabel([
     {
       id: 1,
-      title: "第一个任务",
+      title: "中心任务",
       position: { x: 100, y: 100 },
       links: [],
       lock: true,
@@ -93,10 +94,67 @@ export const useTaskStore = create((set, get) => ({
   },
   updateTask: (id, updates, saveSnapshot = true) => {
     if (saveSnapshot) get()._saveSnapshot();
+  
     set((state) => {
-      const newTasks = ensureLinksLabel(state.tasks.map((t) => (t.id === id ? { ...t, ...updates } : t)));
-      saveTasksToStorage(newTasks); // 保存到本地
-      return { tasks: newTasks };
+      let newTasks = state.tasks.map((t) => (t.id === id ? { ...t, ...updates } : t));
+  
+      // --- 样式继承逻辑 ---
+      const stylePropagationKeys = ['fillColor'];
+      const propertiesToPropagate = {};
+      let shouldPropagate = false;
+  
+      for (const key of stylePropagationKeys) {
+        if (key in updates) {
+          propertiesToPropagate[key] = updates[key];
+          shouldPropagate = true;
+        }
+      }
+  
+      if (shouldPropagate) {
+        const tasksMap = new Map(newTasks.map(t => [t.id, t]));
+        let currentTaskId = id;
+        const visited = new Set([currentTaskId]);
+  
+        while (currentTaskId) {
+          const currentTask = tasksMap.get(currentTaskId);
+          if (!currentTask) break;
+  
+          let nextTaskId = null;
+          if (currentTask.links) {
+            for (const link of currentTask.links) {
+              const nextTask = tasksMap.get(link.toId);
+              // 是细分任务 (同级) 且未访问过
+              if (nextTask && nextTask.parentId === currentTask.parentId && !visited.has(nextTask.id)) {
+                nextTaskId = nextTask.id;
+                break;
+              }
+            }
+          }
+  
+          if (nextTaskId) {
+            const nextTaskToUpdate = tasksMap.get(nextTaskId);
+            if (nextTaskToUpdate) {
+              // --- 颜色调淡逻辑 ---
+              if ('fillColor' in propertiesToPropagate) {
+                const originalColor = tinycolor(propertiesToPropagate.fillColor);
+                const lightenedColor = originalColor.lighten(20).toHexString();
+                nextTaskToUpdate.fillColor = lightenedColor;
+              }
+              // --- 颜色调淡逻辑结束 ---
+              visited.add(nextTaskId);
+            }
+            currentTaskId = nextTaskId;
+          } else {
+            currentTaskId = null;
+          }
+        }
+        newTasks = Array.from(tasksMap.values());
+      }
+      // --- 样式继承逻辑结束 ---
+  
+      const finalTasks = ensureLinksLabel(newTasks);
+      saveTasksToStorage(finalTasks);
+      return { tasks: finalTasks };
     });
   },
   addLink: (fromId, toId, fromAnchor = null, toAnchor = null, label = "") => {
@@ -145,14 +203,45 @@ export const useTaskStore = create((set, get) => ({
   deleteTask: (id) => {
     get()._saveSnapshot();
     set((state) => {
-      const newTasks = ensureLinksLabel(state.tasks
-        .filter((t) => t.id !== id)
-        .map((t) => ({
+      const { tasks } = state;
+      const taskToDelete = tasks.find(t => t.id === id);
+
+      if (!taskToDelete) {
+        return { tasks }; // 如果找不到任务，则不执行任何操作
+      }
+
+      // 查找并收集所有后续的"细分任务"以进行删除
+      const idsToDelete = new Set([id]);
+      
+      // "细分任务"是具有相同 parentId 和 y 坐标的同级任务
+      const siblings = tasks.filter(t => 
+        t.parentId === taskToDelete.parentId && 
+        t.position.y === taskToDelete.position.y
+      );
+      
+      // 按 x 坐标排序以确定链条顺序
+      siblings.sort((a, b) => a.position.x - b.position.x);
+
+      const startIndex = siblings.findIndex(t => t.id === id);
+
+      if (startIndex !== -1) {
+        for (let i = startIndex + 1; i < siblings.length; i++) {
+          // 删除所有后续的同级任务
+          idsToDelete.add(siblings[i].id);
+        }
+      }
+
+      // 过滤掉要删除的任务，并清理指向它们的链接
+      const newTasks = tasks
+        .filter(t => !idsToDelete.has(t.id))
+        .map(t => ({
           ...t,
-          links: t.links.filter((l) => l.toId !== id),
-        })));
-      saveTasksToStorage(newTasks); // 保存到本地
-      return { tasks: newTasks };
+          links: t.links.filter(l => !idsToDelete.has(l.toId)),
+        }));
+
+      const finalTasks = ensureLinksLabel(newTasks);
+      saveTasksToStorage(finalTasks); // 保存到本地
+      return { tasks: finalTasks };
     });
   },
   deleteLink: (fromId, toId) => {
