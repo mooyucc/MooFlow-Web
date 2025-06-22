@@ -191,6 +191,7 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
 
   const handleMouseMove = (e) => {
     if (!dragging) return;
+    e.stopPropagation();
 
     // 统一的函数，用于获取一个折叠任务下所有被隐藏的后代
     const getHiddenDescendants = (parentId, tasks) => {
@@ -229,85 +230,50 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
       return hidden;
     };
 
-    let x = e.clientX - offset.x;
-    let y = e.clientY - offset.y;
+    const transform = useTaskStore.getState().transform;
+    const rawX = (e.clientX - transform.offsetX) / transform.scale - offset.x;
+    const rawY = (e.clientY - transform.offsetY) / transform.scale - offset.y;
+
     if (dragStartPos && (Math.abs(e.clientX - dragStartPos.x) > 2 || Math.abs(e.clientY - dragStartPos.y) > 2)) {
-      if (onDrag) {
-        onDrag(task.id, x, y, NODE_WIDTH, NODE_HEIGHT);
+      if (typeof window.getSnappedPosition === 'function') {
+        const { x, y, lines } = window.getSnappedPosition(task.id, rawX, rawY, NODE_WIDTH, NODE_HEIGHT);
+        moveTaskSilently(task.id, { x, y }); // 使用无快照的移动
+        if (onDrag) {
+          onDrag(task.id, x, y, NODE_WIDTH, NODE_HEIGHT); // onDrag 现在只负责传递对齐线
+        }
+      } else {
+        // Fallback if the function is not available
+        moveTaskSilently(task.id, { x: rawX, y: rawY });
+        if (onDrag) {
+          onDrag(task.id, rawX, rawY, NODE_WIDTH, NODE_HEIGHT);
+        }
       }
     }
-    // 磁性吸附
-    const SNAP_THRESHOLD = 6;
-    const allTasks = useTaskStore.getState().tasks;
-    const taskBeforeMove = allTasks.find(t => t.id === task.id);
-    if (!taskBeforeMove) return;
-    const oldPos = taskBeforeMove.position;
-
-    let snapX = x, snapY = y;
-    let minDeltaX = SNAP_THRESHOLD, minDeltaY = SNAP_THRESHOLD;
-    allTasks.forEach(t => {
-      if (t.id === task.id) return;
-      // 计算对方的中心/边缘
-      const tCenterX = t.position.x + NODE_WIDTH / 2;
-      const tCenterY = t.position.y + NODE_HEIGHT / 2;
-      const tLeft = t.position.x, tRight = t.position.x + NODE_WIDTH;
-      const tTop = t.position.y, tBottom = t.position.y + NODE_HEIGHT;
-      // 本节点中心/边缘
-      const thisCenterX = x + NODE_WIDTH / 2;
-      const thisCenterY = y + NODE_HEIGHT / 2;
-      const thisLeft = x, thisRight = x + NODE_WIDTH;
-      const thisTop = y, thisBottom = y + NODE_HEIGHT;
-      // 中心对齐
-      if (Math.abs(thisCenterX - tCenterX) < minDeltaX) {
-        snapX = tCenterX - NODE_WIDTH / 2;
-        minDeltaX = Math.abs(thisCenterX - tCenterX);
+    
+    // 联动拖动折叠的子节点
+    if (task.collapsed) {
+      const descendants = getHiddenDescendants(task.id, useTaskStore.getState().tasks);
+      const taskNow = useTaskStore.getState().tasks.find(t => t.id === task.id);
+      if (taskNow) {
+        const dx = taskNow.position.x - task.position.x;
+        const dy = taskNow.position.y - task.position.y;
+        descendants.forEach(desc => {
+          const originalPos = allTasks.find(t => t.id === desc.id)?.position;
+          if (originalPos) {
+            moveTaskSilently(desc.id, { x: originalPos.x + dx, y: originalPos.y + dy });
+          }
+        });
       }
-      if (Math.abs(thisCenterY - tCenterY) < minDeltaY) {
-        snapY = tCenterY - NODE_HEIGHT / 2;
-        minDeltaY = Math.abs(thisCenterY - tCenterY);
-      }
-      // 左右对齐
-      if (Math.abs(thisLeft - tLeft) < minDeltaX) {
-        snapX = tLeft;
-        minDeltaX = Math.abs(thisLeft - tLeft);
-      }
-      if (Math.abs(thisRight - tRight) < minDeltaX) {
-        snapX = tRight - NODE_WIDTH;
-        minDeltaX = Math.abs(thisRight - tRight);
-      }
-      // 上下对齐
-      if (Math.abs(thisTop - tTop) < minDeltaY) {
-        snapY = tTop;
-        minDeltaY = Math.abs(thisTop - tTop);
-      }
-      if (Math.abs(thisBottom - tBottom) < minDeltaY) {
-        snapY = tBottom - NODE_HEIGHT;
-        minDeltaY = Math.abs(thisBottom - tBottom);
-      }
-    });
-
-    const dx = snapX - oldPos.x;
-    const dy = snapY - oldPos.y;
-
-    // 拖动中只用静默方法，不触发快照
-    moveTaskSilently(task.id, { x: snapX, y: snapY });
-
-    // 如果是折叠的，则移动所有隐藏的后代
-    if (task.collapsed && (dx !== 0 || dy !== 0)) {
-      const descendants = getHiddenDescendants(task.id, allTasks);
-      descendants.forEach(desc => {
-        const descOldPos = desc.position;
-        moveTaskSilently(desc.id, { x: descOldPos.x + dx, y: descOldPos.y + dy });
-      });
     }
   };
 
   const handleMouseUp = () => {
+    if (!dragging) return;
     setDragging(false);
     setDragStartPos(null);
-    // 拖动结束时用updateTask，但不保存快照
-    updateTask(task.id, { position: useTaskStore.getState().tasks.find(t => t.id === task.id).position }, false);
-    if (onDrag) onDrag(null);
+    if (onDrag) {
+      onDrag(null); // 拖动结束时清空对齐线
+    }
   };
 
   useEffect(() => {

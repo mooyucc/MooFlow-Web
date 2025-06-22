@@ -112,40 +112,41 @@ export const useTaskStore = create((set, get) => ({
   
       if (shouldPropagate) {
         const tasksMap = new Map(newTasks.map(t => [t.id, t]));
-        let currentTaskId = id;
-        const visited = new Set([currentTaskId]);
-  
-        while (currentTaskId) {
-          const currentTask = tasksMap.get(currentTaskId);
-          if (!currentTask) break;
-  
-          let nextTaskId = null;
-          if (currentTask.links) {
-            for (const link of currentTask.links) {
-              const nextTask = tasksMap.get(link.toId);
-              // 是细分任务 (同级) 且未访问过
-              if (nextTask && nextTask.parentId === currentTask.parentId && !visited.has(nextTask.id)) {
-                nextTaskId = nextTask.id;
-                break;
+        
+        const initialColor = propertiesToPropagate.fillColor;
+        const colorDepth1 = tinycolor(initialColor).lighten(20).toHexString();
+        const colorDepth2 = tinycolor(colorDepth1).lighten(20).toHexString();
+
+        const queue = [{ taskId: id, depth: 0 }];
+        const visited = new Set([id]);
+
+        while (queue.length > 0) {
+          const { taskId, depth } = queue.shift();
+          const currentTask = tasksMap.get(taskId);
+
+          if (!currentTask || !currentTask.links) continue;
+
+          for (const link of currentTask.links) {
+            const nextTask = tasksMap.get(link.toId);
+
+            if (nextTask && nextTask.parentId === currentTask.parentId && !visited.has(nextTask.id)) {
+              const taskToUpdate = tasksMap.get(nextTask.id);
+              if (taskToUpdate) {
+                // --- 颜色调淡逻辑 ---
+                if ('fillColor' in propertiesToPropagate) {
+                  const newDepth = depth + 1;
+                  if (newDepth === 1) {
+                    taskToUpdate.fillColor = colorDepth1;
+                  } else { // newDepth >= 2
+                    taskToUpdate.fillColor = colorDepth2;
+                  }
+                }
+                // --- 颜色调淡逻辑结束 ---
               }
+
+              visited.add(nextTask.id);
+              queue.push({ taskId: nextTask.id, depth: depth + 1 });
             }
-          }
-  
-          if (nextTaskId) {
-            const nextTaskToUpdate = tasksMap.get(nextTaskId);
-            if (nextTaskToUpdate) {
-              // --- 颜色调淡逻辑 ---
-              if ('fillColor' in propertiesToPropagate) {
-                const originalColor = tinycolor(propertiesToPropagate.fillColor);
-                const lightenedColor = originalColor.lighten(20).toHexString();
-                nextTaskToUpdate.fillColor = lightenedColor;
-              }
-              // --- 颜色调淡逻辑结束 ---
-              visited.add(nextTaskId);
-            }
-            currentTaskId = nextTaskId;
-          } else {
-            currentTaskId = null;
           }
         }
         newTasks = Array.from(tasksMap.values());

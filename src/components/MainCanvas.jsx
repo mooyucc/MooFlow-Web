@@ -37,6 +37,7 @@ const MainCanvas = () => {
   const [multiDragging, setMultiDragging] = useState(false);
   const multiDragOffset = useRef({ x: 0, y: 0 });
   const multiDragStart = useRef({ x: 0, y: 0 });
+  const primaryDragId = useRef(null); // 新增：用于多选拖动时的主卡片ID
 
   // 鼠标事件类型
   const dragMode = useRef(null); // 'canvas' | 'select' | 'multiMove'
@@ -48,29 +49,43 @@ const MainCanvas = () => {
   function getSnappedPosition(dragId, x, y, width = 180, height = 72, threshold = 6) {
     let snapX = x, snapY = y;
     let minDeltaX = threshold, minDeltaY = threshold;
+    let verticalLineX, horizontalLineY;
+
+    const dragCenterX = x + width / 2;
+    const dragCenterY = y + height / 2;
+
     tasks.forEach(t => {
       if (t.id === dragId) return;
-      const tWidth = 180, tHeight = 72;
-      const tX = t.position.x, tY = t.position.y;
-      const tCenterX = tX + tWidth / 2;
-      const tCenterY = tY + tHeight / 2;
+      const tWidth = 180, tHeight = 72; // Assuming fixed size
+      const tCenterX = t.position.x + tWidth / 2;
+      const tCenterY = t.position.y + tHeight / 2;
 
-      // 本节点中心
-      const thisCenterX = x + width / 2;
-      const thisCenterY = y + height / 2;
-
-      // 中心对齐
-      if (Math.abs(thisCenterX - tCenterX) < minDeltaX) {
+      // Check for vertical center alignment
+      const deltaX = Math.abs(dragCenterX - tCenterX);
+      if (deltaX < minDeltaX) {
+        minDeltaX = deltaX;
         snapX = tCenterX - width / 2;
-        minDeltaX = Math.abs(thisCenterX - tCenterX);
+        verticalLineX = tCenterX;
       }
-      if (Math.abs(thisCenterY - tCenterY) < minDeltaY) {
+
+      // Check for horizontal center alignment
+      const deltaY = Math.abs(dragCenterY - tCenterY);
+      if (deltaY < minDeltaY) {
+        minDeltaY = deltaY;
         snapY = tCenterY - height / 2;
-        minDeltaY = Math.abs(thisCenterY - tCenterY);
+        horizontalLineY = tCenterY;
       }
     });
 
-    return { x: snapX, y: snapY };
+    const lines = [];
+    if (minDeltaX < threshold) {
+      lines.push({ type: 'vertical', x: verticalLineX });
+    }
+    if (minDeltaY < threshold) {
+      lines.push({ type: 'horizontal', y: horizontalLineY });
+    }
+
+    return { x: snapX, y: snapY, lines };
   }
 
   // 获取中心任务的日期作为时间轴起点
@@ -162,8 +177,10 @@ const MainCanvas = () => {
         const pt = e.target.closest('[data-task-id]');
         if (pt && selectedTaskIds.includes(Number(pt.dataset.taskId))) {
           dragMode.current = 'multiMove';
+          primaryDragId.current = Number(pt.dataset.taskId);
           setMultiDragging(true);
           multiDragStart.current = { x: e.clientX, y: e.clientY };
+          setAlignLines([]); // 开始拖动前清空
           
           const allTasks = useTaskStore.getState().tasks;
           multiDragOffset.current = {};
@@ -243,12 +260,37 @@ const MainCanvas = () => {
       const dx = (e.clientX - multiDragStart.current.x) / transform.scale;
       const dy = (e.clientY - multiDragStart.current.y) / transform.scale;
 
+      let primaryTaskNewPos = null;
+
+      // 1. Calculate the raw new position of the primary dragged task
+      const primaryTaskBase = multiDragOffset.current[primaryDragId.current];
+      if (!primaryTaskBase) return;
+
+      const rawX = primaryTaskBase.x + dx;
+      const rawY = primaryTaskBase.y + dy;
+
+      // 2. Get snapped position and alignment lines for the primary task
+      const { x: snappedX, y: snappedY, lines: snapLines } = getSnappedPosition(
+        primaryDragId.current,
+        rawX,
+        rawY,
+        180, // task width
+        72   // task height
+      );
+      setAlignLines(snapLines || []);
+
+
+      // 3. Calculate the snap-adjusted delta
+      const finalDx = snappedX - primaryTaskBase.x;
+      const finalDy = snappedY - primaryTaskBase.y;
+
+      // 4. Apply the same snap-adjusted delta to all selected tasks
       Object.keys(multiDragOffset.current).forEach(idStr => {
         const id = Number(idStr);
         const base = multiDragOffset.current[id];
         if (base) {
-          useTaskStore.getState().updateTask(id, { position: { x: base.x + dx, y: base.y + dy } });
-          // 拖动时强制重置锚点
+          const newPos = { x: base.x + finalDx, y: base.y + finalDy };
+          useTaskStore.getState().updateTask(id, { position: newPos });
           forceResetAnchors(id);
         }
       });
@@ -272,6 +314,7 @@ const MainCanvas = () => {
       setSelectBox(null);
     } else if (dragMode.current === 'multiMove') {
       setMultiDragging(false);
+      setAlignLines([]); // 拖动结束时清空
     }
     dragMode.current = null;
   };
@@ -431,28 +474,8 @@ const MainCanvas = () => {
       return;
     }
     forceResetAnchors(dragId);
-    const threshold = 6; // 对齐阈值
-    const lines = [];
-    const dragCenterX = x + width / 2;
-    const dragCenterY = y + height / 2;
-    tasks.forEach(t => {
-      if (t.id === dragId) return;
-      const tWidth = 180, tHeight = 72;
-      const tX = t.position.x, tY = t.position.y;
-      const tCenterX = tX + tWidth / 2;
-      const tCenterY = tY + tHeight / 2;
-
-      // 水平中心对齐
-      if (Math.abs(dragCenterY - tCenterY) < threshold) {
-        lines.push({ type: 'horizontal', y: tCenterY });
-      }
-
-      // 垂直中心对齐
-      if (Math.abs(dragCenterX - tCenterX) < threshold) {
-        lines.push({ type: 'vertical', x: tCenterX });
-      }
-    });
-    setAlignLines(lines);
+    const { lines } = getSnappedPosition(dragId, x, y, width, height);
+    setAlignLines(lines || []);
   };
 
   // Delete键批量删除
@@ -577,17 +600,38 @@ const MainCanvas = () => {
     if (!selectedTaskId) return;
     const task = tasks.find(t => t.id === selectedTaskId);
     if (!task) return;
+
+    const isMainlineTask = !task.parentId;
+    let yOffset = 180; // 默认向下（偶数位）
+    let fromAnchor = { x: 90, y: 72 }; // from bottom-center
+    let toAnchor = { x: 90, y: 0 };   // to top-center
+
+    if (isMainlineTask) {
+      const mainLineTasks = tasks
+        .filter(t => !t.parentId)
+        .sort((a, b) => a.position.x - b.position.x);
+      
+      const taskIndex = mainLineTasks.findIndex(t => t.id === task.id);
+
+      // 奇数位的主线任务(第1, 3, ...个)，其子任务向上排列
+      if (taskIndex !== -1 && taskIndex % 2 === 0) { 
+        yOffset = -180; // 向上
+        fromAnchor = { x: 90, y: 0 }; // from top-center
+        toAnchor = { x: 90, y: 72 };   // to bottom-center
+      }
+    }
+
     const newTask = {
       id: Date.now(),
       title: '子任务',
-      position: { x: task.position.x, y: task.position.y + 180 },
+      position: { x: task.position.x, y: task.position.y + yOffset },
       links: [],
       parentId: task.id,
       level: (task.level || 0) + 1,
       date: task.date ? task.date : undefined,
     };
     useTaskStore.getState().addTask(newTask);
-    useTaskStore.getState().addLink(task.id, newTask.id, { x: 90, y: 72 }, { x: 90, y: 0 });
+    useTaskStore.getState().addLink(task.id, newTask.id, fromAnchor, toAnchor);
   };
   // 工具栏：添加细分任务
   const handleAddSiblingTask = () => {
@@ -605,11 +649,8 @@ const MainCanvas = () => {
       level: task.level,
     };
     useTaskStore.getState().addTask(newTask);
-    // 自动为同级之间补充灰色连线（主线除外）
-    const rootTask = tasks[0];
-    if (!rootTask || task.parentId !== rootTask.parentId) {
-      // 只为非主线细分任务自动加连线
-      // 直接从当前任务连线到新任务
+    // 自动为非主线任务（细分任务）添加连线
+    if (!isMainlineTask) {
       useTaskStore.getState().addLink(task.id, newTask.id, { x: 180, y: 36 }, { x: 0, y: 36 });
     }
   };
@@ -717,6 +758,7 @@ const MainCanvas = () => {
 
   // 挂载到window，便于TaskNode调用
   window.cascadeUpdateDates = cascadeUpdateDates;
+  window.getSnappedPosition = getSnappedPosition; // 挂载到window
 
   // 挂载到window，便于导出PNG
   useEffect(() => {
@@ -820,11 +862,17 @@ const MainCanvas = () => {
   // 处理分支样式变更（支持多选）
   const handleBranchStyleChange = (key, value) => {
     if (selectedTaskIds.length === 0) return;
+    const allTasks = useTaskStore.getState().tasks;
 
     selectedTaskIds.forEach(taskId => {
-      const task = tasks.find(t => t.id === taskId);
-      if (task && task.parentId) {
-        updateLinkStyle(task.parentId, taskId, { [key]: value });
+      // 找到链接到当前选中任务的源头任务
+      const sourceTask = allTasks.find(source => 
+        (source.links || []).some(link => link.toId === taskId)
+      );
+
+      if (sourceTask) {
+        // 更新从源头到当前任务的连线样式
+        updateLinkStyle(sourceTask.id, taskId, { [key]: value });
       }
     });
   };
@@ -938,6 +986,9 @@ const MainCanvas = () => {
           const lines = [];
 
           allParentIds.forEach(pid => {
+            // 只对主线任务（parentId为null）应用自动链式连线
+            if (pid !== null) return;
+
             // 找出所有属于当前父节点的同级任务
             const siblings = tasks.filter(t => t.parentId === pid);
             if (siblings.length < 2) return; // 至少需要两个任务才能形成连线
@@ -994,9 +1045,9 @@ const MainCanvas = () => {
             const target = tasks.find((t) => t.id === link.toId);
             if (!target) return null;
 
-            // 如果是同级任务之间的连线，则不渲染，因为已经由上面的"链式连线"逻辑自动处理
+            // 如果是主线任务之间的同级连线，则不渲染，因为已经由上面的"链式连线"逻辑自动处理
             const fromTask = tasks.find(t => t.id === task.id);
-            if (fromTask && fromTask.parentId === target.parentId) {
+            if (fromTask && fromTask.parentId === target.parentId && fromTask.parentId === null) {
               return null;
             }
 

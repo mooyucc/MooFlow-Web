@@ -70,20 +70,23 @@ const FormatSidebar = ({
 }) => {
   const tasks = useTaskStore(state => state.tasks);
 
-  // 辅助函数：根据任务ID找到其父任务指向它的那条连线
-  const getParentLink = (taskId, allTasks) => {
+  // 辅助函数：找到指向目标任务的连线
+  const getIncomingLink = (taskId, allTasks) => {
     if (!taskId) return null;
-    const task = allTasks.find(t => t.id === taskId);
-    if (!task || !task.parentId) return null;
-    const parentTask = allTasks.find(t => t.id === task.parentId);
-    if (!parentTask) return null;
-    return (parentTask.links || []).find(l => l.toId === taskId) || null;
+    // 找到链接到当前选中任务的源头任务
+    const sourceTask = allTasks.find(source => 
+      (source.links || []).some(link => link.toId === taskId)
+    );
+    if (!sourceTask) return null;
+    
+    // 返回实际的连线对象
+    return (sourceTask.links || []).find(l => l.toId === taskId) || null;
   };
 
   // 辅助函数：获取分支样式，支持单选和多选
   const getBranchStyleValue = (key) => {
     if (selectedTasks && selectedTasks.length > 0) {
-      const firstLink = getParentLink(selectedTasks[0].id, tasks);
+      const firstLink = getIncomingLink(selectedTasks[0].id, tasks);
       const firstValue = firstLink?.[key] ?? defaultLinkStyle[key];
 
       if (selectedTasks.length === 1) {
@@ -91,7 +94,7 @@ const FormatSidebar = ({
       }
 
       const allSame = selectedTasks.slice(1).every(task => {
-        const link = getParentLink(task.id, tasks);
+        const link = getIncomingLink(task.id, tasks);
         return (link?.[key] ?? defaultLinkStyle[key]) === firstValue;
       });
       
