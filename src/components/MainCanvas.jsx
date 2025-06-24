@@ -421,16 +421,75 @@ const MainCanvas = () => {
   // 计算所有任务节点的包围盒
   const CARD_WIDTH = 180;
   const CARD_HEIGHT = 72;
-  const getTasksBoundingBox = () => {
-    if (tasks.length === 0) return { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+  const CARD_PADDING_Y = 40; // 卡片垂直间距
+
+  /**
+   * 检查两个矩形是否重叠
+   * @param {object} rect1 - { x, y, width, height }
+   * @param {object} rect2 - { x, y, width, height }
+   * @returns {boolean}
+   */
+  const isColliding = (rect1, rect2) => {
+    return (
+      rect1.x < rect2.x + rect2.width &&
+      rect1.x + rect1.width > rect2.x &&
+      rect1.y < rect2.y + rect2.height &&
+      rect1.y + rect1.height > rect2.y
+    );
+  };
+
+  /**
+   * 寻找一个不会与其他任务卡片碰撞的可用位置
+   * @param {object} proposedPosition - 期望放置的位置 { x, y }
+   * @param {Array} allTasks - 所有任务的数组
+   * @param {number|null} ignoreTaskId - 检查时需要忽略的任务ID（通常是正在移动或新建的那个）
+   * @returns {object} - 最终可用的位置 { x, y }
+   */
+  const findAvailablePosition = (proposedPosition, allTasks, ignoreTaskId = null) => {
+    let finalPosition = { ...proposedPosition };
+    let collisionDetected = false;
+    let attempts = 0;
+    const MAX_ATTEMPTS = 100; // 防止无限循环
+
+    do {
+      collisionDetected = false;
+      const finalRect = { ...finalPosition, width: CARD_WIDTH, height: CARD_HEIGHT };
+
+      for (const task of allTasks) {
+        if (task.id === ignoreTaskId) continue;
+
+        const taskRect = { ...task.position, width: CARD_WIDTH, height: CARD_HEIGHT };
+
+        if (isColliding(finalRect, taskRect)) {
+          collisionDetected = true;
+          // 如果发生碰撞，将Y坐标向下移动一个卡片高度加一个间距
+          finalPosition.y = task.position.y + CARD_HEIGHT + CARD_PADDING_Y;
+          break; // 从内层循环中断，重新检查新位置
+        }
+      }
+      attempts++;
+    } while (collisionDetected && attempts < MAX_ATTEMPTS);
+    
+    // 如果循环结束仍有碰撞（不太可能发生，除非空间极其拥挤），也返回最后尝试的位置
+    return finalPosition;
+  };
+
+  // 计算所有可见任务的包围盒
+  const getTasksBoundingBox = (tasksToBound) => {
+    if (!tasksToBound || tasksToBound.length === 0) {
+      return { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+    }
+
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    tasks.forEach(task => {
+
+    tasksToBound.forEach(task => {
       const { x, y } = task.position;
       minX = Math.min(minX, x);
       minY = Math.min(minY, y);
-      maxX = Math.max(maxX, x + CARD_WIDTH);   // 加上卡片宽度
-      maxY = Math.max(maxY, y + CARD_HEIGHT);  // 加上卡片高度
+      maxX = Math.max(maxX, x + CARD_WIDTH);
+      maxY = Math.max(maxY, y + CARD_HEIGHT);
     });
+
     return { minX, minY, maxX, maxY };
   };
 
@@ -442,10 +501,24 @@ const MainCanvas = () => {
 
   // 自适应显示所有任务节点
   const handleFitView = () => {
-    const { minX, minY, maxX, maxY } = getTasksBoundingBox();
+    const currentVisibleTasks = getVisibleTasks(tasks);
+
+    if (currentVisibleTasks.length === 0) {
+      setTransform({
+        scale: 1,
+        offsetX: window.innerWidth / 2,
+        offsetY: window.innerHeight / 2,
+      });
+      return;
+    }
+
+    const { minX, minY, maxX, maxY } = getTasksBoundingBox(currentVisibleTasks);
     const padding = 100;
     const boxWidth = maxX - minX + padding * 2;
     const boxHeight = maxY - minY + padding * 2;
+
+    if (boxWidth <= 0 || boxHeight <= 0) return;
+
     const scaleX = window.innerWidth / boxWidth;
     const scaleY = window.innerHeight / boxHeight;
     const fitScale = Math.min(scaleX, scaleY, 2); // 最大放大2倍
@@ -582,13 +655,31 @@ const MainCanvas = () => {
     const firstTask = tasks[0];
     const startDate = firstTask && firstTask.date ? new Date(firstTask.date) : new Date();
     const startX = firstTask ? firstTask.position.x : 0;
+    
+    // 创建一个可变的任务副本，用于在循环中追踪更新后的位置
+    const updatableTasks = JSON.parse(JSON.stringify(useTaskStore.getState().tasks));
+
     tasks.forEach(task => {
       if (task.date) {
         const monthDiff = (new Date(task.date).getFullYear() - startDate.getFullYear()) * 12 + (new Date(task.date).getMonth() - startDate.getMonth());
-        if (monthDiff >= 0 && monthDiff <= 35) {
+        // 注意：这里的月份范围检查可能需要根据实际需求调整
+        if (monthDiff >= 0 && monthDiff <= 60) { // 扩大范围以匹配时间轴
           const targetX = startX + monthDiff * scale;
+          // 只有X坐标变化时才处理
           if (task.position.x !== targetX) {
-            useTaskStore.getState().updateTask(task.id, { position: { ...task.position, x: targetX } });
+            const proposedPosition = { x: targetX, y: task.position.y };
+            
+            // 使用新函数寻找不会碰撞的位置
+            const finalPosition = findAvailablePosition(proposedPosition, updatableTasks, task.id);
+
+            // 更新Zustand store中的真实任务位置
+            useTaskStore.getState().updateTask(task.id, { position: finalPosition });
+            
+            // 同步更新我们的可变副本，以便下一次循环检查时使用最新位置
+            const taskInCopy = updatableTasks.find(t => t.id === task.id);
+            if (taskInCopy) {
+              taskInCopy.position = finalPosition;
+            }
           }
         }
       }
@@ -601,37 +692,51 @@ const MainCanvas = () => {
     const task = tasks.find(t => t.id === selectedTaskId);
     if (!task) return;
 
+    // 判断是否为主线任务
     const isMainlineTask = !task.parentId;
-    let yOffset = 180; // 默认向下（偶数位）
-    let fromAnchor = { x: 90, y: 72 }; // from bottom-center
-    let toAnchor = { x: 90, y: 0 };   // to top-center
-
     if (isMainlineTask) {
+      // 主线任务下不变，仍为子任务
+      let yOffset = 180; // 默认向下（偶数位）
+      let fromAnchor = { x: 90, y: 72 }; // from bottom-center
+      let toAnchor = { x: 90, y: 0 };   // to top-center
+
       const mainLineTasks = tasks
         .filter(t => !t.parentId)
         .sort((a, b) => a.position.x - b.position.x);
-      
       const taskIndex = mainLineTasks.findIndex(t => t.id === task.id);
-
-      // 奇数位的主线任务(第1, 3, ...个)，其子任务向上排列
-      if (taskIndex !== -1 && taskIndex % 2 === 0) { 
+      if (taskIndex !== -1 && taskIndex % 2 === 0) {
         yOffset = -180; // 向上
         fromAnchor = { x: 90, y: 0 }; // from top-center
         toAnchor = { x: 90, y: 72 };   // to bottom-center
       }
+      const proposedPosition = { x: task.position.x, y: task.position.y + yOffset };
+      const finalPosition = findAvailablePosition(proposedPosition, tasks);
+      const newTask = {
+        id: Date.now(),
+        title: '子任务',
+        position: finalPosition,
+        links: [],
+        parentId: task.id,
+        level: (task.level || 0) + 1,
+        date: task.date ? task.date : undefined,
+      };
+      useTaskStore.getState().addTask(newTask);
+      useTaskStore.getState().addLink(task.id, newTask.id, fromAnchor, toAnchor);
+    } else {
+      // 子任务下，回车/Tab都新建细分任务
+      const proposedPosition = { x: task.position.x + 300, y: task.position.y };
+      const finalPosition = findAvailablePosition(proposedPosition, tasks);
+      const newTask = {
+        id: Date.now(),
+        title: '细分任务',
+        position: finalPosition,
+        links: [],
+        parentId: task.parentId,
+        level: task.level,
+      };
+      useTaskStore.getState().addTask(newTask);
+      useTaskStore.getState().addLink(task.id, newTask.id, { x: 180, y: 36 }, { x: 0, y: 36 });
     }
-
-    const newTask = {
-      id: Date.now(),
-      title: '子任务',
-      position: { x: task.position.x, y: task.position.y + yOffset },
-      links: [],
-      parentId: task.id,
-      level: (task.level || 0) + 1,
-      date: task.date ? task.date : undefined,
-    };
-    useTaskStore.getState().addTask(newTask);
-    useTaskStore.getState().addLink(task.id, newTask.id, fromAnchor, toAnchor);
   };
   // 工具栏：添加细分任务
   const handleAddSiblingTask = () => {
@@ -640,10 +745,23 @@ const MainCanvas = () => {
     if (!task) return;
     // 主线任务是指没有父任务的顶层任务
     const isMainlineTask = !task.parentId;
+    let proposedPosition;
+    if (isMainlineTask) {
+      // 找到所有主线任务的最大x坐标
+      const mainLineTasks = tasks.filter(t => !t.parentId);
+      const maxX = mainLineTasks.length > 0 ? Math.max(...mainLineTasks.map(t => t.position.x)) : 0;
+      const y = mainLineTasks.length > 0 ? mainLineTasks[0].position.y : 0;
+      proposedPosition = { x: maxX + 300, y };
+    } else {
+      // 细分任务逻辑保持不变
+      proposedPosition = { x: task.position.x + 300, y: task.position.y };
+    }
+    // 寻找可用位置
+    const finalPosition = findAvailablePosition(proposedPosition, tasks);
     const newTask = {
       id: Date.now(),
       title: isMainlineTask ? '主线任务' : '细分任务',
-      position: { x: task.position.x + 300, y: task.position.y },
+      position: finalPosition,
       links: [],
       parentId: task.parentId,
       level: task.level,
@@ -664,18 +782,25 @@ const MainCanvas = () => {
 
       // 检查是否为中心任务
       const isCenterTask = tasks.length > 0 && task.id === tasks[0].id;
+      const isMainlineTask = !task.parentId;
 
       if (e.key === 'Tab') {
         e.preventDefault();
-        handleAddSiblingTask();
-      } else if (e.key === 'Enter') {
-        // 只在不是输入框聚焦时生效
-        if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;
-        e.preventDefault();
-        // 只有中心任务的Enter键是创建主线任务
-        if (isCenterTask) {
+        if (isMainlineTask) {
           handleAddSiblingTask();
         } else {
+          // 子任务下Tab新建细分任务
+          handleAddChildTask();
+        }
+      } else if (e.key === 'Enter') {
+        if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;
+        e.preventDefault();
+        if (isCenterTask) {
+          handleAddSiblingTask();
+        } else if (isMainlineTask) {
+          handleAddChildTask();
+        } else {
+          // 子任务下Enter新建细分任务
           handleAddChildTask();
         }
       }
@@ -839,10 +964,12 @@ const MainCanvas = () => {
         const rawY = (touch.clientY - transform.offsetY) / transform.scale + touchState.current.dragNodeOffset.y;
         
         // 新增：应用磁吸算法
-        const { x, y } = getSnappedPosition(id, rawX, rawY);
-        useTaskStore.getState().updateTask(id, { position: { x, y } });
+        const { x: snappedX, y: snappedY } = getSnappedPosition(id, rawX, rawY);
+        const finalPosition = findAvailablePosition({ x: snappedX, y: snappedY }, tasks, id);
+
+        useTaskStore.getState().updateTask(id, { position: finalPosition });
         forceResetAnchors(id);
-        handleTaskDrag(id, x, y, 180, 72);
+        handleTaskDrag(id, finalPosition.x, finalPosition.y, 180, 72);
       }
       touchState.current.lastTouches = [
         { clientX: touch.clientX, clientY: touch.clientY },
@@ -986,7 +1113,7 @@ const MainCanvas = () => {
           const lines = [];
 
           allParentIds.forEach(pid => {
-            // 只对主线任务（parentId为null）应用自动链式连线
+            // 只对主线任务（parentId为null的是主线）应用自动链式连线
             if (pid !== null) return;
 
             // 找出所有属于当前父节点的同级任务

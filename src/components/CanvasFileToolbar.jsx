@@ -411,6 +411,10 @@ const CanvasFileToolbar = ({
     setExportMenuOpen(false);
   };
 
+  const handleWheel = (e) => {
+    e.stopPropagation();
+  };
+
   return (
     <div className="canvas-toolbar minimal filebar" style={{ display: 'flex', alignItems: 'center' }}>
       {/* Home按钮 */}
@@ -581,6 +585,7 @@ const CanvasFileToolbar = ({
         <div
           ref={popupRef}
           id="recent-popup"
+          onWheel={handleWheel}
           style={{
             position: 'fixed',
             top: 64,

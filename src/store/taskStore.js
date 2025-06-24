@@ -211,23 +211,30 @@ export const useTaskStore = create((set, get) => ({
         return { tasks }; // 如果找不到任务，则不执行任何操作
       }
 
-      // 查找并收集所有后续的"细分任务"以进行删除
-      const idsToDelete = new Set([id]);
-      
+      // 如果是主线任务（parentId为null），只删除自己并返回，彻底阻断后续所有级联删除逻辑
+      if (taskToDelete.parentId === null) {
+        const newTasks = tasks
+          .filter(t => t.id !== id)
+          .map(t => ({
+            ...t,
+            links: t.links.filter(l => l.toId !== id),
+          }));
+        const finalTasks = ensureLinksLabel(newTasks);
+        saveTasksToStorage(finalTasks);
+        return { tasks: finalTasks };
+      }
+
+      // 细分任务/子任务，保留原有级联删除逻辑
+      let idsToDelete = new Set([id]);
       // "细分任务"是具有相同 parentId 和 y 坐标的同级任务
       const siblings = tasks.filter(t => 
         t.parentId === taskToDelete.parentId && 
         t.position.y === taskToDelete.position.y
       );
-      
-      // 按 x 坐标排序以确定链条顺序
       siblings.sort((a, b) => a.position.x - b.position.x);
-
       const startIndex = siblings.findIndex(t => t.id === id);
-
       if (startIndex !== -1) {
         for (let i = startIndex + 1; i < siblings.length; i++) {
-          // 删除所有后续的同级任务
           idsToDelete.add(siblings[i].id);
         }
       }

@@ -128,7 +128,12 @@ const FormatSidebar = ({
     setLocalProps(canvasProps);
   }, [canvasProps]);
   useEffect(() => {
-    setLocalTaskStyle(selectedTask);
+    // 当选中任务变更时，确保本地样式对象包含所有默认样式
+    if (selectedTask) {
+      setLocalTaskStyle({ ...defaultTaskStyle, ...selectedTask });
+    } else {
+      setLocalTaskStyle(null);
+    }
     // 当卡片取消选择时（selectedTask 变为 null 或 undefined）关闭所有弹窗
     if (!selectedTask) {
       setColorPickerOpen(null);
