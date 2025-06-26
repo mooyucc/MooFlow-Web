@@ -105,7 +105,7 @@ function renderShape(shape, props) {
   }
 }
 
-const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, multiSelected, isFirst, onEditingChange }) => {
+const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, multiSelected, isFirst, onEditingChange, transform }) => {
   const updateTask = useTaskStore((state) => state.updateTask);
   const addTask = useTaskStore((state) => state.addTask);
   const deleteTask = useTaskStore((state) => state.deleteTask);
@@ -230,7 +230,7 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
       return hidden;
     };
 
-    const transform = useTaskStore.getState().transform;
+    if (!transform) return;
     const rawX = (e.clientX - transform.offsetX) / transform.scale - offset.x;
     const rawY = (e.clientY - transform.offsetY) / transform.scale - offset.y;
 
@@ -443,261 +443,279 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
   }
 
   return (
-    <g
-      transform={`translate(${task.position.x}, ${task.position.y})`}
-      onMouseDown={handleMouseDown}
-      onClick={onClick}
-      style={{ cursor: editing ? 'default' : 'move' }}
-      filter={editing ? 'drop-shadow(0 4px 16px rgba(0,0,0,0.10))' : 'drop-shadow(0 2px 6px rgba(0,0,0,0.06))'}
-      data-task-id={task.id}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-    >
-      {/* 主体形状：支持多种流程图形状 */}
-      {borderStyle !== 'none' && renderShape(shape, {fill: fillColor, stroke: borderColor, strokeWidth: borderWidth, style: {transition: 'all 0.2s cubic-bezier(.4,0,.2,1)'}, strokeDasharray: getShapeStrokeDasharray(borderStyle) })}
-      {borderStyle === 'none' && renderShape(shape, {fill: fillColor, stroke: 'none', strokeWidth: 0 })}
-      {/* 工具栏：仅选中时显示 */}
-      {selected && !editing && (
-        <g transform="translate(90, -24)">
-          <rect x={-60} y={-16} width={120} height={32} rx={12} fill="#fff" stroke="#e0e0e5" strokeWidth={1} filter="drop-shadow(0 2px 8px rgba(0,0,0,0.08))" />
-          {/* 锁定按钮 */}
-          <g onClick={handleLockToggle} style={{ cursor: 'pointer' }} transform="translate(-28, 0)">
-            <rect x={-12} y={-12} width={24} height={24} rx={8} fill="transparent" stroke="none" />
-            <foreignObject x={-10} y={-10} width={20} height={20}>
-              <div style={{width:20,height:20,display:'flex',alignItems:'center',justifyContent:'center',color:locked?'#222':'#bbb'}}>
-                <LockIcon locked={locked} />
-              </div>
-            </foreignObject>
+    <>
+      <defs>
+        <filter id="cardShadow" x="-40%" y="-40%" width="180%" height="180%">
+          <feDropShadow dx="0" dy="4" stdDeviation="8" floodColor="#222" floodOpacity="0.18"/>
+        </filter>
+      </defs>
+      <g
+        transform={`translate(${task.position.x}, ${task.position.y})`}
+        onMouseDown={handleMouseDown}
+        onClick={onClick}
+        style={{ cursor: editing ? 'default' : 'move' }}
+        data-task-id={task.id}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+      >
+        {/* 主体形状：支持多种流程图形状 */}
+        {borderStyle !== 'none' && renderShape(shape, {
+          fill: fillColor,
+          stroke: borderColor,
+          strokeWidth: borderWidth,
+          style: {transition: 'all 0.2s cubic-bezier(.4,0,.2,1)'},
+          strokeDasharray: getShapeStrokeDasharray(borderStyle),
+          filter: !editing ? 'url(#cardShadow)' : undefined
+        })}
+        {borderStyle === 'none' && renderShape(shape, {
+          fill: fillColor,
+          stroke: 'none',
+          strokeWidth: 0,
+          filter: !editing ? 'url(#cardShadow)' : undefined
+        })}
+        {/* 工具栏：仅选中时显示 */}
+        {selected && !editing && (
+          <g transform="translate(90, -24)">
+            <rect x={-60} y={-16} width={120} height={32} rx={12} fill="#fff" stroke="#e0e0e5" strokeWidth={1} filter="drop-shadow(0 2px 8px rgba(0,0,0,0.08))" />
+            {/* 锁定按钮 */}
+            <g onClick={handleLockToggle} style={{ cursor: 'pointer' }} transform="translate(-28, 0)">
+              <rect x={-12} y={-12} width={24} height={24} rx={8} fill="transparent" stroke="none" />
+              <foreignObject x={-10} y={-10} width={20} height={20}>
+                <div style={{width:20,height:20,display:'flex',alignItems:'center',justifyContent:'center',color:locked?'#222':'#bbb'}}>
+                  <LockIcon locked={locked} />
+                </div>
+              </foreignObject>
+            </g>
+            {/* 连线按钮 */}
+            <g onMouseDown={handleStartLink} style={{ cursor: 'crosshair' }} transform="translate(0, 0)">
+              <rect x={-10} y={-10} width={20} height={20} rx={7} fill="transparent" stroke="none" />
+              <foreignObject x={-10} y={-10} width={20} height={20}>
+                <div style={{width:20,height:20,display:'flex',alignItems:'center',justifyContent:'center',color:'#222'}}>
+                  <LinkIcon />
+                </div>
+              </foreignObject>
+            </g>
+            {/* 删除任务按钮 */}
+            <g onClick={handleDeleteTask} style={{ cursor: 'pointer' }} transform="translate(28, 0)">
+              <rect x={-10} y={-10} width={20} height={20} rx={7} fill="transparent" stroke="none" />
+              <foreignObject x={-10} y={-10} width={20} height={20}>
+                <div style={{width:20,height:20,display:'flex',alignItems:'center',justifyContent:'center',color:'#222'}}>
+                  <DeleteIcon />
+                </div>
+              </foreignObject>
+            </g>
           </g>
-          {/* 连线按钮 */}
-          <g onMouseDown={handleStartLink} style={{ cursor: 'crosshair' }} transform="translate(0, 0)">
-            <rect x={-10} y={-10} width={20} height={20} rx={7} fill="transparent" stroke="none" />
-            <foreignObject x={-10} y={-10} width={20} height={20}>
-              <div style={{width:20,height:20,display:'flex',alignItems:'center',justifyContent:'center',color:'#222'}}>
-                <LinkIcon />
-              </div>
-            </foreignObject>
-          </g>
-          {/* 删除任务按钮 */}
-          <g onClick={handleDeleteTask} style={{ cursor: 'pointer' }} transform="translate(28, 0)">
-            <rect x={-10} y={-10} width={20} height={20} rx={7} fill="transparent" stroke="none" />
-            <foreignObject x={-10} y={-10} width={20} height={20}>
-              <div style={{width:20,height:20,display:'flex',alignItems:'center',justifyContent:'center',color:'#222'}}>
-                <DeleteIcon />
-              </div>
-            </foreignObject>
-          </g>
-        </g>
-      )}
-      {/* 右侧添加细分任务按钮 */}
-      {/* 下方添加子任务按钮 */}
-      {editing ? (
-        <foreignObject x={0} y={0} width={NODE_WIDTH} height={NODE_HEIGHT}>
-          <input
-            style={{
-              width: '100%',
-              height: '100%',
-              textAlign: task.textAlign || 'center',
-              fontSize: task.fontSize || 16,
-              border: 'none',
-              outline: 'none',
-              background: 'transparent',
-              fontWeight: task.fontWeight || 500,
-              color: isFirst ? '#fff' : (task.color || '#222'),
-              fontFamily: task.fontFamily || '思源黑体',
-              borderRadius: 18,
-              cursor: 'text',
-              fontStyle: task.fontStyle || 'normal',
-              textDecoration: task.textDecoration || 'none',
-            }}
-            value={title}
-            autoFocus
-            onChange={e => setTitle(e.target.value)}
-            onBlur={handleInputBlur}
-            onKeyDown={e => {
-              if (e.key === 'Enter') handleInputBlur();
-            }}
-          />
-        </foreignObject>
-      ) : (
-        <>
-          {/* 居中标题 */}
-          <text
-            x={task.textAlign === 'left' ? CARD_PADDING_X : task.textAlign === 'right' ? NODE_WIDTH - CARD_PADDING_X : NODE_WIDTH / 2}
-            y={(() => {
-              // 自动换行算法（提前算一次，供y和内容共用）
-              const ctx = document.createElement('canvas').getContext('2d');
-              ctx.font = `${task.fontWeight || 600} ${task.fontSize || 14}px ${task.fontFamily || '-apple-system, BlinkMacSystemFont, "SF Pro", "Helvetica Neue", Arial, sans-serif'}`;
-              const words = (task.title || '').split('');
-              let lines = [], line = '';
-              for (let i = 0; i < words.length; i++) {
-                const testLine = line + words[i];
-                const w = ctx.measureText(testLine).width;
-                if (w > CARD_TEXT_WIDTH && line) {
-                  lines.push(line);
-                  line = words[i];
-                } else {
-                  line = testLine;
-                }
-              }
-              if (line) lines.push(line);
-              // 居中：首行y=32，第二行y=32+18=50
-              return lines.length > 1 ? 20 : 32;
-            })()}
-            fontSize={task.fontSize || 16}
-            fontWeight={task.fontWeight || 600}
-            fontStyle={task.fontStyle || 'normal'}
-            fill={isFirst ? '#fff' : (task.color || '#222')}
-            fontFamily={task.fontFamily || '-apple-system, BlinkMacSystemFont, "SF Pro", "Helvetica Neue", Arial, sans-serif'}
-            style={{
-              userSelect: 'none',
-              cursor: 'pointer',
-              textAnchor: task.textAlign === 'left' ? 'start' : task.textAlign === 'right' ? 'end' : 'middle',
-              textDecoration: task.textDecoration || 'none',
-            }}
-            onDoubleClick={handleDoubleClick}
-          >
-            {(() => {
-              const ctx = document.createElement('canvas').getContext('2d');
-              ctx.font = `${task.fontWeight || 600} ${task.fontSize || 14}px ${task.fontFamily || '-apple-system, BlinkMacSystemFont, "SF Pro", "Helvetica Neue", Arial, sans-serif'}`;
-              const words = (task.title || '').split('');
-              let lines = [], line = '';
-              for (let i = 0; i < words.length; i++) {
-                const testLine = line + words[i];
-                const w = ctx.measureText(testLine).width;
-                if (w > CARD_TEXT_WIDTH && line) {
-                  lines.push(line);
-                  line = words[i];
-                } else {
-                  line = testLine;
-                }
-              }
-              if (line) lines.push(line);
-              return lines.map((l, idx) => (
-                <tspan key={idx} x={task.textAlign === 'left' ? CARD_PADDING_X : task.textAlign === 'right' ? NODE_WIDTH - CARD_PADDING_X : NODE_WIDTH / 2} dy={idx === 0 ? 0 : 18}>{l}</tspan>
-              ));
-            })()}
-          </text>
-          {/* 居中时间模块，保持胶囊自适应宽度 */}
-          <foreignObject x={0} y={40} width={NODE_WIDTH} height={28}>
-            <div
+        )}
+        {/* 右侧添加细分任务按钮 */}
+        {/* 下方添加子任务按钮 */}
+        {editing ? (
+          <foreignObject x={0} y={0} width={NODE_WIDTH} height={NODE_HEIGHT}>
+            <input
               style={{
                 width: '100%',
                 height: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                textAlign: task.textAlign || 'center',
+                fontSize: task.fontSize || 16,
+                border: 'none',
+                outline: 'none',
+                background: 'transparent',
+                fontWeight: task.fontWeight || 500,
+                color: isFirst ? '#fff' : (task.color || '#222'),
+                fontFamily: task.fontFamily || '思源黑体',
+                borderRadius: 18,
+                cursor: 'text',
+                fontStyle: task.fontStyle || 'normal',
+                textDecoration: task.textDecoration || 'none',
               }}
+              value={title}
+              autoFocus
+              onChange={e => setTitle(e.target.value)}
+              onBlur={handleInputBlur}
+              onKeyDown={e => {
+                if (e.key === 'Enter') handleInputBlur();
+              }}
+            />
+          </foreignObject>
+        ) : (
+          <>
+            {/* 居中标题 */}
+            <text
+              x={task.textAlign === 'left' ? CARD_PADDING_X : task.textAlign === 'right' ? NODE_WIDTH - CARD_PADDING_X : NODE_WIDTH / 2}
+              y={(() => {
+                // 自动换行算法（提前算一次，供y和内容共用）
+                const ctx = document.createElement('canvas').getContext('2d');
+                ctx.font = `${task.fontWeight || 600} ${task.fontSize || 14}px ${task.fontFamily || '-apple-system, BlinkMacSystemFont, "SF Pro", "Helvetica Neue", Arial, sans-serif'}`;
+                const words = (task.title || '').split('');
+                let lines = [], line = '';
+                for (let i = 0; i < words.length; i++) {
+                  const testLine = line + words[i];
+                  const w = ctx.measureText(testLine).width;
+                  if (w > CARD_TEXT_WIDTH && line) {
+                    lines.push(line);
+                    line = words[i];
+                  } else {
+                    line = testLine;
+                  }
+                }
+                if (line) lines.push(line);
+                // 居中：首行y=32，第二行y=32+18=50
+                return lines.length > 1 ? 20 : 32;
+              })()}
+              fontSize={task.fontSize || 16}
+              fontWeight={task.fontWeight || 600}
+              fontStyle={task.fontStyle || 'normal'}
+              fill={isFirst ? '#fff' : (task.color || '#222')}
+              fontFamily={task.fontFamily || '-apple-system, BlinkMacSystemFont, "SF Pro", "Helvetica Neue", Arial, sans-serif'}
+              style={{
+                userSelect: 'none',
+                cursor: 'pointer',
+                textAnchor: task.textAlign === 'left' ? 'start' : task.textAlign === 'right' ? 'end' : 'middle',
+                textDecoration: task.textDecoration || 'none',
+              }}
+              onDoubleClick={handleDoubleClick}
             >
+              {(() => {
+                const ctx = document.createElement('canvas').getContext('2d');
+                ctx.font = `${task.fontWeight || 600} ${task.fontSize || 14}px ${task.fontFamily || '-apple-system, BlinkMacSystemFont, "SF Pro", "Helvetica Neue", Arial, sans-serif'}`;
+                const words = (task.title || '').split('');
+                let lines = [], line = '';
+                for (let i = 0; i < words.length; i++) {
+                  const testLine = line + words[i];
+                  const w = ctx.measureText(testLine).width;
+                  if (w > CARD_TEXT_WIDTH && line) {
+                    lines.push(line);
+                    line = words[i];
+                  } else {
+                    line = testLine;
+                  }
+                }
+                if (line) lines.push(line);
+                return lines.map((l, idx) => (
+                  <tspan key={idx} x={task.textAlign === 'left' ? CARD_PADDING_X : task.textAlign === 'right' ? NODE_WIDTH - CARD_PADDING_X : NODE_WIDTH / 2} dy={idx === 0 ? 0 : 18}>{l}</tspan>
+                ));
+              })()}
+            </text>
+            {/* 居中时间模块，保持胶囊自适应宽度 */}
+            <foreignObject x={0} y={40} width={NODE_WIDTH} height={28}>
               <div
                 style={{
-                  fontSize: 10,
-                  color: '#555',
-                  background: 'rgba(243, 243, 246, 0.8)',
-                  borderRadius: 6,
-                  padding: '2px 8px',
-                  display: 'inline-flex',
+                  width: '100%',
+                  height: '100%',
+                  display: 'flex',
                   alignItems: 'center',
-                  cursor: 'pointer',
-                  userSelect: 'none',
-                  marginTop: 0,
-                  maxWidth: '100%',
-                  whiteSpace: 'nowrap',
+                  justifyContent: 'center',
                 }}
-                onClick={handleTimeClick}
-                ref={timeTextRef}
               >
-                <span style={{ display: 'flex', alignItems: 'center', marginRight: 4 }}>
-                  <CalendarIcon size={12} />
-                </span>
-                {date ? format(date, 'yyyy年M月d日') : '设置日期'}
+                <div
+                  style={{
+                    fontSize: 10,
+                    color: '#555',
+                    background: 'rgba(243, 243, 246, 0.8)',
+                    borderRadius: 6,
+                    padding: '2px 8px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    marginTop: 0,
+                    maxWidth: '100%',
+                    whiteSpace: 'nowrap',
+                  }}
+                  onClick={handleTimeClick}
+                  ref={timeTextRef}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', marginRight: 4 }}>
+                    <CalendarIcon size={12} />
+                  </span>
+                  {date ? format(date, 'yyyy年M月d日') : '设置日期'}
+                </div>
               </div>
-            </div>
-          </foreignObject>
-        </>
-      )}
-      {showDatePicker && anchorRect && (
-        <DatePickerPortal anchorRect={anchorRect}>
-          <ReactDatePicker
-            selected={date}
-            onChange={handleDateChange}
-            onClickOutside={() => setShowDatePicker(false)}
-            locale={zhCN}
-            dateFormat="yyyy年M月d日"
-            inline
+            </foreignObject>
+          </>
+        )}
+        {showDatePicker && anchorRect && (
+          <DatePickerPortal anchorRect={anchorRect}>
+            <ReactDatePicker
+              selected={date}
+              onChange={handleDateChange}
+              onClickOutside={() => setShowDatePicker(false)}
+              locale={zhCN}
+              dateFormat="yyyy年M月d日"
+              inline
+            />
+          </DatePickerPortal>
+        )}
+        {/* 悬停桥梁，覆盖卡片下方到按钮gap的区域，避免鼠标移到按钮时按钮消失，但不覆盖按钮本身 */}
+        {showCollapseButton && (
+          <rect
+            x={NODE_WIDTH / 2 - 24}
+            y={NODE_HEIGHT}
+            width={48}
+            height={8} // 只覆盖gap
+            fill="transparent"
+            pointerEvents="all"
           />
-        </DatePickerPortal>
-      )}
-      {/* 悬停桥梁，覆盖卡片下方到按钮gap的区域，避免鼠标移到按钮时按钮消失，但不覆盖按钮本身 */}
-      {showCollapseButton && (
-        <rect
-          x={NODE_WIDTH / 2 - 24}
-          y={NODE_HEIGHT}
-          width={48}
-          height={8} // 只覆盖gap
-          fill="transparent"
-          pointerEvents="all"
-        />
-      )}
-      {/* 折叠/展开按钮：有子任务且悬停时显示，或者有子任务且已折叠时始终显示，直接内联SVG */}
-      {(showCollapseButton && (hover || task.collapsed)) && (
-        <g
-          transform={`translate(${collapseBtnAnchor.x}, ${collapseBtnAnchor.y})`}
-          style={{ cursor: 'pointer' }}
-          onClick={e => { e.stopPropagation(); toggleCollapse(task.id); }}
-        >
-          <circle cx="10" cy="10" r="9" fill="#fff" stroke="#e0e0e5" strokeWidth="1" />
-          {/* 横线，始终显示 */}
-          <line x1="6" y1="10" x2="14" y2="10" stroke="#316acb" strokeWidth="2" strokeLinecap="round" />
-          {/* 竖线，仅在折叠时显示（即+号） */}
-          {task.collapsed && (
-            <line x1="10" y1="6" x2="10" y2="14" stroke="#316acb" strokeWidth="2" strokeLinecap="round" />
-          )}
-        </g>
-      )}
-      {(hover || selected || multiSelected) && (() => {
-        const isPolygon = !['rect', 'roundRect', 'ellipse', 'circle'].includes(shape);
-        const commonProps = {
-          fill: 'none',
-          stroke: '#1251a580',
-          strokeWidth: 2,
-          pointerEvents: 'none',
-        };
+        )}
+        {/* 折叠/展开按钮：有子任务且悬停时显示，或者有子任务且已折叠时始终显示，直接内联SVG */}
+        {(showCollapseButton && (hover || task.collapsed)) && (
+          <g
+            transform={`translate(${collapseBtnAnchor.x}, ${collapseBtnAnchor.y})`}
+            style={{ cursor: 'pointer' }}
+            onClick={e => { e.stopPropagation(); toggleCollapse(task.id); }}
+          >
+            <circle cx="10" cy="10" r="9" fill="#fff" stroke="#e0e0e5" strokeWidth="1" />
+            {/* 横线，始终显示 */}
+            <line x1="6" y1="10" x2="14" y2="10" stroke="#316acb" strokeWidth="2" strokeLinecap="round" />
+            {/* 竖线，仅在折叠时显示（即+号） */}
+            {task.collapsed && (
+              <line x1="10" y1="6" x2="10" y2="14" stroke="#316acb" strokeWidth="2" strokeLinecap="round" />
+            )}
+          </g>
+        )}
+        {(hover || selected || multiSelected) && (() => {
+          const isPolygon = !['rect', 'roundRect', 'ellipse', 'circle'].includes(shape);
+          const commonProps = {
+            fill: 'none',
+            stroke: '#1251a580',
+            strokeWidth: 2,
+            pointerEvents: 'none',
+          };
 
-        let shapeProps = {};
-        if (shape === 'rect' || shape === 'roundRect') {
-          shapeProps = {
-            x: -4,
-            y: -4,
-            width: NODE_WIDTH + 8,
-            height: NODE_HEIGHT + 8,
-            rx: shape === 'roundRect' ? 22 : 0,
-            style: { transition: 'all 0.18s cubic-bezier(.4,0,.2,1)' },
-          };
-        } else if (shape === 'ellipse' || shape === 'circle') {
-          shapeProps = {
-            cx: NODE_WIDTH / 2,
-            cy: NODE_HEIGHT / 2,
-            rx: (shape === 'ellipse' ? NODE_WIDTH / 2 : NODE_HEIGHT / 2) + 4,
-            ry: NODE_HEIGHT / 2 + 4,
-            style: { transition: 'all 0.18s cubic-bezier(.4,0,.2,1)' },
-          };
-        } else {
-          // 对其他所有形状（多边形、路径等），使用transform属性进行中心缩放
-          const scaleFactor = 1.08;
-          const centerX = NODE_WIDTH / 2;
-          const centerY = NODE_HEIGHT / 2;
-          // transform属性的顺序：先移到原点，再缩放，再移回中心
-          const transform = `translate(${centerX}, ${centerY}) scale(${scaleFactor}) translate(${-centerX}, ${-centerY})`;
-          shapeProps = {
-            transform,
-            style: { transition: 'transform 0.18s cubic-bezier(.4,0,.2,1)' },
-          };
-        }
-        
-        return renderShape(shape, { ...commonProps, ...shapeProps });
-      })()}
-    </g>
+          let shapeProps = {};
+          if (shape === 'rect' || shape === 'roundRect') {
+            shapeProps = {
+              x: -4,
+              y: -4,
+              width: NODE_WIDTH + 8,
+              height: NODE_HEIGHT + 8,
+              rx: shape === 'roundRect' ? 22 : 0,
+              style: { transition: 'all 0.18s cubic-bezier(.4,0,.2,1)' },
+            };
+          } else if (shape === 'ellipse' || shape === 'circle') {
+            shapeProps = {
+              cx: NODE_WIDTH / 2,
+              cy: NODE_HEIGHT / 2,
+              rx: (shape === 'ellipse' ? NODE_WIDTH / 2 : NODE_HEIGHT / 2) + 4,
+              ry: NODE_HEIGHT / 2 + 4,
+              style: { transition: 'all 0.18s cubic-bezier(.4,0,.2,1)' },
+            };
+          } else {
+            // 对其他所有形状（多边形、路径等），使用transform属性进行中心缩放
+            const scaleFactor = 1.08;
+            const centerX = NODE_WIDTH / 2;
+            const centerY = NODE_HEIGHT / 2;
+            // transform属性的顺序：先移到原点，再缩放，再移回中心
+            const transform = `translate(${centerX}, ${centerY}) scale(${scaleFactor}) translate(${-centerX}, ${-centerY})`;
+            shapeProps = {
+              transform,
+              style: { transition: 'transform 0.18s cubic-bezier(.4,0,.2,1)' },
+            };
+          }
+          
+          return renderShape(shape, { ...commonProps, ...shapeProps });
+        })()}
+      </g>
+    </>
   );
 };
 

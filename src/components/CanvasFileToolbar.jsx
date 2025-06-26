@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { useTaskStore } from '../store/taskStore';
+import { useTaskStore, defaultTaskStyle } from '../store/taskStore';
 import './CanvasToolbar.css';
 import FormatSidebar from './FormatSidebar';
 import Papa from 'papaparse';
@@ -64,7 +64,8 @@ const defaultFile = () => {
         date: new Date().toISOString(),
         collapsed: false
       }
-    ]
+    ],
+    paletteIdx: null // 新建文件无配色方案
   };
 };
 
@@ -126,6 +127,9 @@ const CanvasFileToolbar = ({
   const selectedTask = tasksAll.find(t => t.id === selectedTaskId);
   // 新增：多选卡片对象数组
   const selectedTasks = tasksAll.filter(t => selectedTaskIds.includes(t.id));
+  // 当前文件配色方案索引
+  const activeFile = files.find(f => f.id === activeFileId);
+  const paletteIdx = activeFile?.paletteIdx ?? null;
   // 批量处理卡片样式变更
   const handleTaskStyleChange = (key, value) => {
     if (selectedTaskIds.length > 1) {
@@ -144,6 +148,64 @@ const CanvasFileToolbar = ({
   // 画布属性变更回调
   const handleCanvasChange = (props) => {
     setCanvasProps(props);
+  };
+
+  // 配色方案变更回调
+  const handlePaletteChange = (idx) => {
+    setFiles(prev => {
+      const updated = prev.map(f => f.id === activeFileId ? { ...f, paletteIdx: idx } : f);
+      localStorage.setItem('moo_files', JSON.stringify(updated));
+      return updated;
+    });
+
+    // 自动刷新主线任务及下属任务颜色
+    const tasksAll = useTaskStore.getState().tasks;
+    const updateTask = useTaskStore.getState().updateTask;
+    // 取当前配色方案
+    const COLOR_PALETTES = [
+      { name: '律动', colors: ['#F15A4A', '#F6C244', '#5DBA4A', '#3A9BDB', '#3B53C4', '#D94A8A'] },
+      { name: '永恒', colors: ['#3B53C4', '#F15A4A', '#F6C244', '#5DBA4A', '#3A9BDB', '#A24AD9'] },
+      { name: '花海', colors: ['#A12B3A', '#5DBA4A', '#3A9BDB', '#1B3A5B', '#A24AD9', '#4A1B3A'] },
+      { name: '绚丽', colors: ['#F15A4A', '#F6C244', '#3A9BDB', '#3B53C4', '#A24AD9', '#D94A8A'] },
+      { name: '香水', colors: ['#A18B4A', '#5DBA4A', '#3A9BDB', '#3B53C4', '#A24AD9', '#4A1B3A'] },
+      { name: '奶油', colors: ['#3A9BDB', '#3B53C4', '#F15A4A', '#F6C244', '#5DBA4A', '#1BC4A1'] },
+      { name: '珊瑚', colors: ['#F15A4A', '#F6C244', '#5DBA4A', '#3A9BDB', '#A24AD9', '#D94A8A'] },
+      { name: '香槟', colors: ['#C4BBA1', '#B4C4A1', '#A1C4B4', '#A1B4C4', '#C4A1B4', '#B4A1C4'] },
+      { name: '禅心', colors: ['#FFFFFF', '#E0E0E0', '#B0B0B0', '#707070', '#303030', '#000000'] },
+    ];
+    // 找到所有主线任务（parentId为null），并排除中心任务
+    const centerTask = tasksAll.find(t => t.parentId === null);
+    const mainTasks = tasksAll.filter(t => t.parentId === null && t.id !== centerTask?.id);
+    // 递归更新下属任务颜色
+    function updateDescendantsColor(parentId, color) {
+      tasksAll.forEach(task => {
+        if (task.parentId === parentId) {
+          // 跳过中心任务
+          if (task.id === centerTask?.id) return;
+          // 只在fillColor等于父色时才继承
+          if (!task.fillColor || task.fillColor === color || COLOR_PALETTES.some(p => p.colors.includes(task.fillColor)) || task.fillColor === defaultTaskStyle.fillColor) {
+            updateTask(task.id, { fillColor: color });
+            updateDescendantsColor(task.id, color);
+          }
+        }
+      });
+    }
+    if (idx === null) {
+      // 无配色方案，全部恢复默认色（中心任务除外）
+      mainTasks.forEach(mainTask => {
+        updateTask(mainTask.id, { fillColor: defaultTaskStyle.fillColor });
+        updateDescendantsColor(mainTask.id, defaultTaskStyle.fillColor);
+      });
+    } else {
+      const palette = COLOR_PALETTES[idx];
+      if (palette) {
+        mainTasks.forEach((mainTask, i) => {
+          const color = palette.colors[i % palette.colors.length];
+          updateTask(mainTask.id, { fillColor: color });
+          updateDescendantsColor(mainTask.id, color);
+        });
+      }
+    }
   };
 
   // 记录最近打开文件
@@ -311,6 +373,7 @@ const CanvasFileToolbar = ({
     const saved = localStorage.getItem('moo_files_history');
     setRecentFiles(saved ? JSON.parse(saved) : []);
     setShowRecent(true);
+    setShowFormatSidebar(false);
   };
 
   // 点击最近文件打开
@@ -689,6 +752,8 @@ const CanvasFileToolbar = ({
         // 新增：传递分支样式属性
         branchStyle={branchStyle}
         onBranchStyleChange={onBranchStyleChange}
+        paletteIdx={paletteIdx}
+        onPaletteChange={handlePaletteChange}
       />
     </div>
   );

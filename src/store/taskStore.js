@@ -114,8 +114,8 @@ export const useTaskStore = create((set, get) => ({
         const tasksMap = new Map(newTasks.map(t => [t.id, t]));
         
         const initialColor = propertiesToPropagate.fillColor;
-        const colorDepth1 = tinycolor(initialColor).lighten(20).toHexString();
-        const colorDepth2 = tinycolor(colorDepth1).lighten(20).toHexString();
+        const colorDepth1 = tinycolor(initialColor).lighten(15).toHexString();
+        const colorDepth2 = tinycolor(colorDepth1).lighten(15).toHexString();
 
         const queue = [{ taskId: id, depth: 0 }];
         const visited = new Set([id]);
@@ -129,7 +129,7 @@ export const useTaskStore = create((set, get) => ({
           for (const link of currentTask.links) {
             const nextTask = tasksMap.get(link.toId);
 
-            if (nextTask && nextTask.parentId === currentTask.parentId && !visited.has(nextTask.id)) {
+            if (nextTask && !visited.has(nextTask.id)) {
               const taskToUpdate = tasksMap.get(nextTask.id);
               if (taskToUpdate) {
                 // --- 颜色调淡逻辑 ---

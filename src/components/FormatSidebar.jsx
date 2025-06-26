@@ -56,6 +56,19 @@ const SHAPES = [
   { type: 'doubleArrow', name: '双箭头', icon: <svg width="28" height="20"><polygon points="4,10 8,6 8,9 20,9 20,6 24,10 20,14 20,11 8,11 8,14 4,10" stroke="var(--shape-stroke)" strokeWidth="1.5" fill="none"/></svg> },
 ];
 
+// 1. 新增配色方案数据
+const COLOR_PALETTES = [
+  { name: '律动', colors: ['#F15A4A', '#F6C244', '#5DBA4A', '#3A9BDB', '#3B53C4', '#D94A8A'] },
+  { name: '永恒', colors: ['#3B53C4', '#F15A4A', '#F6C244', '#5DBA4A', '#3A9BDB', '#A24AD9'] },
+  { name: '花海', colors: ['#A12B3A', '#5DBA4A', '#3A9BDB', '#1B3A5B', '#A24AD9', '#4A1B3A'] },
+  { name: '绚丽', colors: ['#F15A4A', '#F6C244', '#3A9BDB', '#3B53C4', '#A24AD9', '#D94A8A'] },
+  { name: '香水', colors: ['#A18B4A', '#5DBA4A', '#3A9BDB', '#3B53C4', '#A24AD9', '#4A1B3A'] },
+  { name: '奶油', colors: ['#3A9BDB', '#3B53C4', '#F15A4A', '#F6C244', '#5DBA4A', '#1BC4A1'] },
+  { name: '珊瑚', colors: ['#F15A4A', '#F6C244', '#5DBA4A', '#3A9BDB', '#A24AD9', '#D94A8A'] },
+  { name: '香槟', colors: ['#C4BBA1', '#B4C4A1', '#A1C4B4', '#A1B4C4', '#C4A1B4', '#B4A1C4'] },
+  { name: '禅心', colors: ['#FFFFFF', '#E0E0E0', '#B0B0B0', '#707070', '#303030', '#000000'] },
+];
+
 const FormatSidebar = ({
   visible,
   onClose,
@@ -66,7 +79,9 @@ const FormatSidebar = ({
   selectedTaskIds = [],
   onTaskStyleChange,
   onBranchStyleChange,
-  branchStyle = {}
+  branchStyle = {},
+  paletteIdx,
+  onPaletteChange
 }) => {
   const tasks = useTaskStore(state => state.tasks);
 
@@ -123,6 +138,13 @@ const FormatSidebar = ({
   const fontPickerRef = useRef(null);
 
   const [colorPickerPosition, setColorPickerPosition] = useState({ top: 0 });
+
+  const [palettePopupOpen, setPalettePopupOpen] = useState(false);
+  const [hoveredShapeIdx, setHoveredShapeIdx] = useState(-1);
+  const currentShape = SHAPES.find(s => s.type === localTaskStyle?.shape) || SHAPES[0];
+
+  const paletteBtnRef = useRef(null);
+  const [palettePopupPosition, setPalettePopupPosition] = useState({ top: 0, right: 0 });
 
   useEffect(() => {
     setLocalProps(canvasProps);
@@ -186,8 +208,6 @@ const FormatSidebar = ({
 
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const [shapeMenuOpen, setShapeMenuOpen] = useState(false);
-  const [hoveredShapeIdx, setHoveredShapeIdx] = useState(-1);
-  const currentShape = SHAPES.find(s => s.type === localTaskStyle?.shape) || SHAPES[0];
 
   useEffect(() => {
     if (!shapeMenuOpen) return;
@@ -239,6 +259,59 @@ const FormatSidebar = ({
       top: buttonRect.top - 150,
     });
     setColorPickerOpen(type);
+  };
+
+  // 新增：自动同步主线任务及下属任务颜色的 onPaletteChange 包装
+  const handlePaletteChange = (idx) => {
+    if (typeof onPaletteChange === 'function') onPaletteChange(idx);
+    // 自动刷新主线任务及下属任务颜色
+    const tasksAll = useTaskStore.getState().tasks;
+    const updateTask = useTaskStore.getState().updateTask;
+    // 找到所有主线任务（parentId为null），并排除中心任务
+    const centerTask = tasksAll.find(t => t.parentId === null);
+    const mainTasks = tasksAll.filter(t => t.parentId === null && t.id !== centerTask?.id);
+    // 递归获取所有下属任务id
+    function collectDescendantIds(parentId, collected = new Set()) {
+      tasksAll.forEach(task => {
+        if (task.parentId === parentId && !collected.has(task.id)) {
+          collected.add(task.id);
+          collectDescendantIds(task.id, collected);
+        }
+      });
+      // 通过连线递归
+      const parentTask = tasksAll.find(t => t.id === parentId);
+      if (parentTask && parentTask.links) {
+        parentTask.links.forEach(link => {
+          if (!collected.has(link.toId)) {
+            collected.add(link.toId);
+            collectDescendantIds(link.toId, collected);
+          }
+        });
+      }
+      return collected;
+    }
+    // 1. 先重置所有主线任务及其下属任务的 fillColor
+    mainTasks.forEach(mainTask => {
+      updateTask(mainTask.id, { fillColor: defaultTaskStyle.fillColor });
+      const descendantIds = collectDescendantIds(mainTask.id);
+      descendantIds.forEach(id => {
+        updateTask(id, { fillColor: defaultTaskStyle.fillColor });
+      });
+    });
+    // 2. 再分配新配色方案色
+    if (idx === null) {
+      // 无配色方案，全部恢复默认色（中心任务除外）
+      // 已在上面重置，无需重复
+    } else {
+      const palette = COLOR_PALETTES[idx];
+      if (palette) {
+        mainTasks.forEach((mainTask, i) => {
+          const color = palette.colors[i % palette.colors.length];
+          updateTask(mainTask.id, { fillColor: color });
+          // 递减逻辑在 updateTask 内部自动递归
+        });
+      }
+    }
   };
 
   if (!visible) return null;
@@ -322,6 +395,143 @@ const FormatSidebar = ({
       >
         {tab === 'canvas' && (
           <>
+            {/* 配色方案卡片 */}
+            <div style={{
+              background: 'var(--card-bg)',
+              borderRadius: 12,
+              boxShadow: '0 1px 4px #0000000d',
+              padding: 12,
+              marginBottom: 10,
+              border: '0px solid var(--sidebar-border)',
+              position: 'relative',
+            }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--sidebar-text)', marginBottom: 10 }}>配色方案</div>
+              <button
+                ref={paletteBtnRef}
+                style={{
+                  width: '100%',
+                  height: 40,
+                  border: '1.5px solid var(--sidebar-border)',
+                  background: 'var(--sidebar-bg)',
+                  borderRadius: 8,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '0 12px',
+                  justifyContent: 'space-between',
+                  position: 'relative',
+                }}
+                onClick={e => {
+                  if (paletteBtnRef.current) {
+                    const rect = paletteBtnRef.current.getBoundingClientRect();
+                    setPalettePopupPosition({
+                      top: rect.top - 150,
+                      right: window.innerWidth - rect.left + 16
+                    });
+                  }
+                  setPalettePopupOpen(true);
+                }}
+              >
+                {/* 色条 */}
+                <div style={{ display: 'flex', gap: 2, flex: 1 }}>
+                  {paletteIdx === null ? (
+                    <div style={{ color: '#aaa', fontSize: 14, lineHeight: '16px', marginLeft: 2 }}>—</div>
+                  ) : (
+                    COLOR_PALETTES[paletteIdx]?.colors.map((c, i) => (
+                      <div key={i} style={{ width: 28, height: 14, borderRadius: 8, background: c, marginRight: i < 5 ? 2 : 0 }} />
+                    ))
+                  )}
+                </div>
+                {/* 名称 */}
+                <span style={{
+                  marginLeft: 18,
+                  fontWeight: 500,
+                  fontSize: 14,
+                  letterSpacing: 2,
+                  whiteSpace: 'nowrap',
+                  lineHeight: '1',
+                  display: 'inline-block',
+                  textAlign: 'left',
+                  minWidth: 36
+                }}>{paletteIdx === null ? '无配色方案' : COLOR_PALETTES[paletteIdx]?.name}</span>
+                {/* 下拉箭头 */}
+                <svg width="18" height="18" viewBox="0 0 18 18" style={{ marginLeft: 8 }}><path d="M5 7l4 4 4-4" stroke="#888" strokeWidth="1.5" fill="none"/></svg>
+              </button>
+              {/* 弹窗 */}
+              {palettePopupOpen && (
+                <PopupPortal onClickOutside={() => setPalettePopupOpen(false)}>
+                  <div
+                    style={{
+                      position: 'fixed',
+                      top: palettePopupPosition.top,
+                      right: palettePopupPosition.right,
+                      background: 'var(--dropdown-bg)',
+                      border: '1.5px solid var(--dropdown-border)',
+                      borderRadius: 12,
+                      boxShadow: '0 4px 24px #0002',
+                      padding: 18,
+                      zIndex: 99999,
+                      minWidth: 320,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 8,
+                      maxWidth: '90vw',
+                      maxHeight: '90vh',
+                      overflow: 'auto',
+                    }}
+                  >
+                    <div style={{ display: 'flex', gap: 24, marginBottom: 8 }}>
+                      <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--dropdown-text)' }}>经典</div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                      {/* 配色方案选项 */}
+                      {COLOR_PALETTES.map((palette, idx) => (
+                        <div
+                          key={palette.name}
+                          onClick={() => { handlePaletteChange(idx); setPalettePopupOpen(false); }}
+                          style={{
+                            border: paletteIdx === idx ? '2px solid #F15A4A' : '2px solid transparent',
+                            borderRadius: 8,
+                            padding: 6,
+                            cursor: 'pointer',
+                            background: paletteIdx === idx ? '#fff6f3' : 'transparent',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'flex-start',
+                            gap: 6,
+                          }}
+                        >
+                          <div style={{ display: 'flex', gap: 2, marginBottom: 2 }}>
+                            {palette.colors.map((c, i) => (
+                              <div key={i} style={{ width: 22, height: 12, borderRadius: 6, background: c, marginRight: i < 5 ? 2 : 0 }} />
+                            ))}
+                          </div>
+                          <span style={{ fontSize: 14, fontWeight: 500 }}>{palette.name}</span>
+                        </div>
+                      ))}
+                      {/* 无配色方案选项 */}
+                      <div
+                        onClick={() => { handlePaletteChange(null); setPalettePopupOpen(false); }}
+                        style={{
+                          border: paletteIdx === null ? '2px solid #F15A4A' : '2px solid transparent',
+                          borderRadius: 8,
+                          padding: 6,
+                          cursor: 'pointer',
+                          background: paletteIdx === null ? '#fff6f3' : 'transparent',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'flex-start',
+                          gap: 6,
+                        }}
+                      >
+                        <div style={{ color: '#aaa', fontSize: 14, marginBottom: 2 }}>—</div>
+                        <span style={{ fontSize: 14, fontWeight: 500 }}>无配色方案</span>
+                      </div>
+                    </div>
+                  </div>
+                </PopupPortal>
+              )}
+            </div>
             {/* 卡片1：背景颜色 */}
             <div style={{
               background: 'var(--card-bg)',
@@ -472,17 +682,19 @@ const FormatSidebar = ({
                     return level || 'normal';
                   })()}
                   onChange={e => {
-                    let fill, color;
                     if (e.target.value === 'important') {
-                      fill = '#f44336'; color = '#fff';
+                      handleTaskStyleChange('importantLevel', e.target.value);
+                      handleTaskStyleChange('borderColor', '#f44336');
+                      handleTaskStyleChange('borderWidth', 3);
                     } else if (e.target.value === 'secondary') {
-                      fill = '#ff9800'; color = '#fff';
+                      handleTaskStyleChange('importantLevel', e.target.value);
+                      handleTaskStyleChange('borderColor', '#ff9800');
+                      handleTaskStyleChange('borderWidth', 3);
                     } else {
-                      fill = '#f8f8fa'; color = '#222222';
+                      handleTaskStyleChange('importantLevel', e.target.value);
+                      handleTaskStyleChange('borderColor', defaultTaskStyle.borderColor);
+                      handleTaskStyleChange('borderWidth', defaultTaskStyle.borderWidth);
                     }
-                    handleTaskStyleChange('importantLevel', e.target.value);
-                    handleTaskStyleChange('fillColor', fill);
-                    handleTaskStyleChange('color', color);
                   }}
                   style={{
                     flex: 1,

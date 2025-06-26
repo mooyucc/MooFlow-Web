@@ -587,54 +587,47 @@ const MainCanvas = () => {
     const rootTask = tasks.length > 0 ? tasks[0] : null;
     if (!rootTask) return [];
 
-    const hiddenFineGrainedTaskIds = new Set();
+    const hiddenTaskIds = new Set();
     const collapsedTasks = tasks.filter(t => t.collapsed);
 
-    // 递归函数：收集从一个起点开始的所有下游细分任务
-    function collectAllSubsequentFineGrainedTasks(startTaskId, allTasks, hiddenSet) {
-      const startTask = allTasks.find(t => t.id === startTaskId);
-      if (!startTask) return;
-
-      (startTask.links || []).forEach(link => {
-        const targetTask = allTasks.find(t => t.id === link.toId);
-        // 检查是否为同级细分任务
-        if (targetTask && targetTask.parentId === startTask.parentId) {
-          if (!hiddenSet.has(targetTask.id)) {
-            hiddenSet.add(targetTask.id);
-            // 递归查找下游的细分任务
-            collectAllSubsequentFineGrainedTasks(targetTask.id, allTasks, hiddenSet);
+    // 递归收集所有后代（子任务和细分任务）
+    function collectAllDescendants(taskId, allTasks, hiddenSet) {
+      // 子任务分支
+      allTasks
+        .filter(t => t.parentId === taskId)
+        .forEach(child => {
+          if (!hiddenSet.has(child.id)) {
+            hiddenSet.add(child.id);
+            collectAllDescendants(child.id, allTasks, hiddenSet);
           }
-        }
-      });
+        });
+      // 细分任务链
+      const task = allTasks.find(t => t.id === taskId);
+      if (task) {
+        (task.links || []).forEach(link => {
+          const targetTask = allTasks.find(t => t.id === link.toId);
+          if (targetTask && targetTask.parentId === task.parentId) {
+            if (!hiddenSet.has(targetTask.id)) {
+              hiddenSet.add(targetTask.id);
+              collectAllDescendants(targetTask.id, allTasks, hiddenSet);
+            }
+          }
+        });
+      }
     }
 
     for (const collapsedTask of collapsedTasks) {
-      // 子任务的折叠只隐藏其下的所有细分任务链
-      const isSubTask = collapsedTask.parentId && collapsedTask.parentId !== rootTask.id;
-      if (isSubTask) {
-        collectAllSubsequentFineGrainedTasks(collapsedTask.id, tasks, hiddenFineGrainedTaskIds);
-      }
+      collectAllDescendants(collapsedTask.id, tasks, hiddenTaskIds);
     }
     
     // 递归获取可见任务
     function getVisible(currentParentId) {
       let result = [];
       tasks
-        .filter(t => t.parentId === currentParentId && !hiddenFineGrainedTaskIds.has(t.id))
+        .filter(t => t.parentId === currentParentId && !hiddenTaskIds.has(t.id))
         .forEach(task => {
           result.push(task);
-          
-          const isSubTask = task.parentId && task.parentId !== rootTask.id;
-          
-          // 如果任务是折叠的
-          if (task.collapsed) {
-            // 如果是子任务，它的子任务分支依然要显示
-            if (isSubTask) {
-               result = result.concat(getVisible(task.id));
-            }
-            // 如果是主线任务或根任务，则不显示其任何子节点
-          } else {
-            // 如果任务没被折叠，正常显示其子节点
+          if (!task.collapsed) {
             result = result.concat(getVisible(task.id));
           }
         });
@@ -686,16 +679,25 @@ const MainCanvas = () => {
     });
   };
 
+  // 辅助函数：判断任务类型
+  function getTaskType(task, tasks) {
+    if (!task.parentId) return 'main'; // 主任务
+    const parent = tasks.find(t => t.id === task.parentId);
+    if (parent && !parent.parentId) return 'child'; // 子任务
+    if (parent && parent.parentId) return 'fine'; // 细分任务
+    return 'unknown';
+  }
+
   // 工具栏：添加子任务
   const handleAddChildTask = () => {
     if (!selectedTaskId) return;
     const task = tasks.find(t => t.id === selectedTaskId);
     if (!task) return;
 
-    // 判断是否为主线任务
-    const isMainlineTask = !task.parentId;
-    if (isMainlineTask) {
-      // 主线任务下不变，仍为子任务
+    // 判断当前选中任务类型
+    const taskType = getTaskType(task, tasks);
+    if (taskType === 'main') {
+      // 主任务下添加子任务
       let yOffset = 180; // 默认向下（偶数位）
       let fromAnchor = { x: 90, y: 72 }; // from bottom-center
       let toAnchor = { x: 90, y: 0 };   // to top-center
@@ -709,21 +711,34 @@ const MainCanvas = () => {
         fromAnchor = { x: 90, y: 0 }; // from top-center
         toAnchor = { x: 90, y: 72 };   // to bottom-center
       }
-      const proposedPosition = { x: task.position.x, y: task.position.y + yOffset };
+
+      // 找到该主线任务下所有子任务
+      const children = tasks.filter(t => t.parentId === task.id);
+      let newY;
+      if (children.length === 0) {
+        newY = task.position.y + yOffset;
+      } else if (yOffset > 0) {
+        // 下方，找最大y
+        newY = Math.max(...children.map(c => c.position.y)) + yOffset;
+      } else {
+        // 上方，找最小y
+        newY = Math.min(...children.map(c => c.position.y)) + yOffset;
+      }
+      const proposedPosition = { x: task.position.x, y: newY };
       const finalPosition = findAvailablePosition(proposedPosition, tasks);
       const newTask = {
         id: Date.now(),
         title: '子任务',
         position: finalPosition,
         links: [],
-        parentId: task.id,
+        parentId: task.id, // 主任务id
         level: (task.level || 0) + 1,
         date: task.date ? task.date : undefined,
       };
       useTaskStore.getState().addTask(newTask);
       useTaskStore.getState().addLink(task.id, newTask.id, fromAnchor, toAnchor);
-    } else {
-      // 子任务下，回车/Tab都新建细分任务
+    } else if (taskType === 'child') {
+      // 子任务下添加细分任务
       const proposedPosition = { x: task.position.x + 300, y: task.position.y };
       const finalPosition = findAvailablePosition(proposedPosition, tasks);
       const newTask = {
@@ -731,7 +746,21 @@ const MainCanvas = () => {
         title: '细分任务',
         position: finalPosition,
         links: [],
-        parentId: task.parentId,
+        parentId: task.id, // 子任务id
+        level: (task.level || 0) + 1,
+      };
+      useTaskStore.getState().addTask(newTask);
+      useTaskStore.getState().addLink(task.id, newTask.id, { x: 180, y: 36 }, { x: 0, y: 36 });
+    } else if (taskType === 'fine') {
+      // 细分任务下继续添加细分任务
+      const proposedPosition = { x: task.position.x + 300, y: task.position.y };
+      const finalPosition = findAvailablePosition(proposedPosition, tasks);
+      const newTask = {
+        id: Date.now(),
+        title: '细分任务',
+        position: finalPosition,
+        links: [],
+        parentId: task.parentId, // 保持同级
         level: task.level,
       };
       useTaskStore.getState().addTask(newTask);
@@ -743,32 +772,37 @@ const MainCanvas = () => {
     if (!selectedTaskId) return;
     const task = tasks.find(t => t.id === selectedTaskId);
     if (!task) return;
-    // 主线任务是指没有父任务的顶层任务
-    const isMainlineTask = !task.parentId;
+    const taskType = getTaskType(task, tasks);
     let proposedPosition;
-    if (isMainlineTask) {
-      // 找到所有主线任务的最大x坐标
+    if (taskType === 'main') {
+      // 主任务下添加主线任务
       const mainLineTasks = tasks.filter(t => !t.parentId);
       const maxX = mainLineTasks.length > 0 ? Math.max(...mainLineTasks.map(t => t.position.x)) : 0;
       const y = mainLineTasks.length > 0 ? mainLineTasks[0].position.y : 0;
       proposedPosition = { x: maxX + 300, y };
-    } else {
-      // 细分任务逻辑保持不变
+      const finalPosition = findAvailablePosition(proposedPosition, tasks);
+      const newTask = {
+        id: Date.now(),
+        title: '主线任务',
+        position: finalPosition,
+        links: [],
+        parentId: null,
+        level: 0,
+      };
+      useTaskStore.getState().addTask(newTask);
+    } else if (taskType === 'child' || taskType === 'fine') {
+      // 子任务或细分任务下添加同级细分任务
       proposedPosition = { x: task.position.x + 300, y: task.position.y };
-    }
-    // 寻找可用位置
-    const finalPosition = findAvailablePosition(proposedPosition, tasks);
-    const newTask = {
-      id: Date.now(),
-      title: isMainlineTask ? '主线任务' : '细分任务',
-      position: finalPosition,
-      links: [],
-      parentId: task.parentId,
-      level: task.level,
-    };
-    useTaskStore.getState().addTask(newTask);
-    // 自动为非主线任务（细分任务）添加连线
-    if (!isMainlineTask) {
+      const finalPosition = findAvailablePosition(proposedPosition, tasks);
+      const newTask = {
+        id: Date.now(),
+        title: '细分任务',
+        position: finalPosition,
+        links: [],
+        parentId: task.parentId, // 保持同级
+        level: task.level,
+      };
+      useTaskStore.getState().addTask(newTask);
       useTaskStore.getState().addLink(task.id, newTask.id, { x: 180, y: 36 }, { x: 0, y: 36 });
     }
   };
@@ -1166,7 +1200,7 @@ const MainCanvas = () => {
           
           return lines;
         })()}
-        {/* 其它所有连线（父子任务等手动创建的连线） */}
+        {/* 其它所有连线（子任务连线、细分任务连线、自定义连线） */}
         {tasks.flatMap((task) =>
           Array.isArray(task.links) ? task.links.map((link) => {
             const target = tasks.find((t) => t.id === link.toId);
@@ -1179,6 +1213,20 @@ const MainCanvas = () => {
             }
 
             if (!visibleTaskIds.has(task.id) || !visibleTaskIds.has(link.toId)) return null;
+
+            // --- 使用 getTaskType 判断连线类型 ---
+            const fromType = getTaskType(fromTask, tasks);
+            const toType = getTaskType(target, tasks);
+            let lineColor = link.color || '#86868b';
+            // 只有主任务->子任务、子任务->子任务为橙色，其余全部灰色
+            if (
+              (fromType === 'main' && toType === 'child' && target.parentId === fromTask.id) ||
+              (fromType === 'child' && toType === 'child' && fromTask.parentId === target.parentId)
+            ) {
+              lineColor = '#ff9800';
+            } else {
+              lineColor = '#86868b';
+            }
 
             return target ? (
               <LinkLine
@@ -1199,7 +1247,7 @@ const MainCanvas = () => {
                 lineStyle={link.lineStyle || 'solid'}
                 arrowStyle={link.arrowStyle || 'normal'}
                 lineWidth={link.lineWidth || 2}
-                color={link.color || '#86868b'}
+                color={lineColor}
               />
             ) : null;
           }) : []
@@ -1278,6 +1326,7 @@ const MainCanvas = () => {
             data-task-id={task.id}
             isFirst={task.id === (tasks[0]?.id)}
             onEditingChange={setIsEditing}
+            transform={transform}
           />
         ))}
         {/* 时间标尺（底部固定，随画布缩放/平移） */}
