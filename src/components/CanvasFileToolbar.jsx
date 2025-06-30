@@ -3,6 +3,7 @@ import { useTaskStore, defaultTaskStyle } from '../store/taskStore';
 import './CanvasToolbar.css';
 import FormatSidebar from './FormatSidebar';
 import Papa from 'papaparse';
+import app from '../cloudbase';
 
 // iOS风格图标
 const ExportIcon = () => (
@@ -480,6 +481,18 @@ const CanvasFileToolbar = ({
 
   return (
     <div className="canvas-toolbar minimal filebar" style={{ display: 'flex', alignItems: 'center' }}>
+      {/* 登出按钮 */}
+      <button className="toolbar-btn" title="登出" onClick={async () => {
+        await app.auth().signOut();
+        window.location.reload();
+      }} style={{ marginRight: 8 }}>
+        {/* 退出SVG图标 */}
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M16 17l5-5-5-5" />
+          <path d="M21 12H9" />
+          <path d="M13 5v-2a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-2" />
+        </svg>
+      </button>
       {/* Home按钮 */}
       <button className="toolbar-btn" title="最近打开" onClick={handleShowRecent} style={{ marginRight: 8 }}>
         {/* 带门的极简风格房子SVG */}

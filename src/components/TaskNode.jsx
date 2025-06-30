@@ -162,6 +162,13 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
     borderStyle = defaultTaskStyle.borderStyle,
   } = task;
 
+  // 阴影颜色：重要/次要任务与边框同色，一般任务为默认色
+  const shadowColor =
+    task.importantLevel === 'important' ? '#e11d48' :
+    task.importantLevel === 'secondary' ? '#ff9800' :
+    '#222';
+  const shadowOpacity = (task.importantLevel === 'important' || task.importantLevel === 'secondary') ? 0.28 : 0.18;
+
   useEffect(() => {
     setLocked(task.lock || false);
     setDate(task.date ? new Date(task.date) : null);
@@ -445,8 +452,8 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
   return (
     <>
       <defs>
-        <filter id="cardShadow" x="-40%" y="-40%" width="180%" height="180%">
-          <feDropShadow dx="0" dy="4" stdDeviation="8" floodColor="#222" floodOpacity="0.18"/>
+        <filter id={`cardShadow-${task.id}`} x="-40%" y="-40%" width="180%" height="180%">
+          <feDropShadow dx="0" dy="4" stdDeviation="8" floodColor={shadowColor} floodOpacity={shadowOpacity}/>
         </filter>
       </defs>
       <g
@@ -465,13 +472,13 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
           strokeWidth: borderWidth,
           style: {transition: 'all 0.2s cubic-bezier(.4,0,.2,1)'},
           strokeDasharray: getShapeStrokeDasharray(borderStyle),
-          filter: !editing ? 'url(#cardShadow)' : undefined
+          filter: !editing ? `url(#cardShadow-${task.id})` : undefined
         })}
         {borderStyle === 'none' && renderShape(shape, {
           fill: fillColor,
           stroke: 'none',
           strokeWidth: 0,
-          filter: !editing ? 'url(#cardShadow)' : undefined
+          filter: !editing ? `url(#cardShadow-${task.id})` : undefined
         })}
         {/* 工具栏：仅选中时显示 */}
         {selected && !editing && (

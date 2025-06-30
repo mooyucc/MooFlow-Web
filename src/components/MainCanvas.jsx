@@ -112,7 +112,7 @@ const MainCanvas = () => {
     lineWidth: '默认',
     rainbowBranch: true,
     showGrid: true,
-    gridSize: 40,
+    gridSize: 20,
   });
 
   const [isEditing, setIsEditing] = useState(false);
@@ -694,8 +694,32 @@ const MainCanvas = () => {
     const task = tasks.find(t => t.id === selectedTaskId);
     if (!task) return;
 
-    // 判断当前选中任务类型
+    // 如果是中心任务，直接新建主线任务
+    const isCenterTask = tasks.length > 0 && task.id === tasks[0].id;
+    if (isCenterTask) {
+      handleAddSiblingTask();
+      return;
+    }
+
+    // 新增：如果是子任务，直接新建细分任务
     const taskType = getTaskType(task, tasks);
+    if (taskType === 'child') {
+      const proposedPosition = { x: task.position.x + 300, y: task.position.y };
+      const finalPosition = findAvailablePosition(proposedPosition, tasks);
+      const newTask = {
+        id: Date.now(),
+        title: '细分任务',
+        position: finalPosition,
+        links: [],
+        parentId: task.id, // 子任务id
+        level: (task.level || 0) + 1,
+      };
+      useTaskStore.getState().addTask(newTask);
+      useTaskStore.getState().addLink(task.id, newTask.id, { x: 180, y: 36 }, { x: 0, y: 36 });
+      return;
+    }
+
+    // 判断当前选中任务类型
     if (taskType === 'main') {
       // 主任务下添加子任务
       let yOffset = 180; // 默认向下（偶数位）
@@ -737,20 +761,6 @@ const MainCanvas = () => {
       };
       useTaskStore.getState().addTask(newTask);
       useTaskStore.getState().addLink(task.id, newTask.id, fromAnchor, toAnchor);
-    } else if (taskType === 'child') {
-      // 子任务下添加细分任务
-      const proposedPosition = { x: task.position.x + 300, y: task.position.y };
-      const finalPosition = findAvailablePosition(proposedPosition, tasks);
-      const newTask = {
-        id: Date.now(),
-        title: '细分任务',
-        position: finalPosition,
-        links: [],
-        parentId: task.id, // 子任务id
-        level: (task.level || 0) + 1,
-      };
-      useTaskStore.getState().addTask(newTask);
-      useTaskStore.getState().addLink(task.id, newTask.id, { x: 180, y: 36 }, { x: 0, y: 36 });
     } else if (taskType === 'fine') {
       // 细分任务下继续添加细分任务
       const proposedPosition = { x: task.position.x + 300, y: task.position.y };
@@ -767,12 +777,31 @@ const MainCanvas = () => {
       useTaskStore.getState().addLink(task.id, newTask.id, { x: 180, y: 36 }, { x: 0, y: 36 });
     }
   };
+
   // 工具栏：添加细分任务
   const handleAddSiblingTask = () => {
     if (!selectedTaskId) return;
     const task = tasks.find(t => t.id === selectedTaskId);
     if (!task) return;
     const taskType = getTaskType(task, tasks);
+
+    // 新增：如果是子任务，直接新建细分任务
+    if (taskType === 'child') {
+      const proposedPosition = { x: task.position.x + 300, y: task.position.y };
+      const finalPosition = findAvailablePosition(proposedPosition, tasks);
+      const newTask = {
+        id: Date.now(),
+        title: '细分任务',
+        position: finalPosition,
+        links: [],
+        parentId: task.id, // 子任务id
+        level: (task.level || 0) + 1,
+      };
+      useTaskStore.getState().addTask(newTask);
+      useTaskStore.getState().addLink(task.id, newTask.id, { x: 180, y: 36 }, { x: 0, y: 36 });
+      return;
+    }
+
     let proposedPosition;
     if (taskType === 'main') {
       // 主任务下添加主线任务

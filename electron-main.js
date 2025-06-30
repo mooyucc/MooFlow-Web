@@ -16,7 +16,13 @@ function createWindow() {
   });
 
   // 加载你的前端页面（开发环境用 Vite，生产环境请替换为 build 后的 index.html 路径）
-  mainWindow.loadURL('http://localhost:5173');
+  if (process.env.NODE_ENV === 'development') {
+    // 开发环境：加载 Vite 本地服务器
+    mainWindow.loadURL('http://localhost:5173');
+  } else {
+    // 生产环境：加载打包后的 index.html
+    mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html'));
+  }
 
   // 监听窗口关闭，释放引用
   mainWindow.on('closed', () => {
