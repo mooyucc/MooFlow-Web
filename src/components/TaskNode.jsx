@@ -2,10 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useTaskStore, defaultTaskStyle } from '../store/taskStore';
 import ReactDatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-import { zhCN } from 'date-fns/locale';
 import { format } from 'date-fns';
 import DatePickerPortal from './DatePickerPortal';
 import CollapseButton from './CollapseButton';
+import { DatePicker, ConfigProvider, Popover, Calendar } from 'antd';
+import zhCN from 'antd/locale/zh_CN';
+import dayjs from 'dayjs';
+import 'dayjs/locale/zh-cn';
+import 'antd/dist/reset.css';
 
 // 极简SVG图标，全部单色 currentColor，与主工具栏一致
 const LockIcon = ({ locked }) => locked ? (
@@ -116,8 +120,8 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(task.title);
   const [locked, setLocked] = useState(task.lock || false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [date, setDate] = useState(task.date ? new Date(task.date) : null);
+  const [date, setDate] = useState(task.date ? dayjs(task.date) : null);
+  const [open, setOpen] = useState(false);
   const timeTextRef = useRef();
   const [anchorRect, setAnchorRect] = useState(null);
   const [dragStartPos, setDragStartPos] = useState(null);
@@ -171,7 +175,7 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
 
   useEffect(() => {
     setLocked(task.lock || false);
-    setDate(task.date ? new Date(task.date) : null);
+    setDate(task.date ? dayjs(task.date) : null);
   }, [task.lock, task.date]);
 
   useEffect(() => {
@@ -375,34 +379,6 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
     e.stopPropagation();
     updateTask(task.id, { lock: !locked });
     setLocked(!locked);
-  };
-
-  // 日期变更
-  const handleDateChange = (newDate) => {
-    setDate(newDate);
-    setShowDatePicker(false);
-    updateTask(task.id, { date: newDate, autoDate: false });
-    // 新增：如果有下游卡片且它们autoDate为true或未定义，则级联推算
-    const allTasks = useTaskStore.getState().tasks;
-    const outLinks = task.links || [];
-    for (const link of outLinks) {
-      const toTask = allTasks.find(t => t.id === link.toId);
-      if (toTask && (toTask.autoDate === true || toTask.autoDate === undefined)) {
-        // 触发MainCanvas的cascadeUpdateDates
-        if (window.cascadeUpdateDates) window.cascadeUpdateDates(task.id);
-        break;
-      }
-    }
-  };
-
-  const handleTimeClick = (e) => {
-    e.stopPropagation();
-    if (task.autoDate) return;
-    if (timeTextRef.current) {
-      const rect = timeTextRef.current.getBoundingClientRect();
-      setAnchorRect(rect);
-      setShowDatePicker(true);
-    }
   };
 
   // 动态计算第一个子任务的实际方位，决定折叠/展开按钮和连线锚点
@@ -613,44 +589,67 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
                   justifyContent: 'center',
                 }}
               >
-                <div
-                  style={{
-                    fontSize: 10,
-                    color: '#555',
-                    background: 'rgba(243, 243, 246, 0.8)',
-                    borderRadius: 6,
-                    padding: '2px 8px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    cursor: 'pointer',
-                    userSelect: 'none',
-                    marginTop: 0,
-                    maxWidth: '100%',
-                    whiteSpace: 'nowrap',
-                  }}
-                  onClick={handleTimeClick}
-                  ref={timeTextRef}
-                >
-                  <span style={{ display: 'flex', alignItems: 'center', marginRight: 4 }}>
-                    <CalendarIcon size={12} />
-                  </span>
-                  {date ? format(date, 'yyyy年M月d日') : '设置日期'}
-                </div>
+                <ConfigProvider locale={zhCN}>
+                  <div
+                    style={{
+                      fontSize: 10,
+                      color: '#555',
+                      background: 'rgba(243, 243, 246, 0.8)',
+                      borderRadius: 6,
+                      padding: '2px 8px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      cursor: task.autoDate ? 'not-allowed' : 'pointer',
+                      userSelect: 'none',
+                      marginTop: 0,
+                      maxWidth: '100%',
+                      whiteSpace: 'nowrap',
+                      border: 'none',
+                      height: 24,
+                    }}
+                    onClick={() => {
+                      if (!task.autoDate) setOpen(true);
+                    }}
+                  >
+                    <span style={{ display: 'flex', alignItems: 'center', marginRight: 4 }}>
+                      <CalendarIcon size={12} />
+                    </span>
+                    {date ? date.format('YYYY年M月D日') : '设置日期'}
+                  </div>
+                  <DatePicker
+                    value={date}
+                    onChange={value => {
+                      setDate(value);
+                      updateTask(task.id, { date: value ? value.toDate() : null, autoDate: false });
+                    }}
+                    onOk={value => {
+                      setDate(value);
+                      updateTask(task.id, { date: value ? value.toDate() : null, autoDate: false });
+                      setOpen(false);
+                    }}
+                    open={task.autoDate ? false : open}
+                    onOpenChange={task.autoDate ? undefined : setOpen}
+                    showToday
+                    showTime={false}
+                    showOk
+                    format="YYYY年M月D日"
+                    inputReadOnly
+                    getPopupContainer={() => document.body}
+                    suffixIcon={null}
+                    allowClear={false}
+                    disabled={task.autoDate}
+                    style={{
+                      position: 'absolute',
+                      opacity: 0,
+                      width: 0,
+                      height: 0,
+                      pointerEvents: 'none',
+                    }}
+                  />
+                </ConfigProvider>
               </div>
             </foreignObject>
           </>
-        )}
-        {showDatePicker && anchorRect && (
-          <DatePickerPortal anchorRect={anchorRect}>
-            <ReactDatePicker
-              selected={date}
-              onChange={handleDateChange}
-              onClickOutside={() => setShowDatePicker(false)}
-              locale={zhCN}
-              dateFormat="yyyy年M月d日"
-              inline
-            />
-          </DatePickerPortal>
         )}
         {/* 悬停桥梁，覆盖卡片下方到按钮gap的区域，避免鼠标移到按钮时按钮消失，但不覆盖按钮本身 */}
         {showCollapseButton && (

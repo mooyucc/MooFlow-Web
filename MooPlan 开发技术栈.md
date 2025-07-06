@@ -1,4 +1,4 @@
-# MooPlan 开发技术栈
+# MooFlow 开发技术栈
 
 # Phase 1 开发手册 (SVG/HTML 技术栈)
 

@@ -105,7 +105,7 @@ export default function Login({ onLogin }) {
         <div style={cardStyle}>
           <h2 style={{ fontWeight: 700, fontSize: 28, marginBottom: 8 }}>快速注册或登录</h2>
           <p style={{ color: "#666", marginBottom: 20, fontSize: 14 }}>
-            邮箱或其他方式登录MooPlan（免费使用）！
+            邮箱或其他方式登录MooFlow（免费使用）！
           </p>
           <button style={{...btnStyle, fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', paddingLeft: 0}} disabled>
             <span style={{width: 28, display: 'flex', justifyContent: 'center', alignItems: 'center'}}><AiOutlineWechat style={{fontSize: 18}} /></span>
@@ -125,27 +125,25 @@ export default function Login({ onLogin }) {
           </button>
           <div style={{margin: "14px 0", fontSize: 12, color: "#888"}}>
             <input type="checkbox" checked readOnly style={{marginRight: 6}} />
-            我已阅读并同意MooPlan的
+            我已阅读并同意MooFlow的
             <a href="#" style={{color: "#316acb"}}>使用条款</a>、
             <a href="#" style={{color: "#316acb"}}>隐私政策</a>
           </div>
-          {import.meta.env.DEV && (
-            <button
-              onClick={() => onLogin && onLogin()}
-              style={{
-                width: "100%",
-                marginTop: 8,
-                background: "#aaa",
-                color: "#fff",
-                border: "none",
-                padding: "8px 0",
-                borderRadius: 4,
-                fontWeight: 500
-              }}
-            >
-              开发测试一键登录
-            </button>
-          )}
+          <button
+            onClick={() => onLogin && onLogin()}
+            style={{
+              width: "100%",
+              marginTop: 8,
+              background: "#aaa",
+              color: "#fff",
+              border: "none",
+              padding: "8px 0",
+              borderRadius: 4,
+              fontWeight: 500
+            }}
+          >
+            开发测试一键登录
+          </button>
         </div>
       </div>
     );
@@ -235,7 +233,20 @@ export default function Login({ onLogin }) {
           )}
           <button
             onClick={() => setMode("main")}
-            style={{ width: "100%", marginTop: 18, background: "#eee", color: "#333", border: "none", padding: "12px 0", borderRadius: 8, fontWeight: 500, fontSize: 15 }}
+            style={{
+              width: "100%",
+              marginTop: 18,
+              background: "#eee",
+              color: "#333",
+              border: "none",
+              borderRadius: 8,
+              fontWeight: 600,
+              fontSize: 16,
+              textAlign: "center",
+              height: 44,
+              lineHeight: "44px",
+              padding: 0
+            }}
           >
             返回
           </button>
@@ -313,7 +324,20 @@ export default function Login({ onLogin }) {
           )}
           <button
             onClick={() => setMode("main")}
-            style={{ width: "100%", marginTop: 18, background: "#eee", color: "#333", border: "none", padding: "12px 0", borderRadius: 8, fontWeight: 500, fontSize: 15 }}
+            style={{
+              width: "100%",
+              marginTop: 18,
+              background: "#eee",
+              color: "#333",
+              border: "none",
+              borderRadius: 8,
+              fontWeight: 600,
+              fontSize: 16,
+              textAlign: "center",
+              height: 44,
+              lineHeight: "44px",
+              padding: 0
+            }}
           >
             返回
           </button>
@@ -391,7 +415,20 @@ export default function Login({ onLogin }) {
           )}
           <button
             onClick={() => setMode("main")}
-            style={{ width: "100%", marginTop: 18, background: "#eee", color: "#333", border: "none", padding: "12px 0", borderRadius: 8, fontWeight: 500, fontSize: 15 }}
+            style={{
+              width: "100%",
+              marginTop: 18,
+              background: "#eee",
+              color: "#333",
+              border: "none",
+              borderRadius: 8,
+              fontWeight: 600,
+              fontSize: 16,
+              textAlign: "center",
+              height: 44,
+              lineHeight: "44px",
+              padding: 0
+            }}
           >
             返回
           </button>

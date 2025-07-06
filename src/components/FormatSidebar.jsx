@@ -532,6 +532,50 @@ const FormatSidebar = ({
                 </PopupPortal>
               )}
             </div>
+            {/* 主线任务方向卡片 */}
+            <div style={{
+              background: 'var(--card-bg)',
+              borderRadius: 12,
+              boxShadow: '0 1px 4px #0000000d',
+              padding: 12,
+              marginBottom: 10,
+              border: '0px solid var(--sidebar-border)',
+              position: 'relative',
+            }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--sidebar-text)', marginBottom: 10 }}>主线任务方向</div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  style={{
+                    flex: 1,
+                    padding: '6px 0',
+                    borderRadius: 8,
+                    border: '1.5px solid var(--sidebar-border)',
+                    background: (localProps.mainDirection || 'horizontal') === 'horizontal' ? '#316acb' : 'var(--sidebar-bg)',
+                    color: (localProps.mainDirection || 'horizontal') === 'horizontal' ? '#fff' : 'var(--sidebar-text)',
+                    fontWeight: (localProps.mainDirection || 'horizontal') === 'horizontal' ? 700 : 500,
+                    cursor: 'pointer',
+                    fontSize: 15,
+                    transition: 'background 0.2s',
+                  }}
+                  onClick={() => handleChange('mainDirection', 'horizontal')}
+                >水平</button>
+                <button
+                  style={{
+                    flex: 1,
+                    padding: '6px 0',
+                    borderRadius: 8,
+                    border: '1.5px solid var(--sidebar-border)',
+                    background: localProps.mainDirection === 'vertical' ? '#316acb' : 'var(--sidebar-bg)',
+                    color: localProps.mainDirection === 'vertical' ? '#fff' : 'var(--sidebar-text)',
+                    fontWeight: localProps.mainDirection === 'vertical' ? 700 : 500,
+                    cursor: 'pointer',
+                    fontSize: 15,
+                    transition: 'background 0.2s',
+                  }}
+                  onClick={() => handleChange('mainDirection', 'vertical')}
+                >垂直</button>
+              </div>
+            </div>
             {/* 卡片1：背景颜色 */}
             <div style={{
               background: 'var(--card-bg)',

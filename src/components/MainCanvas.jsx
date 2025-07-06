@@ -92,15 +92,69 @@ const MainCanvas = () => {
   const firstTask = tasks[0];
   const startDate = firstTask && firstTask.date ? new Date(firstTask.date) : new Date();
 
-  // 生成从过去1年到未来5年的刻度
-  const months = [];
-  for (let i = -12; i < 60; i++) { // -12表示过去1年，+60表示未来5年
-    const d = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
-    months.push({
-      label: `${d.getFullYear()}年${d.getMonth() + 1}月`,
-      date: d,
-      x: firstTask ? firstTask.position.x + i * 300 : i * 300
-    });
+  // 新增：时间颗粒度
+  const [timeScale, setTimeScale] = useState('month'); // 'month' | 'week' | 'day'
+
+  // 生成时间刻度
+  let ticks = [];
+  const scale = 300; // 固定刻度宽度
+  if (firstTask) {
+    if (timeScale === 'month') {
+      for (let i = -12; i < 60; i++) {
+        const d = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
+        ticks.push({
+          label: `${d.getFullYear()}年${d.getMonth() + 1}月`,
+          date: d,
+          x: firstTask.position.x + i * scale
+        });
+      }
+    } else if (timeScale === 'week') {
+      // 找到 startDate 所在周的星期一
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      let dayOfWeek = start.getDay(); // 0=周日，1=周一...
+      if (dayOfWeek === 0) dayOfWeek = 7; // 把周日当作7
+      start.setDate(start.getDate() - (dayOfWeek - 1)); // 回退到最近的周一
+      for (let i = -52; i < 260; i++) {
+        const d = new Date(start);
+        d.setDate(d.getDate() + i * 7);
+        const weekNum = getWeekNumber(d);
+        ticks.push({
+          label: `${d.getFullYear()}年第${weekNum}周`,
+          date: d,
+          x: firstTask.position.x + i * scale
+        });
+      }
+    } else if (timeScale === 'day') {
+      for (let i = -365; i < 365 * 5; i++) {
+        const d = new Date(startDate);
+        d.setDate(d.getDate() + i);
+        ticks.push({
+          label: `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`,
+          date: d,
+          x: firstTask.position.x + i * scale
+        });
+      }
+    }
+  }
+
+  function getWeekNumber(d) {
+    // 以周一为一周的第一天，返回本年第几周
+    const date = new Date(d.getTime());
+    date.setHours(0, 0, 0, 0);
+    // 找到本年第一天
+    const yearStart = new Date(date.getFullYear(), 0, 1);
+    // 找到本年第一天的星期（0=周日，1=周一...）
+    let yearStartDay = yearStart.getDay();
+    if (yearStartDay === 0) yearStartDay = 7; // 把周日当作7
+    // 找到本年第一天的第一个周一
+    const firstMonday = new Date(yearStart);
+    if (yearStartDay !== 1) {
+      firstMonday.setDate(yearStart.getDate() + (8 - yearStartDay));
+    }
+    // 计算当前日期与第一个周一的周数差
+    const diff = Math.floor((date - firstMonday) / (7 * 24 * 3600 * 1000)) + 1;
+    return diff > 0 ? diff : 1;
   }
 
   // 新增：画布属性状态提升
@@ -113,6 +167,7 @@ const MainCanvas = () => {
     rainbowBranch: true,
     showGrid: true,
     gridSize: 20,
+    mainDirection: 'horizontal', // 新增主线方向，默认水平
   });
 
   const [isEditing, setIsEditing] = useState(false);
@@ -644,36 +699,47 @@ const MainCanvas = () => {
   // 自动对齐有date的任务到时间标尺（提取为函数）
   const handleAlignToTimeline = () => {
     if (!tasks.length) return;
-    const scale = 300; // 刻度间距
     const firstTask = tasks[0];
     const startDate = firstTask && firstTask.date ? new Date(firstTask.date) : new Date();
     const startX = firstTask ? firstTask.position.x : 0;
-    
+
     // 创建一个可变的任务副本，用于在循环中追踪更新后的位置
     const updatableTasks = JSON.parse(JSON.stringify(useTaskStore.getState().tasks));
 
     tasks.forEach(task => {
       if (task.date) {
-        const monthDiff = (new Date(task.date).getFullYear() - startDate.getFullYear()) * 12 + (new Date(task.date).getMonth() - startDate.getMonth());
-        // 注意：这里的月份范围检查可能需要根据实际需求调整
-        if (monthDiff >= 0 && monthDiff <= 60) { // 扩大范围以匹配时间轴
-          const targetX = startX + monthDiff * scale;
-          // 只有X坐标变化时才处理
-          if (task.position.x !== targetX) {
-            const proposedPosition = { x: targetX, y: task.position.y };
-            
-            // 使用新函数寻找不会碰撞的位置
-            const finalPosition = findAvailablePosition(proposedPosition, updatableTasks, task.id);
-
-            // 更新Zustand store中的真实任务位置
-            useTaskStore.getState().updateTask(task.id, { position: finalPosition });
-            
-            // 同步更新我们的可变副本，以便下一次循环检查时使用最新位置
-            const taskInCopy = updatableTasks.find(t => t.id === task.id);
-            if (taskInCopy) {
-              taskInCopy.position = finalPosition;
-            }
-          }
+        const taskDate = new Date(task.date);
+        let diff = 0;
+        if (timeScale === 'month') {
+          diff = (taskDate.getFullYear() - startDate.getFullYear()) * 12 + (taskDate.getMonth() - startDate.getMonth());
+        } else if (timeScale === 'week') {
+          // 以最近的周一为起点
+          const start = new Date(startDate);
+          start.setHours(0,0,0,0);
+          let dayOfWeek = start.getDay();
+          if (dayOfWeek === 0) dayOfWeek = 7;
+          start.setDate(start.getDate() - (dayOfWeek - 1));
+          const t = new Date(taskDate);
+          t.setHours(0,0,0,0);
+          let tDayOfWeek = t.getDay();
+          if (tDayOfWeek === 0) tDayOfWeek = 7;
+          t.setDate(t.getDate() - (tDayOfWeek - 1));
+          diff = Math.floor((t - start) / (7 * 24 * 3600 * 1000));
+        } else if (timeScale === 'day') {
+          // 计算两个日期之间的天数差
+          const start = new Date(startDate);
+          start.setHours(0,0,0,0);
+          const t = new Date(taskDate);
+          t.setHours(0,0,0,0);
+          diff = Math.floor((t - start) / (24 * 3600 * 1000));
+        }
+        const targetX = startX + diff * scale;
+        // 只调整x坐标，y保持不变
+        useTaskStore.getState().updateTask(task.id, { position: { x: targetX, y: task.position.y } });
+        // 同步更新我们的可变副本，以便下一次循环检查时使用最新位置
+        const taskInCopy = updatableTasks.find(t => t.id === task.id);
+        if (taskInCopy) {
+          taskInCopy.position.x = targetX;
         }
       }
     });
@@ -721,46 +787,68 @@ const MainCanvas = () => {
 
     // 判断当前选中任务类型
     if (taskType === 'main') {
-      // 主任务下添加子任务
-      let yOffset = 180; // 默认向下（偶数位）
-      let fromAnchor = { x: 90, y: 72 }; // from bottom-center
-      let toAnchor = { x: 90, y: 0 };   // to top-center
-
-      const mainLineTasks = tasks
-        .filter(t => !t.parentId)
-        .sort((a, b) => a.position.x - b.position.x);
-      const taskIndex = mainLineTasks.findIndex(t => t.id === task.id);
-      if (taskIndex !== -1 && taskIndex % 2 === 0) {
-        yOffset = -180; // 向上
-        fromAnchor = { x: 90, y: 0 }; // from top-center
-        toAnchor = { x: 90, y: 72 };   // to bottom-center
-      }
-
-      // 找到该主线任务下所有子任务
-      const children = tasks.filter(t => t.parentId === task.id);
-      let newY;
-      if (children.length === 0) {
-        newY = task.position.y + yOffset;
-      } else if (yOffset > 0) {
-        // 下方，找最大y
-        newY = Math.max(...children.map(c => c.position.y)) + yOffset;
+      if (canvasProps.mainDirection === 'vertical') {
+        // 垂直主线时，子任务始终出现在右侧
+        const children = tasks.filter(t => t.parentId === task.id);
+        let maxX = task.position.x;
+        if (children.length > 0) {
+          maxX = Math.max(...children.map(c => c.position.x), maxX);
+        }
+        const proposedPosition = { x: maxX + 300, y: task.position.y };
+        const finalPosition = findAvailablePosition(proposedPosition, tasks);
+        const newTask = {
+          id: Date.now(),
+          title: '子任务',
+          position: finalPosition,
+          links: [],
+          parentId: task.id,
+          level: (task.level || 0) + 1,
+          date: task.date ? task.date : undefined,
+        };
+        useTaskStore.getState().addTask(newTask);
+        useTaskStore.getState().addLink(task.id, newTask.id, { x: 180, y: 36 }, { x: 0, y: 36 });
       } else {
-        // 上方，找最小y
-        newY = Math.min(...children.map(c => c.position.y)) + yOffset;
+        // 水平主线时，保持原有上下分布逻辑
+        let yOffset = 180; // 默认向下（偶数位）
+        let fromAnchor = { x: 90, y: 72 }; // from bottom-center
+        let toAnchor = { x: 90, y: 0 };   // to top-center
+
+        const mainLineTasks = tasks
+          .filter(t => !t.parentId)
+          .sort((a, b) => a.position.x - b.position.x);
+        const taskIndex = mainLineTasks.findIndex(t => t.id === task.id);
+        if (taskIndex !== -1 && taskIndex % 2 === 0) {
+          yOffset = -180; // 向上
+          fromAnchor = { x: 90, y: 0 }; // from top-center
+          toAnchor = { x: 90, y: 72 };   // to bottom-center
+        }
+
+        // 找到该主线任务下所有子任务
+        const children = tasks.filter(t => t.parentId === task.id);
+        let newY;
+        if (children.length === 0) {
+          newY = task.position.y + yOffset;
+        } else if (yOffset > 0) {
+          // 下方，找最大y
+          newY = Math.max(...children.map(c => c.position.y)) + yOffset;
+        } else {
+          // 上方，找最小y
+          newY = Math.min(...children.map(c => c.position.y)) + yOffset;
+        }
+        const proposedPosition = { x: task.position.x, y: newY };
+        const finalPosition = findAvailablePosition(proposedPosition, tasks);
+        const newTask = {
+          id: Date.now(),
+          title: '子任务',
+          position: finalPosition,
+          links: [],
+          parentId: task.id, // 主任务id
+          level: (task.level || 0) + 1,
+          date: task.date ? task.date : undefined,
+        };
+        useTaskStore.getState().addTask(newTask);
+        useTaskStore.getState().addLink(task.id, newTask.id, fromAnchor, toAnchor);
       }
-      const proposedPosition = { x: task.position.x, y: newY };
-      const finalPosition = findAvailablePosition(proposedPosition, tasks);
-      const newTask = {
-        id: Date.now(),
-        title: '子任务',
-        position: finalPosition,
-        links: [],
-        parentId: task.id, // 主任务id
-        level: (task.level || 0) + 1,
-        date: task.date ? task.date : undefined,
-      };
-      useTaskStore.getState().addTask(newTask);
-      useTaskStore.getState().addLink(task.id, newTask.id, fromAnchor, toAnchor);
     } else if (taskType === 'fine') {
       // 细分任务下继续添加细分任务
       const proposedPosition = { x: task.position.x + 300, y: task.position.y };
@@ -806,9 +894,16 @@ const MainCanvas = () => {
     if (taskType === 'main') {
       // 主任务下添加主线任务
       const mainLineTasks = tasks.filter(t => !t.parentId);
-      const maxX = mainLineTasks.length > 0 ? Math.max(...mainLineTasks.map(t => t.position.x)) : 0;
-      const y = mainLineTasks.length > 0 ? mainLineTasks[0].position.y : 0;
-      proposedPosition = { x: maxX + 300, y };
+      // 根据主线方向决定新主线任务的插入位置
+      if (canvasProps.mainDirection === 'horizontal') {
+        const maxX = mainLineTasks.length > 0 ? Math.max(...mainLineTasks.map(t => t.position.x)) : 0;
+        const y = mainLineTasks.length > 0 ? mainLineTasks[0].position.y : 0;
+        proposedPosition = { x: maxX + 300, y };
+      } else {
+        const maxY = mainLineTasks.length > 0 ? Math.max(...mainLineTasks.map(t => t.position.y)) : 0;
+        const x = mainLineTasks.length > 0 ? mainLineTasks[0].position.x : 0;
+        proposedPosition = { x, y: maxY + 180 };
+      }
       const finalPosition = findAvailablePosition(proposedPosition, tasks);
       const newTask = {
         id: Date.now(),
@@ -950,8 +1045,8 @@ const MainCanvas = () => {
 
   // 挂载到window，便于导出PNG
   useEffect(() => {
-    window.mooPlanSvgRef = svgRef;
-    return () => { if (window.mooPlanSvgRef === svgRef) window.mooPlanSvgRef = null; };
+    window.MooFlowSvgRef = svgRef;
+    return () => { if (window.MooFlowSvgRef === svgRef) window.MooFlowSvgRef = null; };
   }, []);
 
   const handleTouchStart = (e) => {
@@ -1087,6 +1182,9 @@ const MainCanvas = () => {
     // Consider adding a specific "save history" button or debouncing this.
   };
 
+  // 读取主线方向
+  const mainDirection = canvasProps.mainDirection || 'horizontal';
+
   return (
     <div
       className="canvas-container bg-white dark:bg-[#242424]"
@@ -1110,6 +1208,59 @@ const MainCanvas = () => {
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
+      {/* 时间颗粒度切换工具栏（右下角） */}
+      <div style={{
+        position: 'fixed',
+        right: 32,
+        bottom: 32,
+        zIndex: 100,
+        background: 'rgba(255,255,255,0.95)',
+        borderRadius: 12,
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+        padding: '8px 16px',
+        display: 'flex',
+        gap: 8,
+        alignItems: 'center',
+        border: '1px solid #e0e0e0',
+      }}>
+        <span style={{ fontSize: 14, color: '#666', marginRight: 8 }}>时间颗粒度：</span>
+        <button
+          onClick={() => setTimeScale('month')}
+          style={{
+            padding: '4px 12px',
+            borderRadius: 6,
+            border: 'none',
+            background: timeScale === 'month' ? '#316acb' : '#f0f0f0',
+            color: timeScale === 'month' ? '#fff' : '#333',
+            fontWeight: timeScale === 'month' ? 700 : 400,
+            cursor: 'pointer',
+          }}
+        >月</button>
+        <button
+          onClick={() => setTimeScale('week')}
+          style={{
+            padding: '4px 12px',
+            borderRadius: 6,
+            border: 'none',
+            background: timeScale === 'week' ? '#316acb' : '#f0f0f0',
+            color: timeScale === 'week' ? '#fff' : '#333',
+            fontWeight: timeScale === 'week' ? 700 : 400,
+            cursor: 'pointer',
+          }}
+        >周</button>
+        <button
+          onClick={() => setTimeScale('day')}
+          style={{
+            padding: '4px 12px',
+            borderRadius: 6,
+            border: 'none',
+            background: timeScale === 'day' ? '#316acb' : '#f0f0f0',
+            color: timeScale === 'day' ? '#fff' : '#333',
+            fontWeight: timeScale === 'day' ? 700 : 400,
+            cursor: 'pointer',
+          }}
+        >日</button>
+      </div>
       <CanvasToolbar 
         onStartLink={() => setLinking(true)} 
         onSetScale={handleSetScale}
@@ -1183,8 +1334,12 @@ const MainCanvas = () => {
             const siblings = tasks.filter(t => t.parentId === pid);
             if (siblings.length < 2) return; // 至少需要两个任务才能形成连线
 
-            // 按水平位置（x坐标）排序
-            siblings.sort((a, b) => a.position.x - b.position.x);
+            // 按主线方向排序
+            if (mainDirection === 'horizontal') {
+              siblings.sort((a, b) => a.position.x - b.position.x);
+            } else {
+              siblings.sort((a, b) => a.position.y - b.position.y);
+            }
 
             // 在排序后的同级任务之间创建连线
             for (let i = 0; i < siblings.length - 1; i++) {
@@ -1198,6 +1353,14 @@ const MainCanvas = () => {
               // 从store中找到对应的link，以获取其样式和label
               const linkData = (from.links || []).find(l => l.toId === to.id);
 
+              // 根据主线方向设置锚点
+              const fromAnchor = mainDirection === 'horizontal'
+                ? { x: 180, y: 36 } // 右中
+                : { x: 90, y: 72 }; // 下中
+              const toAnchor = mainDirection === 'horizontal'
+                ? { x: 0, y: 36 }   // 左中
+                : { x: 90, y: 0 };  // 上中
+
               lines.push(
                 <LinkLine
                   key={`chain-${from.id}-${to.id}`}
@@ -1205,12 +1368,12 @@ const MainCanvas = () => {
                   target={to}
                   fromId={from.id}
                   toId={to.id}
-                  fromAnchor={{ x: 180, y: 36 }} // 右中
-                  toAnchor={{ x: 0, y: 36 }}    // 左中
+                  fromAnchor={fromAnchor}
+                  toAnchor={toAnchor}
                   tasks={tasks}
                   svgRef={svgRef}
-                  color={isMainChain ? "#e11d48" : (linkData?.color || "#86868b")} // 主线为红色，细分任务为灰色
-                  isMainChain={isMainChain} // 标记为自动链式连线，使其不可手动编辑
+                  color={isMainChain ? "#e11d48" : (linkData?.color || "#86868b")}
+                  isMainChain={isMainChain}
                   label={linkData?.label || ''}
                   lineStyle={linkData?.lineStyle || 'solid'}
                   arrowStyle={linkData?.arrowStyle || 'normal'}
@@ -1218,7 +1381,7 @@ const MainCanvas = () => {
                   onUpdateLabel={(fromId, toId, label) => {
                     if (!isMainChain) {
                       // 确保连线存在，以便更新或创建label
-                      useTaskStore.getState().addLink(fromId, toId, { x: 180, y: 36 }, { x: 0, y: 36 }, label);
+                      useTaskStore.getState().addLink(fromId, toId, fromAnchor, toAnchor, label);
                       handleUpdateLinkLabel(fromId, toId, label);
                     }
                   }}
@@ -1361,10 +1524,10 @@ const MainCanvas = () => {
         {/* 时间标尺（底部固定，随画布缩放/平移） */}
         <g>
           {/* 标尺主线 */}
-          {months.length > 0 && typeof months[0].x === 'number' && typeof months[months.length - 1].x === 'number' && !isNaN(months[0].x) && !isNaN(months[months.length - 1].x) && (
+          {ticks.length > 0 && typeof ticks[0].x === 'number' && typeof ticks[ticks.length - 1].x === 'number' && !isNaN(ticks[0].x) && !isNaN(ticks[ticks.length - 1].x) && (
             <line
-              x1={months[0].x - 100}
-              x2={months[months.length - 1].x + 100}
+              x1={ticks[0].x - 100}
+              x2={ticks[ticks.length - 1].x + 100}
               y1={window.innerHeight / transform.scale - 60 - transform.offsetY / transform.scale}
               y2={window.innerHeight / transform.scale - 60 - transform.offsetY / transform.scale}
               stroke="#bfc8d6"
@@ -1373,19 +1536,40 @@ const MainCanvas = () => {
           )}
           {/* 今日日期垂线 */}
           {(() => {
-            if (months.length === 0) return null;
+            if (ticks.length === 0) return null;
             // 计算今天在标尺上的x坐标
             const today = new Date();
-            const firstMonth = months[0].date;
-            const firstX = months[0].x;
-            const scale = 300; // 与上方保持一致
-            const monthDiff = (today.getFullYear() - firstMonth.getFullYear()) * 12 + (today.getMonth() - firstMonth.getMonth());
-            // 计算天数在本月内的比例
-            const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-            const dayRatio = (today.getDate() - 1) / daysInMonth;
-            const todayX = firstX + monthDiff * scale + dayRatio * scale;
+            today.setHours(0, 0, 0, 0);
+            const firstTick = ticks[0];
+            const firstX = firstTick.x;
+            const scale = 300; // 固定刻度宽度
+            let todayX = null;
+            if (timeScale === 'month') {
+              const monthDiff = (today.getFullYear() - firstTick.date.getFullYear()) * 12 + (today.getMonth() - firstTick.date.getMonth());
+              // 计算天数在本月内的比例
+              const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+              const dayRatio = (today.getDate() - 1) / daysInMonth;
+              todayX = firstX + monthDiff * scale + dayRatio * scale;
+            } else if (timeScale === 'week') {
+              // 找到firstTick的周一
+              const firstMonday = new Date(firstTick.date);
+              firstMonday.setHours(0,0,0,0);
+              let dayOfWeek = firstMonday.getDay();
+              if (dayOfWeek === 0) dayOfWeek = 7;
+              firstMonday.setDate(firstMonday.getDate() - (dayOfWeek - 1));
+              // 计算今天距离firstMonday的周数
+              const weekDiff = Math.floor((today - firstMonday) / (7 * 24 * 3600 * 1000));
+              // 计算今天在本周内的比例
+              let todayDayOfWeek = today.getDay();
+              if (todayDayOfWeek === 0) todayDayOfWeek = 7;
+              const dayRatio = (todayDayOfWeek - 1) / 7;
+              todayX = firstX + weekDiff * scale + dayRatio * scale;
+            } else if (timeScale === 'day') {
+              const dayDiff = Math.floor((today - firstTick.date) / (24 * 3600 * 1000));
+              todayX = firstX + dayDiff * scale;
+            }
             // 只在范围内渲染
-            if (todayX < months[0].x - 100 || todayX > months[months.length - 1].x + 100) return null;
+            if (todayX === null || todayX < ticks[0].x - 100 || todayX > ticks[ticks.length - 1].x + 100) return null;
             return (
               <>
                 <circle
@@ -1418,7 +1602,7 @@ const MainCanvas = () => {
             );
           })()}
           {/* 月份刻度 */}
-          {months.map((m, idx) => (
+          {ticks.map((m, idx) => (
             <g key={m.label}>
               <line
                 x1={m.x}
@@ -1428,66 +1612,71 @@ const MainCanvas = () => {
                 stroke="#bfc8d6"
                 strokeWidth={1.5}
               />
-              {/* 日期文字（如2025年8月） */}
-              <text
-                x={m.x}
-                y={window.innerHeight / transform.scale - 80 - transform.offsetY / transform.scale}
-                fontSize={15}
-                fontFamily="-apple-system, BlinkMacSystemFont, 'SF Pro', 'Helvetica Neue', Arial, sans-serif"
-                fill="#888"
-                textAnchor="middle"
-                style={{ fontWeight: 400, letterSpacing: 1 }}
-              >
-                {`${m.date.getFullYear()}年${m.date.getMonth() + 1}月`}
-              </text>
-              <text
-                x={m.x}
-                y={window.innerHeight / transform.scale - 30 - transform.offsetY / transform.scale}
-                fontSize={18}
-                fontFamily="-apple-system, BlinkMacSystemFont, 'SF Pro', 'Helvetica Neue', Arial, sans-serif"
-                fill="#222"
-                textAnchor="middle"
-                style={{ fontWeight: 500, letterSpacing: 1 }}
-              >
-                {/* 取消刻度线下方的日期文字，仅保留季度标记 */}
-              </text>
-              {/* 年份分隔线和年份文字 */}
-              {m.date.getMonth() === 0 && (
-                <>
-                  <line
-                    x1={m.x}
-                    x2={m.x}
-                    y1={window.innerHeight / transform.scale - 90 - transform.offsetY / transform.scale}
-                    y2={window.innerHeight / transform.scale - 20 - transform.offsetY / transform.scale}
-                    stroke="#316acb"
-                    strokeWidth={3}
-                    opacity={0.25}
-                  />
-                  <text
-                    x={m.x}
-                    y={window.innerHeight / transform.scale - 100 - transform.offsetY / transform.scale}
-                    fontSize={22}
-                    fontFamily="-apple-system, BlinkMacSystemFont, 'SF Pro', 'Helvetica Neue', Arial, sans-serif"
-                    fill="#316acb"
-                    textAnchor="middle"
-                    style={{ fontWeight: 700, letterSpacing: 2, opacity: 0.7 }}
-                  >
-                    {m.date.getFullYear()}
-                  </text>
-                </>
+              {/* 上部主刻度文字 */}
+              {timeScale === 'month' && (
+                <text
+                  x={m.x}
+                  y={window.innerHeight / transform.scale - 80 - transform.offsetY / transform.scale}
+                  fontSize={15}
+                  fontFamily="-apple-system, BlinkMacSystemFont, 'SF Pro', 'Helvetica Neue', Arial, sans-serif"
+                  fill="#888"
+                  textAnchor="middle"
+                  style={{ fontWeight: 400, letterSpacing: 1 }}
+                >
+                  {`${m.date.getFullYear()}年${m.date.getMonth() + 1}月`}
+                </text>
               )}
-              {/* 季度标记 */}
-              {[0, 3, 6, 9].includes(m.date.getMonth()) && (
+              {timeScale === 'week' && (
+                <text
+                  x={m.x}
+                  y={window.innerHeight / transform.scale - 80 - transform.offsetY / transform.scale}
+                  fontSize={15}
+                  fontFamily="-apple-system, BlinkMacSystemFont, 'SF Pro', 'Helvetica Neue', Arial, sans-serif"
+                  fill="#888"
+                  textAnchor="middle"
+                  style={{ fontWeight: 400, letterSpacing: 1 }}
+                >
+                  {`W${getWeekNumber(m.date)}`}
+                </text>
+              )}
+              {timeScale === 'day' && (
+                <text
+                  x={m.x}
+                  y={window.innerHeight / transform.scale - 80 - transform.offsetY / transform.scale}
+                  fontSize={15}
+                  fontFamily="-apple-system, BlinkMacSystemFont, 'SF Pro', 'Helvetica Neue', Arial, sans-serif"
+                  fill="#888"
+                  textAnchor="middle"
+                  style={{ fontWeight: 400, letterSpacing: 1 }}
+                >
+                  {m.date.getDate()}
+                </text>
+              )}
+              {/* 下部副刻度文字 */}
+              {timeScale === 'week' && getWeekNumber(m.date) === getWeekNumber(new Date(m.date.getFullYear(), m.date.getMonth(), 1)) && (
                 <text
                   x={m.x}
                   y={window.innerHeight / transform.scale - 30 - transform.offsetY / transform.scale}
-                  fontSize={18}
+                  fontSize={15}
                   fontFamily="-apple-system, BlinkMacSystemFont, 'SF Pro', 'Helvetica Neue', Arial, sans-serif"
                   fill="#316acb"
                   textAnchor="middle"
                   style={{ fontWeight: 500, letterSpacing: 1, opacity: 0.7 }}
                 >
-                  {`Q${Math.floor(m.date.getMonth() / 3) + 1}`}
+                  {`${m.date.getFullYear()}年${m.date.getMonth() + 1}月`}
+                </text>
+              )}
+              {timeScale === 'day' && m.date.getDate() === 1 && (
+                <text
+                  x={m.x}
+                  y={window.innerHeight / transform.scale - 30 - transform.offsetY / transform.scale}
+                  fontSize={15}
+                  fontFamily="-apple-system, BlinkMacSystemFont, 'SF Pro', 'Helvetica Neue', Arial, sans-serif"
+                  fill="#316acb"
+                  textAnchor="middle"
+                  style={{ fontWeight: 500, letterSpacing: 1, opacity: 0.7 }}
+                >
+                  {`${m.date.getFullYear()}年${m.date.getMonth() + 1}月`}
                 </text>
               )}
             </g>

@@ -1,11 +1,11 @@
-# MooPlan 智能项目计划平台
+# MooFlow 智能项目计划平台
 
 ## 项目简介
-MooPlan 是一款基于 React + Electron 的智能项目计划与任务管理平台，支持无限画布、结构化任务管理、手绘识别、任务依赖可视化等功能，适用于个人与团队的项目规划与进度管理。
+MooFlow 是一款基于 React + Electron 的智能项目计划与任务管理平台，支持无限画布、结构化任务管理、手绘识别、任务依赖可视化等功能，适用于个人与团队的项目规划与进度管理。
 
 ## 技术栈
 - **前端框架**：React 18
-- **桌面端**：Electron（跨平台桌面应用）
+- **桌面端**：目前是Electron（跨平台桌面应用）
 - **构建工具**：Vite 6
 - **状态管理**：Zustand
 - **样式**：Tailwind CSS（可选，部分组件使用原生 CSS）
@@ -20,7 +20,7 @@ MooPlan 是一款基于 React + Electron 的智能项目计划与任务管理平
 
 ## 主要目录结构与核心组件说明
 ```
-MooPlan/
+MooFlow/
 ├── electron-main.js           # Electron 主进程入口，负责窗口与文件导出
 ├── preload.js                 # Electron 预加载脚本，安全暴露 IPC
 ├── electron.cjs               # Electron 配置或辅助脚本
@@ -55,12 +55,12 @@ MooPlan/
 ├── dmg/                       # Mac DMG 安装包输出目录
 ├── .github/                   # GitHub 工作流等配置
 ├── .gitignore                 # Git 忽略文件配置
-├── MooPlan 开发技术栈.md      # 详细技术方案与开发手册
-├── 「MooPlan」智能项目计划平台.md # 产品文档
+├── MooFlow 开发技术栈.md      # 详细技术方案与开发手册
+├── 「MooFlow」智能项目计划平台.md # 产品文档
 └── README.md                  # 项目说明文档
 ```
 
-> 详细的技术实现与开发手册请参考 `MooPlan 开发技术栈.md`。
+> 详细的技术实现与开发手册请参考 `MooFlow 开发技术栈.md`。
 
 # React + Vite
 
@@ -75,7 +75,7 @@ Currently, two official plugins are available:
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
 
-# MooPlan 打包与部署说明
+# MooFlow 打包与部署说明
 
 ##本地打包部署
 一、打包网页版程序
@@ -114,17 +114,17 @@ git remote -v
 先移除原有的远程仓库，再添加正确的仓库地址：
 ```bash
 git remote remove origin
-git remote add origin https://github.com/mooyucc/MooPlan.git
+git remote add origin https://github.com/mooyucc/MooFlow.git
 ```
 或者
 ```bash
 git remote remove origin
-git remote add origin https://github.com/mooyucc/MooPlanPages.git
+git remote add origin https://github.com/mooyucc/MooFlowPages.git
 ```
-### 将本地代码推送到 GitHub MooPlan仓库
+### 将本地代码推送到 GitHub MooFlow仓库
 1. 打开终端，进入项目目录：
 ```bash
-cd "/Users/kevinx/Documents/Ai Project/MooPlan"
+cd "/Users/kevinx/Documents/Ai Project/MooFlow"
 ```
 2. 初始化 Git（如未初始化）：
 ```bash
@@ -132,7 +132,7 @@ git init
 ```
 3. 添加远程仓库（如未添加）：
 ```bash
-git remote add origin https://github.com/mooyucc/MooPlan.git
+git remote add origin https://github.com/mooyucc/MooFlow.git
 ```
 4. 推送到 GitHub：
 ```bash
@@ -141,10 +141,10 @@ git commit -m "YYMMDD代码更新"
 git push origin main
 ```
 
-### 将本地代码推送到 GitHub MooPlanPages仓库
+### 将本地代码推送到 GitHub MooFlowPages仓库
 1. 打开终端，进入项目目录：
 ```bash
-cd "/Users/kevinx/Documents/Ai Project/MooPlan/dist"
+cd "/Users/kevinx/Documents/Ai Project/MooFlow/dist"
 ```
 2. 初始化 Git（如未初始化）：
 ```bash
@@ -152,7 +152,7 @@ git init
 ```
 3. 添加远程仓库（如未添加）：
 ```bash
-git remote add origin https://github.com/mooyucc/MooPlanPages.git
+git remote add origin https://github.com/mooyucc/MooFlowPages.git
 ```
 4. 推送到 GitHub：
 ```bash
@@ -180,7 +180,7 @@ Color颜色标准
 
 ## 联系方式
 
-- GitHub: [xkevin430/MooPlan](https://github.com/xkevin430/MooPlan)
+- GitHub: [xkevin430/MooFlow](https://github.com/xkevin430/MooFlow)
 - 邮箱: xkevin430@gmail.com
 
 ## 常用脚本
