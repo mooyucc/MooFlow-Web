@@ -1214,50 +1214,53 @@ const MainCanvas = () => {
         right: 32,
         bottom: 32,
         zIndex: 100,
-        background: 'rgba(255,255,255,0.95)',
-        borderRadius: 12,
+        background: 'rgba(255,255,255,0.9)',
+        borderRadius: 20,
         boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-        padding: '8px 16px',
+        padding: '6px 12px',
         display: 'flex',
         gap: 8,
         alignItems: 'center',
         border: '1px solid #e0e0e0',
       }}>
-        <span style={{ fontSize: 14, color: '#666', marginRight: 8 }}>时间颗粒度：</span>
+        <span style={{ fontSize: 12, color: '#666', marginRight: 8 }}>时间颗粒度：</span>
         <button
           onClick={() => setTimeScale('month')}
           style={{
-            padding: '4px 12px',
-            borderRadius: 6,
+            padding: '2px 10px',
+            borderRadius: 15,
             border: 'none',
             background: timeScale === 'month' ? '#316acb' : '#f0f0f0',
             color: timeScale === 'month' ? '#fff' : '#333',
             fontWeight: timeScale === 'month' ? 700 : 400,
             cursor: 'pointer',
+            fontSize: 14,
           }}
         >月</button>
         <button
           onClick={() => setTimeScale('week')}
           style={{
-            padding: '4px 12px',
-            borderRadius: 6,
+            padding: '2px 10px',
+            borderRadius: 15,
             border: 'none',
             background: timeScale === 'week' ? '#316acb' : '#f0f0f0',
             color: timeScale === 'week' ? '#fff' : '#333',
             fontWeight: timeScale === 'week' ? 700 : 400,
             cursor: 'pointer',
+            fontSize: 14,
           }}
         >周</button>
         <button
           onClick={() => setTimeScale('day')}
           style={{
-            padding: '4px 12px',
-            borderRadius: 6,
+            padding: '2px 10px',
+            borderRadius: 15,
             border: 'none',
             background: timeScale === 'day' ? '#316acb' : '#f0f0f0',
             color: timeScale === 'day' ? '#fff' : '#333',
             fontWeight: timeScale === 'day' ? 700 : 400,
             cursor: 'pointer',
+            fontSize: 14,
           }}
         >日</button>
       </div>
@@ -1643,7 +1646,7 @@ const MainCanvas = () => {
                 <text
                   x={m.x}
                   y={window.innerHeight / transform.scale - 80 - transform.offsetY / transform.scale}
-                  fontSize={15}
+                  fontSize={14}
                   fontFamily="-apple-system, BlinkMacSystemFont, 'SF Pro', 'Helvetica Neue', Arial, sans-serif"
                   fill="#888"
                   textAnchor="middle"
@@ -1657,7 +1660,7 @@ const MainCanvas = () => {
                 <text
                   x={m.x}
                   y={window.innerHeight / transform.scale - 30 - transform.offsetY / transform.scale}
-                  fontSize={15}
+                  fontSize={14}
                   fontFamily="-apple-system, BlinkMacSystemFont, 'SF Pro', 'Helvetica Neue', Arial, sans-serif"
                   fill="#316acb"
                   textAnchor="middle"
@@ -1670,7 +1673,7 @@ const MainCanvas = () => {
                 <text
                   x={m.x}
                   y={window.innerHeight / transform.scale - 30 - transform.offsetY / transform.scale}
-                  fontSize={15}
+                  fontSize={14}
                   fontFamily="-apple-system, BlinkMacSystemFont, 'SF Pro', 'Helvetica Neue', Arial, sans-serif"
                   fill="#316acb"
                   textAnchor="middle"

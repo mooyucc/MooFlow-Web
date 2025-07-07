@@ -66,7 +66,8 @@ const defaultFile = () => {
         collapsed: false
       }
     ],
-    paletteIdx: null // 新建文件无配色方案
+    paletteIdx: null, // 新建文件无配色方案
+    mainDirection: 'horizontal', // 新增：每个文件独立主线方向
   };
 };
 
@@ -131,6 +132,7 @@ const CanvasFileToolbar = ({
   // 当前文件配色方案索引
   const activeFile = files.find(f => f.id === activeFileId);
   const paletteIdx = activeFile?.paletteIdx ?? null;
+  const mainDirection = activeFile?.mainDirection ?? 'horizontal';
   // 批量处理卡片样式变更
   const handleTaskStyleChange = (key, value) => {
     if (selectedTaskIds.length > 1) {
@@ -149,6 +151,13 @@ const CanvasFileToolbar = ({
   // 画布属性变更回调
   const handleCanvasChange = (props) => {
     setCanvasProps(props);
+    setFiles(prev => {
+      const updated = prev.map(f =>
+        f.id === activeFileId ? { ...f, mainDirection: props.mainDirection ?? f.mainDirection } : f
+      );
+      localStorage.setItem('moo_files', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   // 配色方案变更回调
@@ -227,6 +236,8 @@ const CanvasFileToolbar = ({
       clearTasks();
       file.tasks.forEach(t => addTask(t));
       setActiveFileId(fileId);
+      // 切换时同步 mainDirection 到 canvasProps
+      setCanvasProps(prev => ({ ...prev, mainDirection: file.mainDirection ?? 'horizontal' }));
       localStorage.setItem('moo_active_file_id', fileId);
       recordRecentFile(file);
     }
@@ -756,7 +767,7 @@ const CanvasFileToolbar = ({
       <FormatSidebar
         visible={showFormatSidebar}
         onClose={() => setShowFormatSidebar(false)}
-        canvasProps={canvasProps}
+        canvasProps={{ ...canvasProps, mainDirection }}
         onCanvasChange={handleCanvasChange}
         selectedTask={selectedTask}
         selectedTasks={selectedTasks}

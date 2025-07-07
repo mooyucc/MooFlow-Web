@@ -12,18 +12,6 @@ import 'dayjs/locale/zh-cn';
 import 'antd/dist/reset.css';
 
 // 极简SVG图标，全部单色 currentColor，与主工具栏一致
-const LockIcon = ({ locked }) => locked ? (
-  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="5" y="11" width="14" height="8" rx="3" />
-    <path d="M8 11V8a4 4 0 1 1 8 0v3" />
-  </svg>
-) : (
-  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="5" y="11" width="14" height="8" rx="3" />
-    <path d="M8 11V8a4 4 0 1 1 8 0v3" />
-    <line x1="12" y1="16" x2="12" y2="16" />
-  </svg>
-);
 const AddIcon = () => (
   <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <line x1="12" y1="5" x2="12" y2="19" />
@@ -119,7 +107,6 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(task.title);
-  const [locked, setLocked] = useState(task.lock || false);
   const [date, setDate] = useState(task.date ? dayjs(task.date) : null);
   const [open, setOpen] = useState(false);
   const timeTextRef = useRef();
@@ -174,9 +161,8 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
   const shadowOpacity = (task.importantLevel === 'important' || task.importantLevel === 'secondary') ? 0.28 : 0.18;
 
   useEffect(() => {
-    setLocked(task.lock || false);
     setDate(task.date ? dayjs(task.date) : null);
-  }, [task.lock, task.date]);
+  }, [task.date]);
 
   useEffect(() => {
     if (typeof onEditingChange === 'function') {
@@ -186,15 +172,17 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
 
   // 拖拽逻辑
   const handleMouseDown = (e) => {
-    if (locked) return; // 锁定时禁止拖动
     // 多选且当前节点被选中时，不处理拖动，交给MainCanvas
     if (multiSelected) return;
     // 拖动开始时保存快照
     useTaskStore.getState()._saveSnapshot();
     setDragging(true);
+    // 修正：offset 计算要考虑 transform
+    const screenX = task.position.x * transform.scale + transform.offsetX;
+    const screenY = task.position.y * transform.scale + transform.offsetY;
     setOffset({
-      x: e.clientX - task.position.x,
-      y: e.clientY - task.position.y,
+      x: e.clientX - screenX,
+      y: e.clientY - screenY,
     });
     setDragStartPos({ x: e.clientX, y: e.clientY });
     e.stopPropagation();
@@ -242,8 +230,11 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
     };
 
     if (!transform) return;
-    const rawX = (e.clientX - transform.offsetX) / transform.scale - offset.x;
-    const rawY = (e.clientY - transform.offsetY) / transform.scale - offset.y;
+    // 修正：拖动时先算出鼠标对应的屏幕坐标，再反推回画布坐标
+    const newScreenX = e.clientX - offset.x;
+    const newScreenY = e.clientY - offset.y;
+    const rawX = (newScreenX - transform.offsetX) / transform.scale;
+    const rawY = (newScreenY - transform.offsetY) / transform.scale;
 
     if (dragStartPos && (Math.abs(e.clientX - dragStartPos.x) > 2 || Math.abs(e.clientY - dragStartPos.y) > 2)) {
       if (typeof window.getSnappedPosition === 'function') {
@@ -375,12 +366,6 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
     if (onStartLink) onStartLink(task);
   };
 
-  const handleLockToggle = (e) => {
-    e.stopPropagation();
-    updateTask(task.id, { lock: !locked });
-    setLocked(!locked);
-  };
-
   // 动态计算第一个子任务的实际方位，决定折叠/展开按钮和连线锚点
   let collapseBtnAnchor = { x: NODE_WIDTH / 2 - 10, y: NODE_HEIGHT + 4 }; // 默认下方
   if (showCollapseButton) {
@@ -460,17 +445,8 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
         {selected && !editing && (
           <g transform="translate(90, -24)">
             <rect x={-60} y={-16} width={120} height={32} rx={12} fill="#fff" stroke="#e0e0e5" strokeWidth={1} filter="drop-shadow(0 2px 8px rgba(0,0,0,0.08))" />
-            {/* 锁定按钮 */}
-            <g onClick={handleLockToggle} style={{ cursor: 'pointer' }} transform="translate(-28, 0)">
-              <rect x={-12} y={-12} width={24} height={24} rx={8} fill="transparent" stroke="none" />
-              <foreignObject x={-10} y={-10} width={20} height={20}>
-                <div style={{width:20,height:20,display:'flex',alignItems:'center',justifyContent:'center',color:locked?'#222':'#bbb'}}>
-                  <LockIcon locked={locked} />
-                </div>
-              </foreignObject>
-            </g>
             {/* 连线按钮 */}
-            <g onMouseDown={handleStartLink} style={{ cursor: 'crosshair' }} transform="translate(0, 0)">
+            <g onMouseDown={handleStartLink} style={{ cursor: 'crosshair' }} transform="translate(-14, 0)">
               <rect x={-10} y={-10} width={20} height={20} rx={7} fill="transparent" stroke="none" />
               <foreignObject x={-10} y={-10} width={20} height={20}>
                 <div style={{width:20,height:20,display:'flex',alignItems:'center',justifyContent:'center',color:'#222'}}>
@@ -479,7 +455,7 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
               </foreignObject>
             </g>
             {/* 删除任务按钮 */}
-            <g onClick={handleDeleteTask} style={{ cursor: 'pointer' }} transform="translate(28, 0)">
+            <g onClick={handleDeleteTask} style={{ cursor: 'pointer' }} transform="translate(14, 0)">
               <rect x={-10} y={-10} width={20} height={20} rx={7} fill="transparent" stroke="none" />
               <foreignObject x={-10} y={-10} width={20} height={20}>
                 <div style={{width:20,height:20,display:'flex',alignItems:'center',justifyContent:'center',color:'#222'}}>
