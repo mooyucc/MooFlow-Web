@@ -7,9 +7,11 @@ import DatePickerPortal from './DatePickerPortal';
 import CollapseButton from './CollapseButton';
 import { DatePicker, ConfigProvider, Popover, Calendar } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
+import enUS from 'antd/locale/en_US';
 import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
 import 'antd/dist/reset.css';
+import { useTranslation } from '../LanguageContext';
 
 // 极简SVG图标，全部单色 currentColor，与主工具栏一致
 const AddIcon = () => (
@@ -106,7 +108,6 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
   const [dragging, setDragging] = useState(false);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [editing, setEditing] = useState(false);
-  const [title, setTitle] = useState(task.title);
   const [date, setDate] = useState(task.date ? dayjs(task.date) : null);
   const [open, setOpen] = useState(false);
   const timeTextRef = useRef();
@@ -114,6 +115,7 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
   const [dragStartPos, setDragStartPos] = useState(null);
   const allTasks = useTaskStore(state => state.tasks);
   const toggleCollapse = useTaskStore(state => state.toggleCollapse);
+  const [t, lang] = useTranslation();
   
   const rootTask = allTasks.length > 0 ? allTasks[0] : null;
   const isMainTask = rootTask && task.parentId === rootTask.id;
@@ -295,12 +297,18 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
   // 编辑逻辑
   const handleDoubleClick = (e) => {
     setEditing(true);
+    setTitle(getDisplayTitle()); // 进入编辑时同步显示文本
     e.stopPropagation();
   };
 
   const handleInputBlur = () => {
     setEditing(false);
-    updateTask(task.id, { title });
+    // 如果输入内容和翻译文本一致，保存原始 key，否则保存用户输入
+    let saveTitle = title;
+    if (defaultTitleMap[task.title] && title === t(defaultTitleMap[task.title])) {
+      saveTitle = task.title; // 保持原始 key
+    }
+    updateTask(task.id, { title: saveTitle });
   };
 
   // 添加任务
@@ -308,7 +316,7 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
     e.stopPropagation();
     const newTask = {
       id: Date.now(),
-      title: '新任务',
+      title: t('new_task'),
       position: { x: task.position.x + 300, y: task.position.y }, // 右侧 300px
       links: [],
       parentId: task.id,
@@ -326,7 +334,7 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
     e.stopPropagation();
     const newTask = {
       id: Date.now(),
-      title: '子任务',
+      title: t('child_task'),
       position: { x: task.position.x, y: task.position.y + 180 }, // 下方，间距180
       links: [],
       parentId: task.id, // 作为当前节点的子任务
@@ -343,7 +351,7 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
     e.stopPropagation();
     const newTask = {
       id: Date.now(),
-      title: '细分任务',
+      title: t('fine_task'),
       position: { x: task.position.x + 300, y: task.position.y }, // 右侧
       links: [],
       parentId: task.parentId, // 保持与当前节点一致
@@ -409,6 +417,33 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
     if (style === 'none') return '0';
     return undefined;
   }
+
+  // 默认任务名 key 映射
+  const defaultTitleMap = {
+    '中心任务': 'center_task',
+    '主线任务': 'main_task',
+    '子任务': 'child_task',
+    '细分任务': 'fine_task',
+    '新任务': 'new_task',
+  };
+
+  // 新增：获取当前显示的标题（用于编辑时初始值）
+  const getDisplayTitle = () => {
+    if (defaultTitleMap[task.title]) {
+      return t(defaultTitleMap[task.title]);
+    }
+    return task.title;
+  };
+
+  const [title, setTitle] = useState(getDisplayTitle());
+
+  // 新增：每次 task.title 或语言变化时，若未在编辑状态，title 跟随显示文本
+  useEffect(() => {
+    if (!editing) {
+      setTitle(getDisplayTitle());
+    }
+    // eslint-disable-next-line
+  }, [task.title, lang, editing]);
 
   return (
     <>
@@ -549,8 +584,11 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
                   }
                 }
                 if (line) lines.push(line);
+                // 动态翻译：如果是默认 key，则用 t(key)
                 return lines.map((l, idx) => (
-                  <tspan key={idx} x={task.textAlign === 'left' ? CARD_PADDING_X : task.textAlign === 'right' ? NODE_WIDTH - CARD_PADDING_X : NODE_WIDTH / 2} dy={idx === 0 ? 0 : 18}>{l}</tspan>
+                  <tspan key={idx} x={task.textAlign === 'left' ? CARD_PADDING_X : task.textAlign === 'right' ? NODE_WIDTH - CARD_PADDING_X : NODE_WIDTH / 2} dy={idx === 0 ? 0 : 18}>
+                    {defaultTitleMap[l] ? t(defaultTitleMap[l]) : l}
+                  </tspan>
                 ));
               })()}
             </text>
@@ -565,7 +603,7 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
                   justifyContent: 'center',
                 }}
               >
-                <ConfigProvider locale={zhCN}>
+                <ConfigProvider locale={lang === 'zh' ? zhCN : enUS}>
                   <div
                     style={{
                       fontSize: 10,
@@ -590,29 +628,37 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
                     <span style={{ display: 'flex', alignItems: 'center', marginRight: 4 }}>
                       <CalendarIcon size={12} />
                     </span>
-                    {date ? date.format('YYYY年M月D日') : '设置日期'}
+                    {date ? date.format(lang === 'zh' ? 'YYYY年M月D日' : 'YYYY/M/D') : t('set_date')}
                   </div>
                   <DatePicker
                     value={date}
                     onChange={value => {
                       setDate(value);
                       updateTask(task.id, { date: value ? value.toDate() : null, autoDate: false });
+                      // 新增：自动级联推算下游卡片
+                      if (window.cascadeUpdateDates) {
+                        window.cascadeUpdateDates(task.id);
+                      }
                     }}
                     onOk={value => {
                       setDate(value);
                       updateTask(task.id, { date: value ? value.toDate() : null, autoDate: false });
                       setOpen(false);
+                      // 新增：自动级联推算下游卡片
+                      if (window.cascadeUpdateDates) {
+                        window.cascadeUpdateDates(task.id);
+                      }
                     }}
                     open={task.autoDate ? false : open}
                     onOpenChange={task.autoDate ? undefined : setOpen}
                     showToday
                     showTime={false}
                     showOk
-                    format="YYYY年M月D日"
+                    format={lang === 'zh' ? 'YYYY年M月D日' : 'YYYY/M/D'}
                     inputReadOnly
                     getPopupContainer={() => document.body}
                     suffixIcon={null}
-                    allowClear={false}
+                    allowClear={true}
                     disabled={task.autoDate}
                     style={{
                       position: 'absolute',
@@ -621,6 +667,28 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
                       height: 0,
                       pointerEvents: 'none',
                     }}
+                    renderExtraFooter={() => (
+                      <button
+                        style={{
+                          color: '#e11d48',
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          margin: '0 auto',
+                          display: 'block',
+                          fontSize: 14,
+                          padding: 4
+                        }}
+                        onClick={e => {
+                          e.stopPropagation();
+                          setDate(null);
+                          updateTask(task.id, { date: null, autoDate: false });
+                          setOpen(false);
+                        }}
+                      >
+                        {t('clear_date')}
+                      </button>
+                    )}
                   />
                 </ConfigProvider>
               </div>

@@ -7,10 +7,12 @@ import CanvasFileToolbar from './CanvasFileToolbar';
 import CanvasThemeToolbar from './CanvasThemeToolbar';
 import { addDays } from 'date-fns';
 import FormatSidebar from './FormatSidebar';
+import { useTranslation } from '../LanguageContext';
 
 const CANVAS_SIZE = 100000; // 无限画布逻辑尺寸
 
 const MainCanvas = () => {
+  const [t, lang] = useTranslation(); // 移到最前面，防止未初始化
   const [transform, setTransform] = useState({ scale: 1, offsetX: 0, offsetY: 0 });
   const dragging = useRef(false);
   const lastPos = useRef({ x: 0, y: 0 });
@@ -95,7 +97,20 @@ const MainCanvas = () => {
   // 新增：时间颗粒度
   const [timeScale, setTimeScale] = useState('month'); // 'month' | 'week' | 'day'
 
-  // 生成时间刻度
+  // === 新增：根据语言环境获取本周起点 ===
+  function getWeekStart(date, lang) {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    let day = d.getDay();
+    if (lang === 'zh') {
+      // 周一为一周第一天
+      day = (day + 6) % 7; // 0=周一
+    }
+    d.setDate(d.getDate() - day);
+    return d;
+  }
+
+  // === 修改：生成时间刻度 ===
   let ticks = [];
   const scale = 300; // 固定刻度宽度
   if (firstTask) {
@@ -109,16 +124,12 @@ const MainCanvas = () => {
         });
       }
     } else if (timeScale === 'week') {
-      // 找到 startDate 所在周的星期一
-      const start = new Date(startDate);
-      start.setHours(0, 0, 0, 0);
-      let dayOfWeek = start.getDay(); // 0=周日，1=周一...
-      if (dayOfWeek === 0) dayOfWeek = 7; // 把周日当作7
-      start.setDate(start.getDate() - (dayOfWeek - 1)); // 回退到最近的周一
+      // 根据语言环境动态获取本周起点
+      const start = getWeekStart(startDate, lang);
       for (let i = -52; i < 260; i++) {
         const d = new Date(start);
         d.setDate(d.getDate() + i * 7);
-        const weekNum = getWeekNumber(d);
+        const weekNum = getWeekNumber(d, lang);
         ticks.push({
           label: `${d.getFullYear()}年第${weekNum}周`,
           date: d,
@@ -138,23 +149,22 @@ const MainCanvas = () => {
     }
   }
 
-  function getWeekNumber(d) {
-    // 以周一为一周的第一天，返回本年第几周
+  // === 修改：getWeekNumber支持多语言 ===
+  function getWeekNumber(d, lang) {
     const date = new Date(d.getTime());
     date.setHours(0, 0, 0, 0);
-    // 找到本年第一天
-    const yearStart = new Date(date.getFullYear(), 0, 1);
-    // 找到本年第一天的星期（0=周日，1=周一...）
-    let yearStartDay = yearStart.getDay();
-    if (yearStartDay === 0) yearStartDay = 7; // 把周日当作7
-    // 找到本年第一天的第一个周一
-    const firstMonday = new Date(yearStart);
-    if (yearStartDay !== 1) {
-      firstMonday.setDate(yearStart.getDate() + (8 - yearStartDay));
+    if (lang === 'zh') {
+      // ISO 8601: 周一为一周第一天，第一周包含1月4日
+      date.setDate(date.getDate() + 3 - ((date.getDay() + 6) % 7));
+      const week1 = new Date(date.getFullYear(), 0, 4);
+      week1.setDate(week1.getDate() + 3 - ((week1.getDay() + 6) % 7));
+      return 1 + Math.round((date - week1) / (7 * 24 * 3600 * 1000));
+    } else {
+      // 美式：周日为一周第一天
+      const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
+      const pastDaysOfYear = (date - firstDayOfYear) / 86400000;
+      return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
     }
-    // 计算当前日期与第一个周一的周数差
-    const diff = Math.floor((date - firstMonday) / (7 * 24 * 3600 * 1000)) + 1;
-    return diff > 0 ? diff : 1;
   }
 
   // 新增：画布属性状态提升
@@ -310,7 +320,11 @@ const MainCanvas = () => {
       // 转换为画布坐标
       const sx = (px) => (px - transform.offsetX) / transform.scale;
       const sy = (py) => (py - transform.offsetY) / transform.scale;
-      setSelectBox(box => box ? { ...box, x2: sx(e.clientX), y2: sy(e.clientY) } : null);
+      const newBox = selectBox ? { ...selectBox, x2: sx(e.clientX), y2: sy(e.clientY) } : null;
+      // 只有在 box 变化时才 setState
+      if (JSON.stringify(selectBox) !== JSON.stringify(newBox)) {
+        setSelectBox(newBox);
+      }
     } else if (dragMode.current === 'multiMove' && multiDragging) {
       const dx = (e.clientX - multiDragStart.current.x) / transform.scale;
       const dy = (e.clientY - multiDragStart.current.y) / transform.scale;
@@ -332,8 +346,13 @@ const MainCanvas = () => {
         180, // task width
         72   // task height
       );
-      setAlignLines(snapLines || []);
-
+      // 只有在对齐线变化时才 setAlignLines
+      setAlignLines(prev => {
+        if (JSON.stringify(prev) !== JSON.stringify(snapLines || [])) {
+          return snapLines || [];
+        }
+        return prev;
+      });
 
       // 3. Calculate the snap-adjusted delta
       const finalDx = snappedX - primaryTaskBase.x;
@@ -713,17 +732,17 @@ const MainCanvas = () => {
         if (timeScale === 'month') {
           diff = (taskDate.getFullYear() - startDate.getFullYear()) * 12 + (taskDate.getMonth() - startDate.getMonth());
         } else if (timeScale === 'week') {
-          // 以最近的周一为起点
+          // ISO 8601: 以最近的周一为起点
           const start = new Date(startDate);
           start.setHours(0,0,0,0);
-          let dayOfWeek = start.getDay();
-          if (dayOfWeek === 0) dayOfWeek = 7;
-          start.setDate(start.getDate() - (dayOfWeek - 1));
+          let startDayOfWeek = (start.getDay() + 6) % 7; // 0=周一
+          start.setDate(start.getDate() - startDayOfWeek); // 回退到最近的周一
+
           const t = new Date(taskDate);
           t.setHours(0,0,0,0);
-          let tDayOfWeek = t.getDay();
-          if (tDayOfWeek === 0) tDayOfWeek = 7;
-          t.setDate(t.getDate() - (tDayOfWeek - 1));
+          let tDayOfWeek = (t.getDay() + 6) % 7;
+          t.setDate(t.getDate() - tDayOfWeek); // 回退到最近的周一
+
           diff = Math.floor((t - start) / (7 * 24 * 3600 * 1000));
         } else if (timeScale === 'day') {
           // 计算两个日期之间的天数差
@@ -1293,10 +1312,10 @@ const MainCanvas = () => {
   };
 
   // 监听布局方向变化，自动排列卡片
-  useEffect(() => {
-    autoArrangeTasks();
-    // eslint-disable-next-line
-  }, [canvasProps.mainDirection]);
+  // useEffect(() => {
+  //   autoArrangeTasks();
+  //   // eslint-disable-next-line
+  // }, [canvasProps.mainDirection]);
 
   return (
     <div
@@ -1325,7 +1344,7 @@ const MainCanvas = () => {
       <div style={{
         position: 'fixed',
         right: 32,
-        bottom: 32,
+        bottom: 20, // 原为32，改为20
         zIndex: 100,
         background: 'rgba(255,255,255,0.9)',
         borderRadius: 20,
@@ -1336,7 +1355,7 @@ const MainCanvas = () => {
         alignItems: 'center',
         border: '1px solid #e0e0e0',
       }}>
-        <span style={{ fontSize: 12, color: '#666', marginRight: 8 }}>时间颗粒度：</span>
+        <span style={{ fontSize: 12, color: '#666', marginRight: 8 }}>{t('timeline.granularity')}</span>
         <button
           onClick={() => setTimeScale('month')}
           style={{
@@ -1349,7 +1368,7 @@ const MainCanvas = () => {
             cursor: 'pointer',
             fontSize: 14,
           }}
-        >月</button>
+        >{t('timeline.month_short')}</button>
         <button
           onClick={() => setTimeScale('week')}
           style={{
@@ -1362,7 +1381,7 @@ const MainCanvas = () => {
             cursor: 'pointer',
             fontSize: 14,
           }}
-        >周</button>
+        >{t('timeline.week_short')}</button>
         <button
           onClick={() => setTimeScale('day')}
           style={{
@@ -1375,7 +1394,7 @@ const MainCanvas = () => {
             cursor: 'pointer',
             fontSize: 14,
           }}
-        >日</button>
+        >{t('timeline.day_short')}</button>
       </div>
       <CanvasToolbar 
         onStartLink={() => setLinking(true)} 
@@ -1386,6 +1405,7 @@ const MainCanvas = () => {
         onAddChildTask={handleAddChildTask}
         onAddSiblingTask={handleAddSiblingTask}
         hasSelectedTask={!!selectedTaskId}
+        // onAutoArrange={autoArrangeTasks} // 移除自动布局按钮
       />
       <CanvasFileToolbar 
         canvasProps={canvasProps}
@@ -1394,6 +1414,7 @@ const MainCanvas = () => {
         setSelectedTaskId={setSelectedTaskId}
         selectedTaskIds={selectedTaskIds}
         onBranchStyleChange={handleBranchStyleChange}
+        autoArrangeTasks={autoArrangeTasks} // 传递给FileToolbar
       />
       <CanvasThemeToolbar canvasProps={canvasProps} setCanvasProps={setCanvasProps} />
       <FormatSidebar
@@ -1667,18 +1688,19 @@ const MainCanvas = () => {
               const dayRatio = (today.getDate() - 1) / daysInMonth;
               todayX = firstX + monthDiff * scale + dayRatio * scale;
             } else if (timeScale === 'week') {
-              // 找到firstTick的周一
-              const firstMonday = new Date(firstTick.date);
-              firstMonday.setHours(0,0,0,0);
-              let dayOfWeek = firstMonday.getDay();
-              if (dayOfWeek === 0) dayOfWeek = 7;
-              firstMonday.setDate(firstMonday.getDate() - (dayOfWeek - 1));
-              // 计算今天距离firstMonday的周数
-              const weekDiff = Math.floor((today - firstMonday) / (7 * 24 * 3600 * 1000));
-              // 计算今天在本周内的比例
-              let todayDayOfWeek = today.getDay();
-              if (todayDayOfWeek === 0) todayDayOfWeek = 7;
-              const dayRatio = (todayDayOfWeek - 1) / 7;
+              // 用 getWeekStart 动态获取本地化的周起点
+              const firstWeekStart = getWeekStart(firstTick.date, lang);
+              const todayWeekStart = getWeekStart(today, lang);
+              // 计算今天距离firstWeekStart的周数
+              const weekDiff = Math.floor((todayWeekStart - firstWeekStart) / (7 * 24 * 3600 * 1000));
+              // 计算今天在本周内的天数（以本地化为准）
+              let todayDayOfWeek;
+              if (lang === 'zh') {
+                todayDayOfWeek = (today.getDay() + 6) % 7;
+              } else {
+                todayDayOfWeek = today.getDay();
+              }
+              const dayRatio = todayDayOfWeek / 7;
               todayX = firstX + weekDiff * scale + dayRatio * scale;
             } else if (timeScale === 'day') {
               const dayDiff = Math.floor((today - firstTick.date) / (24 * 3600 * 1000));
@@ -1700,7 +1722,7 @@ const MainCanvas = () => {
                 />
                 <text
                   x={todayX}
-                  y={window.innerHeight / transform.scale - 60 - transform.offsetY / transform.scale - 80}
+                  y={window.innerHeight / transform.scale - 60 - transform.offsetY / transform.scale + 24}
                   fontSize={14}
                   fontFamily="-apple-system, BlinkMacSystemFont, 'SF Pro', 'Helvetica Neue', Arial, sans-serif"
                   fill="#e11d48"
@@ -1708,18 +1730,14 @@ const MainCanvas = () => {
                   style={{ fontWeight: 400, letterSpacing: 1, opacity: 0.95 }}
                   pointerEvents="none"
                 >
-                  <tspan x={todayX} dy={0}>T</tspan>
-                  <tspan x={todayX} dy={16}>o</tspan>
-                  <tspan x={todayX} dy={16}>d</tspan>
-                  <tspan x={todayX} dy={16}>a</tspan>
-                  <tspan x={todayX} dy={16}>y</tspan>
+                  {t('timeline.today')}
                 </text>
               </>
             );
           })()}
           {/* 月份刻度 */}
           {ticks.map((m, idx) => (
-            <g key={m.label}>
+            <g key={m.label + '-' + idx}>
               <line
                 x1={m.x}
                 x2={m.x}
@@ -1739,7 +1757,10 @@ const MainCanvas = () => {
                   textAnchor="middle"
                   style={{ fontWeight: 400, letterSpacing: 1 }}
                 >
-                  {`${m.date.getFullYear()}年${m.date.getMonth() + 1}月`}
+                  {t('timeline.month', {
+                    year: m.date.getFullYear(),
+                    month: m.date.getMonth() + 1,
+                  })}
                 </text>
               )}
               {timeScale === 'week' && (
@@ -1752,7 +1773,10 @@ const MainCanvas = () => {
                   textAnchor="middle"
                   style={{ fontWeight: 400, letterSpacing: 1 }}
                 >
-                  {`W${getWeekNumber(m.date)}`}
+                  {t('timeline.week', {
+                    year: m.date.getFullYear(),
+                    week: getWeekNumber(m.date, lang),
+                  })}
                 </text>
               )}
               {timeScale === 'day' && (
@@ -1765,11 +1789,15 @@ const MainCanvas = () => {
                   textAnchor="middle"
                   style={{ fontWeight: 400, letterSpacing: 1 }}
                 >
-                  {m.date.getDate()}
+                  {t('timeline.day', {
+                    year: m.date.getFullYear(),
+                    month: m.date.getMonth() + 1,
+                    day: m.date.getDate(),
+                  })}
                 </text>
               )}
               {/* 下部副刻度文字 */}
-              {timeScale === 'week' && getWeekNumber(m.date) === getWeekNumber(new Date(m.date.getFullYear(), m.date.getMonth(), 1)) && (
+              {timeScale === 'week' && getWeekNumber(m.date, lang) === getWeekNumber(new Date(m.date.getFullYear(), m.date.getMonth(), 1), lang) && (
                 <text
                   x={m.x}
                   y={window.innerHeight / transform.scale - 30 - transform.offsetY / transform.scale}
@@ -1779,7 +1807,10 @@ const MainCanvas = () => {
                   textAnchor="middle"
                   style={{ fontWeight: 500, letterSpacing: 1, opacity: 0.7 }}
                 >
-                  {`${m.date.getFullYear()}年${m.date.getMonth() + 1}月`}
+                  {t('timeline.month', {
+                    year: m.date.getFullYear(),
+                    month: m.date.getMonth() + 1,
+                  })}
                 </text>
               )}
               {timeScale === 'day' && m.date.getDate() === 1 && (
@@ -1792,7 +1823,10 @@ const MainCanvas = () => {
                   textAnchor="middle"
                   style={{ fontWeight: 500, letterSpacing: 1, opacity: 0.7 }}
                 >
-                  {`${m.date.getFullYear()}年${m.date.getMonth() + 1}月`}
+                  {t('timeline.month', {
+                    year: m.date.getFullYear(),
+                    month: m.date.getMonth() + 1,
+                  })}
                 </text>
               )}
             </g>

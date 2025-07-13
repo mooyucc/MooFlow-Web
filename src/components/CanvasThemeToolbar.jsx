@@ -1,5 +1,6 @@
 import React from 'react';
 import './CanvasThemeToolbar.css';
+import { useTranslation } from '../LanguageContext';
 
 const LightModeIcon = () => (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -21,11 +22,20 @@ const DarkModeIcon = () => (
     </svg>
 );
 
+const LangIcon = () => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10" />
+        <path d="M2 12h20" />
+        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z" />
+    </svg>
+);
+
 const LIGHT_COLOR = '#ebebeb';
 const DARK_COLOR = '#2d2d2d';
 
 const CanvasThemeToolbar = ({ canvasProps, setCanvasProps }) => {
     const isDarkMode = canvasProps.backgroundColor === DARK_COLOR;
+    const [t, lang, setLang] = useTranslation();
 
     const toggleTheme = () => {
         setCanvasProps(prevProps => ({
@@ -34,10 +44,46 @@ const CanvasThemeToolbar = ({ canvasProps, setCanvasProps }) => {
         }));
     };
 
+    const toggleLang = () => {
+        setLang(lang === 'zh' ? 'en' : 'zh');
+    };
+
     return (
         <div className="canvas-theme-toolbar">
-            <button className="toolbar-btn" title={isDarkMode ? '切换到浅色模式' : '切换到深色模式'} onClick={toggleTheme}>
+            <button
+                className="toolbar-btn"
+                title={isDarkMode ? t('toggle_light') : t('toggle_dark')}
+                onClick={toggleTheme}
+                style={{
+                    width: 30,
+                    height: 30,
+                    borderRadius: '50%',
+                    fontWeight: 700,
+                    fontSize: 16,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                }}
+            >
                 {isDarkMode ? <LightModeIcon /> : <DarkModeIcon />}
+            </button>
+            <button
+                className="toolbar-btn"
+                title={t('toggle_lang')}
+                onClick={toggleLang}
+                style={{
+                    marginLeft: 8,
+                    width: 32,
+                    height: 32,
+                    borderRadius: '50%',
+                    fontWeight: 600,
+                    fontSize: 16,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                }}
+            >
+                {lang === 'zh' ? 'En' : '中'}
             </button>
         </div>
     );

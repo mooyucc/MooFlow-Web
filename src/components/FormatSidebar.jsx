@@ -4,6 +4,7 @@ import { useTaskStore, defaultTaskStyle, defaultLinkStyle } from '../store/taskS
 import PopupPortal from './PopupPortal';
 import LayoutH from '../../assets/LayoutH.png';
 import LayoutV from '../../assets/LayoutV.png';
+import { useTranslation } from '../LanguageContext';
 
 const COLOR_SCHEMES = [
   { name: '彩虹', colors: ['#f44336', '#ff9800', '#ffeb3b', '#4caf50', '#2196f3', '#9c27b0', '#00bcd4'] },
@@ -11,64 +12,64 @@ const COLOR_SCHEMES = [
   { name: '经典', colors: ['#3f51b5', '#e91e63', '#ffc107', '#009688', '#8bc34a', '#ff5722', '#607d8b'] },
 ];
 const FONTS = [
-  { label: '系统默认', value: '-apple-system, BlinkMacSystemFont, Segoe UI, Microsoft YaHei, Arial, sans-serif' },
-  { label: '宋体', value: '宋体' },
-  { label: '微软雅黑', value: '微软雅黑' },
-  { label: 'Arial', value: 'Arial' },
-  { label: 'Times New Roman', value: 'Times New Roman' },
-  { label: 'Roboto', value: 'Roboto' },
+  { label: 'font_system', value: '-apple-system, BlinkMacSystemFont, Segoe UI, Microsoft YaHei, Arial, sans-serif' },
+  { label: 'font_songti', value: '宋体' },
+  { label: 'font_yahei', value: '微软雅黑' },
+  { label: 'font_arial', value: 'Arial' },
+  { label: 'font_times', value: 'Times New Roman' },
+  { label: 'font_roboto', value: 'Roboto' },
 ];
 const LINE_WIDTHS = [
-  { label: '细', value: 1 },
-  { label: '默认', value: 2 },
-  { label: '中', value: 3 },
-  { label: '粗', value: 4 }
+  { label: 'thin', value: 1 },
+  { label: 'normal', value: 2 },
+  { label: 'medium', value: 3 },
+  { label: 'bold', value: 4 }
 ];
 
 // 边框线形选项
 const LINE_STYLES = [
-  { label: '实线', value: 'solid' },
-  { label: '虚线', value: 'dashed' },
-  { label: '点线', value: 'dotted' }
+  { label: 'line_solid', value: 'solid' },
+  { label: 'line_dashed', value: 'dashed' },
+  { label: 'line_dotted', value: 'dotted' }
 ];
 
 // 箭头样式选项
 const ARROW_STYLES = [
-  { label: '标准', value: 'normal', icon: <svg width="20" height="20" viewBox="0 0 20 20"><path d="M4 10h12m-4-4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" fill="none"/></svg> },
-  { label: '圆形', value: 'circle', icon: <svg width="20" height="20" viewBox="0 0 20 20"><path d="M4 10h9" stroke="currentColor" strokeWidth="1.5" fill="none"/><circle cx="15" cy="10" r="2" stroke="currentColor" strokeWidth="1.5" fill="none"/></svg> },
-  { label: '菱形', value: 'diamond', icon: <svg width="20" height="20" viewBox="0 0 20 20"><path d="M4 10h12l-6-4 6 4-6 4z" stroke="currentColor" strokeWidth="1.5" fill="none"/></svg> },
-  { label: '无箭头', value: 'none', icon: <svg width="20" height="20" viewBox="0 0 20 20"><path d="M4 10h12" stroke="currentColor" strokeWidth="1.5" fill="none"/></svg> }
+  { label: 'arrow_normal', value: 'normal', icon: <svg width="20" height="20" viewBox="0 0 20 20"><path d="M4 10h12m-4-4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" fill="none"/></svg> },
+  { label: 'arrow_circle', value: 'circle', icon: <svg width="20" height="20" viewBox="0 0 20 20"><path d="M4 10h9" stroke="currentColor" strokeWidth="1.5" fill="none"/><circle cx="15" cy="10" r="2" stroke="currentColor" strokeWidth="1.5" fill="none"/></svg> },
+  { label: 'arrow_diamond', value: 'diamond', icon: <svg width="20" height="20" viewBox="0 0 20 20"><path d="M4 10h12l-6-4 6 4-6 4z" stroke="currentColor" strokeWidth="1.5" fill="none"/></svg> },
+  { label: 'arrow_none', value: 'none', icon: <svg width="20" height="20" viewBox="0 0 20 20"><path d="M4 10h12" stroke="currentColor" strokeWidth="1.5" fill="none"/></svg> }
 ];
 
 // 常用流程图形状及SVG
 const SHAPES = [
-  { type: 'roundRect', name: '圆角矩形', icon: <svg width="28" height="20"><rect x="3" y="3" width="22" height="14" rx="5" stroke="var(--shape-stroke)" strokeWidth="1.5" fill="none"/></svg> },
-  { type: 'rect', name: '矩形', icon: <svg width="28" height="20"><rect x="3" y="3" width="22" height="14" rx="0" stroke="var(--shape-stroke)" strokeWidth="1.5" fill="none"/></svg> },
-  { type: 'ellipse', name: '椭圆', icon: <svg width="28" height="20"><ellipse cx="14" cy="10" rx="11" ry="7" stroke="var(--shape-stroke)" strokeWidth="1.5" fill="none"/></svg> },
-  { type: 'circle', name: '圆形', icon: <svg width="28" height="20"><ellipse cx="14" cy="10" rx="8" ry="8" stroke="var(--shape-stroke)" strokeWidth="1.5" fill="none"/></svg> },
-  { type: 'diamond', name: '菱形', icon: <svg width="28" height="20"><polygon points="14,3 24,10 14,17 4,10" stroke="var(--shape-stroke)" strokeWidth="1.5" fill="none"/></svg> },
-  { type: 'parallelogram', name: '平行四边形', icon: <svg width="28" height="20"><polygon points="7,3 24,3 20,17 3,17" stroke="var(--shape-stroke)" strokeWidth="1.5" fill="none"/></svg> },
-  { type: 'hexagon', name: '六边形', icon: <svg width="28" height="20"><polygon points="7,3 21,3 24,10 21,17 7,17 4,10" stroke="var(--shape-stroke)" strokeWidth="1.5" fill="none"/></svg> },
-  { type: 'pentagon', name: '五边形', icon: <svg width="28" height="20"><polygon points="14,2 21.6,7.5 18.7,16.5 9.3,16.5 6.4,7.5" stroke="var(--shape-stroke)" strokeWidth="1.5" fill="none"/></svg> },
-  { type: 'trapezoid', name: '梯形', icon: <svg width="28" height="20"><polygon points="8,3 20,3 24,17 4,17" stroke="var(--shape-stroke)" strokeWidth="1.5" fill="none"/></svg> },
-  { type: 'document', name: '文档', icon: <svg width="28" height="20"><path d="M5,5 H23 Q24,5 24,8 V14 Q24,17 21,17 H7 Q5,17 5,14 V8 Q5,5 8,5 Z" stroke="var(--shape-stroke)" strokeWidth="1.5" fill="none"/></svg> },
-  { type: 'flag', name: '旗帜', icon: <svg width="28" height="20"><path d="M5,5 L23,5 L20,10 L23,15 L5,15 Z" stroke="var(--shape-stroke)" strokeWidth="1.5" fill="none"/></svg> },
-  { type: 'arrowRight', name: '右箭头', icon: <svg width="28" height="20"><polygon points="5,10 17,10 17,6 24,10 17,14 17,10 5,10" stroke="var(--shape-stroke)" strokeWidth="1.5" fill="none"/></svg> },
-  { type: 'arrowLeft', name: '左箭头', icon: <svg width="28" height="20"><polygon points="23,10 11,10 11,6 4,10 11,14 11,10 23,10" stroke="var(--shape-stroke)" strokeWidth="1.5" fill="none"/></svg> },
-  { type: 'doubleArrow', name: '双箭头', icon: <svg width="28" height="20"><polygon points="4,10 8,6 8,9 20,9 20,6 24,10 20,14 20,11 8,11 8,14 4,10" stroke="var(--shape-stroke)" strokeWidth="1.5" fill="none"/></svg> },
+  { type: 'roundRect', name: 'shape_roundRect', icon: <svg width="28" height="20"><rect x="3" y="3" width="22" height="14" rx="5" stroke="var(--shape-stroke)" strokeWidth="1.5" fill="none"/></svg> },
+  { type: 'rect', name: 'shape_rect', icon: <svg width="28" height="20"><rect x="3" y="3" width="22" height="14" rx="0" stroke="var(--shape-stroke)" strokeWidth="1.5" fill="none"/></svg> },
+  { type: 'ellipse', name: 'shape_ellipse', icon: <svg width="28" height="20"><ellipse cx="14" cy="10" rx="11" ry="7" stroke="var(--shape-stroke)" strokeWidth="1.5" fill="none"/></svg> },
+  { type: 'circle', name: 'shape_circle', icon: <svg width="28" height="20"><ellipse cx="14" cy="10" rx="8" ry="8" stroke="var(--shape-stroke)" strokeWidth="1.5" fill="none"/></svg> },
+  { type: 'diamond', name: 'shape_diamond', icon: <svg width="28" height="20"><polygon points="14,3 24,10 14,17 4,10" stroke="var(--shape-stroke)" strokeWidth="1.5" fill="none"/></svg> },
+  { type: 'parallelogram', name: 'shape_parallelogram', icon: <svg width="28" height="20"><polygon points="7,3 24,3 20,17 3,17" stroke="var(--shape-stroke)" strokeWidth="1.5" fill="none"/></svg> },
+  { type: 'hexagon', name: 'shape_hexagon', icon: <svg width="28" height="20"><polygon points="7,3 21,3 24,10 21,17 7,17 4,10" stroke="var(--shape-stroke)" strokeWidth="1.5" fill="none"/></svg> },
+  { type: 'pentagon', name: 'shape_pentagon', icon: <svg width="28" height="20"><polygon points="14,2 21.6,7.5 18.7,16.5 9.3,16.5 6.4,7.5" stroke="var(--shape-stroke)" strokeWidth="1.5" fill="none"/></svg> },
+  { type: 'trapezoid', name: 'shape_trapezoid', icon: <svg width="28" height="20"><polygon points="8,3 20,3 24,17 4,17" stroke="var(--shape-stroke)" strokeWidth="1.5" fill="none"/></svg> },
+  { type: 'document', name: 'shape_document', icon: <svg width="28" height="20"><path d="M5,5 H23 Q24,5 24,8 V14 Q24,17 21,17 H7 Q5,17 5,14 V8 Q5,5 8,5 Z" stroke="var(--shape-stroke)" strokeWidth="1.5" fill="none"/></svg> },
+  { type: 'flag', name: 'shape_flag', icon: <svg width="28" height="20"><path d="M5,5 L23,5 L20,10 L23,15 L5,15 Z" stroke="var(--shape-stroke)" strokeWidth="1.5" fill="none"/></svg> },
+  { type: 'arrowRight', name: 'shape_arrowRight', icon: <svg width="28" height="20"><polygon points="5,10 17,10 17,6 24,10 17,14 17,10 5,10" stroke="var(--shape-stroke)" strokeWidth="1.5" fill="none"/></svg> },
+  { type: 'arrowLeft', name: 'shape_arrowLeft', icon: <svg width="28" height="20"><polygon points="23,10 11,10 11,6 4,10 11,14 11,10 23,10" stroke="var(--shape-stroke)" strokeWidth="1.5" fill="none"/></svg> },
+  { type: 'doubleArrow', name: 'shape_doubleArrow', icon: <svg width="28" height="20"><polygon points="4,10 8,6 8,9 20,9 20,6 24,10 20,14 20,11 8,11 8,14 4,10" stroke="var(--shape-stroke)" strokeWidth="1.5" fill="none"/></svg> },
 ];
 
 // 1. 新增配色方案数据
 const COLOR_PALETTES = [
-  { name: '律动', colors: ['#F15A4A', '#F6C244', '#5DBA4A', '#3A9BDB', '#3B53C4', '#D94A8A'] },
-  { name: '永恒', colors: ['#3B53C4', '#F15A4A', '#F6C244', '#5DBA4A', '#3A9BDB', '#A24AD9'] },
-  { name: '花海', colors: ['#A12B3A', '#5DBA4A', '#3A9BDB', '#1B3A5B', '#A24AD9', '#4A1B3A'] },
-  { name: '绚丽', colors: ['#F15A4A', '#F6C244', '#3A9BDB', '#3B53C4', '#A24AD9', '#D94A8A'] },
-  { name: '香水', colors: ['#A18B4A', '#5DBA4A', '#3A9BDB', '#3B53C4', '#A24AD9', '#4A1B3A'] },
-  { name: '奶油', colors: ['#3A9BDB', '#3B53C4', '#F15A4A', '#F6C244', '#5DBA4A', '#1BC4A1'] },
-  { name: '珊瑚', colors: ['#F15A4A', '#F6C244', '#5DBA4A', '#3A9BDB', '#A24AD9', '#D94A8A'] },
-  { name: '香槟', colors: ['#C4BBA1', '#B4C4A1', '#A1C4B4', '#A1B4C4', '#C4A1B4', '#B4A1C4'] },
-  { name: '禅心', colors: ['#FFFFFF', '#E0E0E0', '#B0B0B0', '#707070', '#303030', '#000000'] },
+  { name: 'palette_rhythm', colors: ['#F15A4A', '#F6C244', '#5DBA4A', '#3A9BDB', '#3B53C4', '#D94A8A'] },
+  { name: 'palette_eternal', colors: ['#3B53C4', '#F15A4A', '#F6C244', '#5DBA4A', '#3A9BDB', '#A24AD9'] },
+  { name: 'palette_flower', colors: ['#A12B3A', '#5DBA4A', '#3A9BDB', '#1B3A5B', '#A24AD9', '#4A1B3A'] },
+  { name: 'palette_gorgeous', colors: ['#F15A4A', '#F6C244', '#3A9BDB', '#3B53C4', '#A24AD9', '#D94A8A'] },
+  { name: 'palette_perfume', colors: ['#A18B4A', '#5DBA4A', '#3A9BDB', '#3B53C4', '#A24AD9', '#4A1B3A'] },
+  { name: 'palette_cream', colors: ['#3A9BDB', '#3B53C4', '#F15A4A', '#F6C244', '#5DBA4A', '#1BC4A1'] },
+  { name: 'palette_coral', colors: ['#F15A4A', '#F6C244', '#5DBA4A', '#3A9BDB', '#A24AD9', '#D94A8A'] },
+  { name: 'palette_champagne', colors: ['#C4BBA1', '#B4C4A1', '#A1C4B4', '#A1B4C4', '#C4A1B4', '#B4A1C4'] },
+  { name: 'palette_zen', colors: ['#FFFFFF', '#E0E0E0', '#B0B0B0', '#707070', '#303030', '#000000'] },
 ];
 
 const FormatSidebar = ({
@@ -83,8 +84,10 @@ const FormatSidebar = ({
   onBranchStyleChange,
   branchStyle = {},
   paletteIdx,
-  onPaletteChange
+  onPaletteChange,
+  autoArrangeTasks
 }) => {
+  const [t, lang] = useTranslation();
   const tasks = useTaskStore(state => state.tasks);
 
   // 辅助函数：找到指向目标任务的连线
@@ -368,7 +371,7 @@ const FormatSidebar = ({
             boxShadow: tab === 'canvas' ? '0 2px 8px #316acb11' : 'none',
             borderBottom: tab === 'canvas' ? '3px solid var(--tab-underline)' : '3px solid transparent',
           }}
-        >画布</button>
+        >{t('canvas')}</button>
         <button
           onClick={() => setTab('style')}
           style={{
@@ -387,7 +390,7 @@ const FormatSidebar = ({
             boxShadow: tab === 'style' ? '0 2px 8px #316acb11' : 'none',
             borderBottom: tab === 'style' ? '3px solid var(--tab-underline)' : '3px solid transparent',
           }}
-        >样式</button>
+        >{t('style')}</button>
       </div>
       {/* 内容区 */}
       <div 
@@ -407,7 +410,7 @@ const FormatSidebar = ({
               border: '0px solid var(--sidebar-border)',
               position: 'relative',
             }}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--sidebar-text)', marginBottom: 10 }}>配色方案</div>
+              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--sidebar-text)', marginBottom: 10 }}>{t('palette_scheme')}</div>
               <button
                 ref={paletteBtnRef}
                 style={{
@@ -419,9 +422,10 @@ const FormatSidebar = ({
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
+                  justifyContent: 'center', // 内容整体居中
                   padding: '0 12px',
-                  justifyContent: 'space-between',
                   position: 'relative',
+                  overflow: 'hidden'
                 }}
                 onClick={e => {
                   if (paletteBtnRef.current) {
@@ -434,30 +438,45 @@ const FormatSidebar = ({
                   setPalettePopupOpen(true);
                 }}
               >
-                {/* 色条 */}
-                <div style={{ display: 'flex', gap: 2, flex: 1 }}>
+                <div style={{
+                  display: 'flex',
+                  gap: 2,
+                  maxWidth: 120, // 限制色块区域最大宽度
+                  overflow: 'hidden',
+                  flexShrink: 0
+                }}>
                   {paletteIdx === null ? (
                     <div style={{ color: '#aaa', fontSize: 14, lineHeight: '16px', marginLeft: 2 }}>—</div>
                   ) : (
                     COLOR_PALETTES[paletteIdx]?.colors.map((c, i) => (
-                      <div key={i} style={{ width: 28, height: 14, borderRadius: 8, background: c, marginRight: i < 5 ? 2 : 0 }} />
+                      <div key={i} style={{
+                        width: 16, // 缩小色块宽度
+                        height: 14,
+                        borderRadius: 8,
+                        background: c,
+                        marginRight: i < 5 ? 2 : 0,
+                        flexShrink: 0
+                      }} />
                     ))
                   )}
                 </div>
-                {/* 名称 */}
                 <span style={{
-                  marginLeft: 18,
+                  marginLeft: 12,
                   fontWeight: 500,
                   fontSize: 14,
-                  letterSpacing: 2,
+                  letterSpacing: 1,
                   whiteSpace: 'nowrap',
                   lineHeight: '1',
                   display: 'inline-block',
-                  textAlign: 'left',
-                  minWidth: 36
-                }}>{paletteIdx === null ? '无配色方案' : COLOR_PALETTES[paletteIdx]?.name}</span>
-                {/* 下拉箭头 */}
-                <svg width="18" height="18" viewBox="0 0 18 18" style={{ marginLeft: 8 }}><path d="M5 7l4 4 4-4" stroke="#888" strokeWidth="1.5" fill="none"/></svg>
+                  textAlign: 'center',
+                  minWidth: 36,
+                  maxWidth: 80,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  flexShrink: 0
+                }}>
+                  {paletteIdx === null ? t('no_palette_scheme') : t(COLOR_PALETTES[paletteIdx]?.name)}
+                </span>
               </button>
               {/* 弹窗 */}
               {palettePopupOpen && (
@@ -483,7 +502,7 @@ const FormatSidebar = ({
                     }}
                   >
                     <div style={{ display: 'flex', gap: 24, marginBottom: 8 }}>
-                      <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--dropdown-text)' }}>经典</div>
+                      <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--dropdown-text)' }}>{t('classic')}</div>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                       {/* 配色方案选项 */}
@@ -508,7 +527,7 @@ const FormatSidebar = ({
                               <div key={i} style={{ width: 22, height: 12, borderRadius: 6, background: c, marginRight: i < 5 ? 2 : 0 }} />
                             ))}
                           </div>
-                          <span style={{ fontSize: 14, fontWeight: 500 }}>{palette.name}</span>
+                          <span style={{ fontSize: 14, fontWeight: 400 }}>{t(palette.name)}</span>
                         </div>
                       ))}
                       {/* 无配色方案选项 */}
@@ -527,7 +546,7 @@ const FormatSidebar = ({
                         }}
                       >
                         <div style={{ color: '#aaa', fontSize: 14, marginBottom: 2 }}>—</div>
-                        <span style={{ fontSize: 14, fontWeight: 500 }}>无配色方案</span>
+                        <span style={{ fontSize: 14, fontWeight: 500 }}>{t('no_palette_scheme')}</span>
                       </div>
                     </div>
                   </div>
@@ -544,7 +563,7 @@ const FormatSidebar = ({
               border: '0px solid var(--sidebar-border)',
               position: 'relative',
             }}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--sidebar-text)', marginBottom: 10 }}>布局</div>
+              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--sidebar-text)', marginBottom: 10 }}>{t('layout')}</div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button
                   style={{
@@ -561,10 +580,10 @@ const FormatSidebar = ({
                     height: 64,
                     transition: 'background 0.2s',
                   }}
-                  onClick={() => handleChange('mainDirection', 'horizontal')}
-                  title="水平布局"
+                  onClick={() => { handleChange('mainDirection', 'horizontal'); if (autoArrangeTasks) autoArrangeTasks(); }}
+                  title={t('horizontal_layout')}
                 >
-                  <img src={LayoutH} alt="水平布局" style={{ width: '100%', height: '100%', objectFit: 'contain', opacity: (localProps.mainDirection || 'horizontal') === 'horizontal' ? 1 : 0.6, borderRadius: 8 }} />
+                  <img src={LayoutH} alt={t('horizontal_layout')} style={{ width: '100%', height: '100%', objectFit: 'contain', opacity: (localProps.mainDirection || 'horizontal') === 'horizontal' ? 1 : 0.6, borderRadius: 8 }} />
                 </button>
                 <button
                   style={{
@@ -581,10 +600,10 @@ const FormatSidebar = ({
                     height: 64,
                     transition: 'background 0.2s',
                   }}
-                  onClick={() => handleChange('mainDirection', 'vertical')}
-                  title="垂直布局"
+                  onClick={() => { handleChange('mainDirection', 'vertical'); if (autoArrangeTasks) autoArrangeTasks(); }}
+                  title={t('vertical_layout')}
                 >
-                  <img src={LayoutV} alt="垂直布局" style={{ width: '100%', height: '100%', objectFit: 'contain', opacity: localProps.mainDirection === 'vertical' ? 1 : 0.6, borderRadius: 8 }} />
+                  <img src={LayoutV} alt={t('vertical_layout')} style={{ width: '100%', height: '100%', objectFit: 'contain', opacity: localProps.mainDirection === 'vertical' ? 1 : 0.6, borderRadius: 8 }} />
                 </button>
               </div>
             </div>
@@ -599,7 +618,7 @@ const FormatSidebar = ({
               marginBottom: 10,
               border: '0px solid var(--sidebar-border)',
             }}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--sidebar-text)', marginBottom: 10 }}>背景颜色</div>
+              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--sidebar-text)', marginBottom: 10 }}>{t('background_color')}</div>
               <button
                 style={{
                   width: '100%',
@@ -613,7 +632,7 @@ const FormatSidebar = ({
                   padding: 0,
                 }}
                 onClick={(e) => handleColorButtonClick('bg', e)}
-                aria-label="选择背景颜色"
+                aria-label={t('select_background_color')}
               />
               {colorPickerOpen === 'bg' && (
                 <PopupPortal onClickOutside={() => setColorPickerOpen(null)}>
@@ -665,7 +684,7 @@ const FormatSidebar = ({
               marginBottom: 10,
               border: '0px solid var(--sidebar-border)',
             }}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--sidebar-text)', marginBottom: 10 }}>网格</div>
+              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--sidebar-text)', marginBottom: 10 }}>{t('grid')}</div>
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                 <input
                   type="checkbox"
@@ -673,11 +692,11 @@ const FormatSidebar = ({
                   onChange={e => handleChange('showGrid', e.target.checked)}
                   style={{ width: 18, height: 18, accentColor: '#316acb' }}
                 />
-                <span style={{ fontWeight: 500, fontSize: 14, color: 'var(--sidebar-text)' }}>显示网格</span>
+                <span style={{ fontWeight: 500, fontSize: 14, color: 'var(--sidebar-text)' }}>{t('show_grid')}</span>
               </label>
               {localProps.showGrid && (
                 <div style={{ marginTop: 0 }}>
-                  <span style={{ fontSize: 14, marginRight: 8, color: 'var(--sidebar-text)' }}>网格大小</span>
+                  <span style={{ fontSize: 14, marginRight: 8, color: 'var(--sidebar-text)' }}>{t('grid_size')}</span>
                   <select
                     value={localProps.gridSize || 40}
                     onChange={e => handleChange('gridSize', Number(e.target.value))}
@@ -713,7 +732,7 @@ const FormatSidebar = ({
             {/* 多选提示 */}
             {selectedTasks && selectedTasks.length > 1 && (
               <div style={{ color: '#316acb', fontWeight: 600, marginBottom: 10, fontSize: 15 }}>
-                已选中{selectedTasks.length}个卡片，批量设置样式
+                {t('batch_style', { count: selectedTasks.length })}
               </div>
             )}
             {/* 卡片1：重要性 */}
@@ -729,7 +748,7 @@ const FormatSidebar = ({
             }}>
               {/* 重要性选择器 */}
               <div style={{ display: 'flex', alignItems: 'center', marginBottom: 0, height: 36 }}>
-                <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--sidebar-text)', minWidth: 48 }}>重要性</div>
+                <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--sidebar-text)', minWidth: 48 }}>{t('important')}</div>
                 <select
                   value={(() => {
                     const level = (selectedTasks && selectedTasks.length > 1)
@@ -773,9 +792,9 @@ const FormatSidebar = ({
                     boxSizing: 'border-box',
                   }}
                 >
-                  <option value="important">重要</option>
-                  <option value="secondary">次要</option>
-                  <option value="normal">一般</option>
+                  <option value="important">{t('important')}</option>
+                  <option value="secondary">{t('secondary')}</option>
+                  <option value="normal">{t('normal')}</option>
                 </select>
               </div>
             </div>
@@ -792,7 +811,7 @@ const FormatSidebar = ({
             }}>
               {/* 形状选择器 */}
               <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14, height: 36 }}>
-                <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--sidebar-text)', minWidth: 48 }}>形状</div>
+                <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--sidebar-text)', minWidth: 48 }}>{t('shape')}</div>
                 <div style={{ flex: 1, marginLeft: 12, position: 'relative' }}>
                   <button
                     className="shape-button"
@@ -810,7 +829,7 @@ const FormatSidebar = ({
                     <span style={{ fontSize: 13 }}>
                       {(selectedTasks && selectedTasks.length > 1)
                         ? (SHAPES.find(s => s.type === getMultiValue('shape'))?.name || '-')
-                        : currentShape.name}
+                        : t(currentShape.name)}
                     </span>
                   </button>
                   {shapeMenuOpen && (
@@ -861,7 +880,7 @@ const FormatSidebar = ({
                               }}
                             >
                               {s.icon}
-                              <span style={{ fontSize: 13 }}>{s.name}</span>
+                              <span style={{ fontSize: 13 }}>{t(s.name)}</span>
                             </div>
                           );
                         })}
@@ -872,7 +891,7 @@ const FormatSidebar = ({
               </div>
               {/* 填充颜色选择器 */}
               <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14, height: 32 }}>
-                <div style={{ fontWeight: 400, fontSize: 14, color: 'var(--sidebar-text)', minWidth: 48 }}>填充</div>
+                <div style={{ fontWeight: 400, fontSize: 14, color: 'var(--sidebar-text)', minWidth: 48 }}>{t('fill')}</div>
                 <div style={{ flex: 1, marginLeft: 12, position: 'relative' }}>
                   <button
                     style={{
@@ -884,7 +903,7 @@ const FormatSidebar = ({
                       borderRadius: 8, cursor: 'pointer', padding: 0,
                     }}
                     onClick={(e) => handleColorButtonClick('fill', e)}
-                    aria-label="选择填充颜色"
+                    aria-label={t('select_fill_color')}
                   />
                   {colorPickerOpen === 'fill' && (
                     <PopupPortal onClickOutside={() => setColorPickerOpen(null)}>
@@ -930,7 +949,7 @@ const FormatSidebar = ({
               </div>
               {/* 边框线形+颜色选择器 */}
               <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14, height: 32 }}>
-                <div style={{ fontWeight: 400, fontSize: 14, color: 'var(--sidebar-text)', minWidth: 48 }}>边框</div>
+                <div style={{ fontWeight: 400, fontSize: 14, color: 'var(--sidebar-text)', minWidth: 48 }}>{t('border')}</div>
                 <div style={{ flex: 1, marginLeft: 12, display: 'flex', gap: 8 }}>
                   {/* 线形选择器 */}
                   <select
@@ -958,7 +977,7 @@ const FormatSidebar = ({
                     }}
                   >
                     {LINE_STYLES.map(opt => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      <option key={opt.value} value={opt.value}>{t(opt.label)}</option>
                     ))}
                   </select>
                   {/* 边框颜色选择器 */}
@@ -979,7 +998,7 @@ const FormatSidebar = ({
                         lineHeight: '32px',
                       }}
                       onClick={(e) => handleColorButtonClick('border', e)}
-                      aria-label="选择边框颜色"
+                      aria-label={t('select_border_color')}
                     />
                     {colorPickerOpen === 'border' && (
                       <PopupPortal onClickOutside={() => setColorPickerOpen(null)}>
@@ -1024,7 +1043,7 @@ const FormatSidebar = ({
               </div>
               {/* 边框粗细选择器 */}
               <div style={{ display: 'flex', alignItems: 'center', marginBottom: 0, height: 32 }}>
-                <div style={{ fontWeight: 400, fontSize: 14, color: 'var(--sidebar-text)', minWidth: 48 }}>粗细</div>
+                <div style={{ fontWeight: 400, fontSize: 14, color: 'var(--sidebar-text)', minWidth: 48 }}>{t('thickness')}</div>
                 <select
                   value={String(localTaskStyle?.borderWidth ?? 1.5)}
                   onChange={e => handleTaskStyleChange('borderWidth', Number(e.target.value))}
@@ -1049,7 +1068,7 @@ const FormatSidebar = ({
                   }}
                 >
                   {LINE_WIDTHS.map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    <option key={opt.value} value={opt.value}>{t(opt.label)}</option>
                   ))}
                 </select>
               </div>
@@ -1065,7 +1084,7 @@ const FormatSidebar = ({
               marginBottom: 10,
               border: '0px solid var(--sidebar-border)',
             }}>
-              <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10 }}>文本</div>
+              <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10 }}>{t('text')}</div>
               {/* 字体、字号 第一排 */}
               <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
                 {/* 字体类型 */}
@@ -1092,7 +1111,7 @@ const FormatSidebar = ({
                     boxSizing: 'border-box',
                   }}
                 >
-                  {FONTS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+                  {FONTS.map(f => <option key={f.value} value={f.value}>{t(f.label)}</option>)}
                 </select>
                 {/* 字号 */}
                 <input
@@ -1148,10 +1167,10 @@ const FormatSidebar = ({
                     boxSizing: 'border-box',
                   }}
                 >
-                  <option value="300">Light</option>
-                  <option value="400">Regular</option>
-                  <option value="500">Medium</option>
-                  <option value="700">Bold</option>
+                  <option value="300">{t('light')}</option>
+                  <option value="400">{t('regular')}</option>
+                  <option value="500">{t('medium')}</option>
+                  <option value="700">{t('bold')}</option>
                 </select>
                 {/* 字体颜色 */}
                 <div style={{ width: '35%', height: 32, display: 'inline-block', verticalAlign: 'middle', position: 'relative' }}>
@@ -1167,7 +1186,7 @@ const FormatSidebar = ({
                       position: 'relative',
                     }}
                     onClick={(e) => handleColorButtonClick('font', e)}
-                    aria-label="选择字体颜色"
+                    aria-label={t('select_font_color')}
                   />
                   {colorPickerOpen === 'font' && (
                     <PopupPortal onClickOutside={() => setColorPickerOpen(null)}>
@@ -1219,8 +1238,6 @@ const FormatSidebar = ({
                     borderRadius: 8,
                     border: '1px solid var(--button-border)',
                     fontWeight: 700,
-                    fontStyle: 'normal',
-                    textDecoration: 'none',
                     background: localTaskStyle?.fontWeight === '700' ? 'var(--button-hover-bg)' : 'none',
                     minWidth: 0,
                     display: 'flex',
@@ -1229,9 +1246,13 @@ const FormatSidebar = ({
                     color: 'var(--sidebar-text)',
                     transition: 'background-color 0.2s',
                     cursor: 'pointer',
+                    fontSize: 18
                   }}
+                  title={t('bold')}
                   onClick={() => handleTaskStyleChange('fontWeight', localTaskStyle?.fontWeight === '700' ? '500' : '700')}
-                >B</button>
+                >
+                  <b>B</b>
+                </button>
                 <button
                   type="button"
                   style={{
@@ -1248,9 +1269,13 @@ const FormatSidebar = ({
                     color: 'var(--sidebar-text)',
                     transition: 'background-color 0.2s',
                     cursor: 'pointer',
+                    fontSize: 18
                   }}
+                  title={t('italic')}
                   onClick={() => handleTaskStyleChange('fontStyle', localTaskStyle?.fontStyle === 'italic' ? 'normal' : 'italic')}
-                >I</button>
+                >
+                  <i>I</i>
+                </button>
                 <button
                   type="button"
                   style={{
@@ -1258,26 +1283,6 @@ const FormatSidebar = ({
                     height: 32,
                     borderRadius: 8,
                     border: '1px solid var(--button-border)',
-                    textDecoration: 'line-through',
-                    background: localTaskStyle?.textDecoration === 'line-through' ? 'var(--button-hover-bg)' : 'none',
-                    minWidth: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'var(--sidebar-text)',
-                    transition: 'background-color 0.2s',
-                    cursor: 'pointer',
-                  }}
-                  onClick={() => handleTaskStyleChange('textDecoration', localTaskStyle?.textDecoration === 'line-through' ? 'none' : 'line-through')}
-                >S</button>
-                <button
-                  type="button"
-                  style={{
-                    flex: 1,
-                    height: 32,
-                    borderRadius: 8,
-                    border: '1px solid var(--button-border)',
-                    textDecoration: 'underline',
                     background: localTaskStyle?.textDecoration === 'underline' ? 'var(--button-hover-bg)' : 'none',
                     minWidth: 0,
                     display: 'flex',
@@ -1286,9 +1291,37 @@ const FormatSidebar = ({
                     color: 'var(--sidebar-text)',
                     transition: 'background-color 0.2s',
                     cursor: 'pointer',
+                    fontSize: 18,
+                    textDecoration: 'underline'
                   }}
+                  title={t('underline')}
                   onClick={() => handleTaskStyleChange('textDecoration', localTaskStyle?.textDecoration === 'underline' ? 'none' : 'underline')}
-                >U</button>
+                >
+                  U
+                </button>
+                <button
+                  type="button"
+                  style={{
+                    flex: 1,
+                    height: 32,
+                    borderRadius: 8,
+                    border: '1px solid var(--button-border)',
+                    background: localTaskStyle?.textDecoration === 'line-through' ? 'var(--button-hover-bg)' : 'none',
+                    minWidth: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'var(--sidebar-text)',
+                    transition: 'background-color 0.2s',
+                    cursor: 'pointer',
+                    fontSize: 18,
+                    textDecoration: 'line-through'
+                  }}
+                  title={t('strikethrough')}
+                  onClick={() => handleTaskStyleChange('textDecoration', localTaskStyle?.textDecoration === 'line-through' ? 'none' : 'line-through')}
+                >
+                  ab
+                </button>
               </div>
               {/* 对齐方式 */}
               <div style={{ display: 'flex', gap: 8, marginBottom: 0 }}>
@@ -1377,11 +1410,11 @@ const FormatSidebar = ({
               marginBottom: 10,
               border: '0px solid var(--sidebar-border)',
             }}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--sidebar-text)', marginBottom: 10 }}>分支</div>
+              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--sidebar-text)', marginBottom: 10 }}>{t('branch')}</div>
               
               {/* 线形选择器 */}
               <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14, height: 32 }}>
-                <div style={{ fontWeight: 400, fontSize: 14, color: 'var(--sidebar-text)', minWidth: 48 }}>线条</div>
+                <div style={{ fontWeight: 400, fontSize: 14, color: 'var(--sidebar-text)', minWidth: 48 }}>{t('line_style')}</div>
                 <select
                   value={getBranchStyleValue('lineStyle')}
                   onChange={e => onBranchStyleChange?.('lineStyle', e.target.value)}
@@ -1405,14 +1438,14 @@ const FormatSidebar = ({
                   }}
                 >
                   {LINE_STYLES.map(style => (
-                    <option key={style.value} value={style.value}>{style.label}</option>
+                    <option key={style.value} value={style.value}>{t(style.label)}</option>
                   ))}
                 </select>
               </div>
 
               {/* 箭头样式选择器 */}
               <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14, height: 32 }}>
-                <div style={{ fontWeight: 400, fontSize: 14, color: 'var(--sidebar-text)', minWidth: 48 }}>终点</div>
+                <div style={{ fontWeight: 400, fontSize: 14, color: 'var(--sidebar-text)', minWidth: 48 }}>{t('arrow_style')}</div>
                 <select
                   value={getBranchStyleValue('arrowStyle')}
                   onChange={e => onBranchStyleChange?.('arrowStyle', e.target.value)}
@@ -1436,16 +1469,14 @@ const FormatSidebar = ({
                   }}
                 >
                   {ARROW_STYLES.map(style => (
-                    <option key={style.value} value={style.value}>
-                      {style.label}
-                    </option>
+                    <option key={style.value} value={style.value}>{t(style.label)}</option>
                   ))}
                 </select>
               </div>
 
               {/* 线宽选择器 */}
               <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14, height: 32 }}>
-                <div style={{ fontWeight: 400, fontSize: 14, color: 'var(--sidebar-text)', minWidth: 48 }}>粗细</div>
+                <div style={{ fontWeight: 400, fontSize: 14, color: 'var(--sidebar-text)', minWidth: 48 }}>{t('thickness')}</div>
                 <select
                   value={getBranchStyleValue('lineWidth')}
                   onChange={e => onBranchStyleChange?.('lineWidth', Number(e.target.value))}
@@ -1469,14 +1500,14 @@ const FormatSidebar = ({
                   }}
                 >
                   {LINE_WIDTHS.map(width => (
-                    <option key={width.value} value={width.value}>{width.label}</option>
+                    <option key={width.value} value={width.value}>{t(width.label)}</option>
                   ))}
                 </select>
               </div>
 
               {/* 颜色选择器 */}
               <div style={{ display: 'flex', alignItems: 'center', marginBottom: 0, height: 32 }}>
-                <div style={{ fontWeight: 400, fontSize: 14, color: 'var(--sidebar-text)', minWidth: 48 }}>颜色</div>
+                <div style={{ fontWeight: 400, fontSize: 14, color: 'var(--sidebar-text)', minWidth: 48 }}>{t('color')}</div>
                 <div style={{ flex: 1, marginLeft: 12, position: 'relative' }}>
                   <button
                     style={{
@@ -1489,7 +1520,7 @@ const FormatSidebar = ({
                       padding: 0,
                     }}
                     onClick={(e) => handleColorButtonClick('branch', e)}
-                    aria-label="选择连线颜色"
+                    aria-label={t('select_line_color')}
                   />
                   {colorPickerOpen === 'branch' && (
                     <PopupPortal onClickOutside={() => setColorPickerOpen(null)}>
@@ -1563,12 +1594,12 @@ const FormatSidebar = ({
                     background: 'var(--button-hover-bg)',
                   }
                 }}
-              >恢复默认样式</button>
+              >{t('reset_style')}</button>
             </div>
           </div>
         )}
         {tab === 'style' && !selectedTask && (!selectedTasks || selectedTasks.length === 0) && (
-          <div style={{ color: 'var(--sidebar-text)', textAlign: 'center', marginTop: 60, fontSize: 16 }}>未选中任何卡片</div>
+          <div style={{ color: 'var(--sidebar-text)', textAlign: 'center', marginTop: 60, fontSize: 16 }}>{t('no_card_selected')}</div>
         )}
       </div>
     </div>

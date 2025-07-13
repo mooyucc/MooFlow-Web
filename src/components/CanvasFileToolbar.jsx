@@ -4,7 +4,42 @@ import './CanvasToolbar.css';
 import FormatSidebar from './FormatSidebar';
 import Papa from 'papaparse';
 import app from '../cloudbase';
+import { useTranslation } from '../LanguageContext';
 
+// 简单Tooltip组件（与CanvasToolbar一致）
+const Tooltip = ({ text, children }) => {
+  const [visible, setVisible] = React.useState(false);
+  return (
+    <span
+      style={{ position: 'relative', display: 'inline-block' }}
+      onMouseEnter={() => setVisible(true)}
+      onMouseLeave={() => setVisible(false)}
+    >
+      {children}
+      {visible && (
+        <span
+          style={{
+            position: 'absolute',
+            bottom: '120%',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'rgba(40,40,40,0.95)',
+            color: '#fff',
+            padding: '4px 10px',
+            borderRadius: 4,
+            fontSize: 11,
+            whiteSpace: 'nowrap',
+            zIndex: 1000,
+            pointerEvents: 'none',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+          }}
+        >
+          {text}
+        </span>
+      )}
+    </span>
+  );
+};
 // iOS风格图标
 const ExportIcon = () => (
   <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -79,8 +114,10 @@ const CanvasFileToolbar = ({
   selectedTaskIds,
   // 新增：分支样式属性
   branchStyle,
-  onBranchStyleChange
+  onBranchStyleChange,
+  autoArrangeTasks
 }) => {
+  const [t, lang, setLang] = useTranslation();
   // 多文件（Tab）本地状态
   const [files, setFiles] = useState(() => {
     // 尝试从 localStorage 恢复
@@ -493,41 +530,46 @@ const CanvasFileToolbar = ({
   return (
     <div className="canvas-toolbar minimal filebar" style={{ display: 'flex', alignItems: 'center' }}>
       {/* 登出按钮 */}
-      <button className="toolbar-btn" title="登出" onClick={async () => {
-        await app.auth().signOut();
-        window.location.reload();
-      }} style={{ marginRight: 8 }}>
-        {/* 退出SVG图标 */}
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M16 17l5-5-5-5" />
-          <path d="M21 12H9" />
-          <path d="M13 5v-2a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-2" />
-        </svg>
-      </button>
+      <Tooltip text={t('logout')}>
+        <button className="toolbar-btn" onClick={async () => {
+          await app.auth().signOut();
+          window.location.reload();
+        }} style={{ marginRight: 8 }}>
+          {/* 退出SVG图标 */}
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M16 17l5-5-5-5" />
+            <path d="M21 12H9" />
+            <path d="M13 5v-2a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-2" />
+          </svg>
+        </button>
+      </Tooltip>
       {/* Home按钮 */}
-      <button className="toolbar-btn" title="最近打开" onClick={handleShowRecent} style={{ marginRight: 8 }}>
-        {/* 带门的极简风格房子SVG */}
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M3 12L12 3l9 9" />
-          <path d="M9 21V9h6v12" />
-          <path d="M21 21H3" />
-        </svg>
-      </button>
+      <Tooltip text={t('recent_open')}>
+        <button className="toolbar-btn" onClick={handleShowRecent} style={{ marginRight: 8 }}>
+          {/* 带门的极简风格房子SVG */}
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 12L12 3l9 9" />
+            <path d="M9 21V9h6v12" />
+            <path d="M21 21H3" />
+          </svg>
+        </button>
+      </Tooltip>
       {/* 新增：格式按钮 */}
-      <button
-        className="toolbar-btn format-btn"
-        title="格式"
-        onClick={() => setShowFormatSidebar(v => !v)}
-        style={{ marginRight: 8, background: showFormatSidebar ? 'var(--format-btn-active-bg)' : 'none' }}
-      >
-        {/* 侧边栏/面板风格图标SVG */}
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="3" y="4" width="18" height="16" rx="2.5"/>
-          <line x1="9.5" y1="4" x2="9.5" y2="20"/>
-          <circle cx="16" cy="9" r="1"/>
-          <circle cx="16" cy="15" r="1"/>
-        </svg>
-      </button>
+      <Tooltip text={t('format')}>
+        <button
+          className="toolbar-btn format-btn"
+          onClick={() => setShowFormatSidebar(v => !v)}
+          style={{ marginRight: 8, background: showFormatSidebar ? 'var(--format-btn-active-bg)' : 'none' }}
+        >
+          {/* 侧边栏/面板风格图标SVG */}
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="4" width="18" height="16" rx="2.5"/>
+            <line x1="9.5" y1="4" x2="9.5" y2="20"/>
+            <circle cx="16" cy="9" r="1"/>
+            <circle cx="16" cy="15" r="1"/>
+          </svg>
+        </button>
+      </Tooltip>
       {/* Tab栏 */}
       <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
         {files.map(file => (
@@ -582,7 +624,6 @@ const CanvasFileToolbar = ({
                   setRenamingId(file.id);
                   setRenameValue(file.name);
                 }}
-                title="双击重命名"
               >
                 {file.name}
               </span>
@@ -590,21 +631,24 @@ const CanvasFileToolbar = ({
             <span
               style={{ marginLeft: 8, cursor: 'pointer', opacity: 0.7 }}
               onClick={e => handleCloseFile(file.id, e)}
-              title="关闭文件"
             >
               <CloseIcon />
             </span>
           </div>
         ))}
-        <button className="toolbar-btn" title="新建文件" onClick={handleNewFile} style={{ marginLeft: 4 }}>
-          <NewFileIcon />
-        </button>
+        <Tooltip text={t('new_file')}>
+          <button className="toolbar-btn" onClick={handleNewFile} style={{ marginLeft: 4 }}>
+            <NewFileIcon />
+          </button>
+        </Tooltip>
       </div>
       {/* 导出/导入按钮（带下拉菜单） */}
       <div style={{ position: 'relative', marginRight: 4 }}>
-        <button className="toolbar-btn" title="导出任务" onClick={() => setExportMenuOpen(v => !v)}>
-          <ExportIcon />
-        </button>
+        <Tooltip text={t('export_task')}>
+          <button className="toolbar-btn" onClick={() => setExportMenuOpen(v => !v)}>
+            <ExportIcon />
+          </button>
+        </Tooltip>
         {exportMenuOpen && (
           <div style={{
             position: 'absolute',
@@ -623,20 +667,22 @@ const CanvasFileToolbar = ({
               onClick={handleExport}
               onMouseEnter={e => e.currentTarget.style.background = '#f3f3f6'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-            >导出为JSON</div>
+            >{t('export_json')}</div>
             <div
               style={{ padding: '8px 16px', cursor: 'pointer', color: '#333', fontSize: 12 }}
               onClick={handleExportCSV}
               onMouseEnter={e => e.currentTarget.style.background = '#f3f3f6'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-            >导出为CSV</div>
+            >{t('export_csv')}</div>
           </div>
         )}
       </div>
       <div style={{ position: 'relative', marginRight: 4 }}>
-        <button className="toolbar-btn" title="导入任务" onClick={() => setImportMenuOpen(v => !v)}>
-          <ImportIcon />
-        </button>
+        <Tooltip text={t('import_task')}>
+          <button className="toolbar-btn" onClick={() => setImportMenuOpen(v => !v)}>
+            <ImportIcon />
+          </button>
+        </Tooltip>
         {importMenuOpen && (
           <div style={{
             position: 'absolute',
@@ -655,7 +701,7 @@ const CanvasFileToolbar = ({
               onClick={() => { setImportMenuOpen(false); fileInputRef.current.click(); }}
               onMouseEnter={e => e.currentTarget.style.background = '#f3f3f6'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-            >导入JSON</div>
+            >{t('import_json')}</div>
           </div>
         )}
         {/* 隐藏的文件输入框 */}
@@ -701,15 +747,15 @@ const CanvasFileToolbar = ({
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
-            <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--filebar-text)', flex: 1 }}>最近打开</span>
+            <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--filebar-text)', flex: 1 }}>{t('recent_open')}</span>
             <button
               style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: 'var(--filebar-text)', opacity: 0.6 }}
               onClick={() => setShowRecent(false)}
-              title="关闭"
+              title={t('close_file')}
             >×</button>
           </div>
           {recentFiles.length === 0 ? (
-            <div style={{ color: 'var(--filebar-text)', opacity: 0.6, textAlign: 'center', marginTop: 60 }}>暂无最近打开文件</div>
+            <div style={{ color: 'var(--filebar-text)', opacity: 0.6, textAlign: 'center', marginTop: 60 }}>{t('no_recent_file')}</div>
           ) : (
             recentFiles.map(file => (
               <div
@@ -746,7 +792,7 @@ const CanvasFileToolbar = ({
                     lineHeight: 1,
                     transition: 'color 0.2s, opacity 0.2s',
                   }}
-                  title="从列表中移除"
+                  title={t('remove_from_list')}
                   onMouseEnter={e => {
                     e.currentTarget.style.color = '#f44336';
                     e.currentTarget.style.opacity = '1';
@@ -757,7 +803,7 @@ const CanvasFileToolbar = ({
                   }}
                 >×</button>
                 <span style={{ fontWeight: 600, color: file.id === activeFileId ? '#fff' : 'var(--filebar-text)', fontSize: 16 }}>{file.name}</span>
-                <span style={{ color: file.id === activeFileId ? '#fff' : 'var(--filebar-text)', opacity: file.id === activeFileId ? 0.9 : 0.7, fontSize: 13, marginTop: 2 }}>最近编辑：{file.lastOpen ? new Date(file.lastOpen).toLocaleString() : ''}</span>
+                <span style={{ color: file.id === activeFileId ? '#fff' : 'var(--filebar-text)', opacity: file.id === activeFileId ? 0.9 : 0.7, fontSize: 13, marginTop: 2 }}>{t('recent_edit')}：{file.lastOpen ? new Date(file.lastOpen).toLocaleString() : ''}</span>
               </div>
             ))
           )}
@@ -778,6 +824,7 @@ const CanvasFileToolbar = ({
         onBranchStyleChange={onBranchStyleChange}
         paletteIdx={paletteIdx}
         onPaletteChange={handlePaletteChange}
+        autoArrangeTasks={typeof autoArrangeTasks === 'function' ? autoArrangeTasks : undefined}
       />
     </div>
   );

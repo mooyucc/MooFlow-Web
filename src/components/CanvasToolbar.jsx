@@ -1,6 +1,42 @@
 import React, { useState, useRef } from 'react';
 import { useTaskStore } from '../store/taskStore';
 import './CanvasToolbar.css';
+import { useTranslation } from '../LanguageContext';
+
+// 简单Tooltip组件
+const Tooltip = ({ text, children }) => {
+  const [visible, setVisible] = useState(false);
+  return (
+    <span
+      style={{ position: 'relative', display: 'inline-block' }}
+      onMouseEnter={() => setVisible(true)}
+      onMouseLeave={() => setVisible(false)}
+    >
+      {children}
+      {visible && (
+        <span
+          style={{
+            position: 'absolute',
+            bottom: '120%',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'rgba(40,40,40,0.95)',
+            color: '#fff',
+            padding: '4px 10px',
+            borderRadius: 4,
+            fontSize: 11,
+            whiteSpace: 'nowrap',
+            zIndex: 1000,
+            pointerEvents: 'none',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+          }}
+        >
+          {text}
+        </span>
+      )}
+    </span>
+  );
+};
 
 const SCALE_OPTIONS = [0.5, 0.75, 1, 1.5, 2];
 
@@ -75,6 +111,7 @@ const CanvasToolbar = ({ onStartLink, onSetScale, onFitView, onAlignToTimeline, 
   const redoStack = useTaskStore((state) => state.redoStack);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const [t] = useTranslation();
 
   // 缩放减小
   const handleZoomOut = () => {
@@ -115,24 +152,34 @@ const CanvasToolbar = ({ onStartLink, onSetScale, onFitView, onAlignToTimeline, 
 
   return (
     <div className="canvas-toolbar minimal">
-      <button className="toolbar-btn" title="撤销" onClick={undo} disabled={undoStack.length === 0} style={undoStack.length === 0 ? {opacity: 0.4, cursor: 'not-allowed'} : {}}>
-        <div style={{marginTop:-3}}><UndoIcon /></div>
-      </button>
-      <button className="toolbar-btn" title="重做" onClick={redo} disabled={redoStack.length === 0} style={redoStack.length === 0 ? {opacity: 0.4, cursor: 'not-allowed'} : {}}>
-        <div style={{marginTop:-3}}><RedoIcon /></div>
-      </button>
+      <Tooltip text={t('undo')}>
+        <button className="toolbar-btn" onClick={undo} disabled={undoStack.length === 0} style={undoStack.length === 0 ? {opacity: 0.4, cursor: 'not-allowed'} : {}}>
+          <div style={{marginTop:-3}}><UndoIcon /></div>
+        </button>
+      </Tooltip>
+      <Tooltip text={t('redo')}>
+        <button className="toolbar-btn" onClick={redo} disabled={redoStack.length === 0} style={redoStack.length === 0 ? {opacity: 0.4, cursor: 'not-allowed'} : {}}>
+          <div style={{marginTop:-3}}><RedoIcon /></div>
+        </button>
+      </Tooltip>
       <div className="toolbar-divider" />
-      <button className="toolbar-btn" title="添加子任务" onClick={onAddChildTask} disabled={!hasSelectedTask} style={!hasSelectedTask ? {opacity: 0.4, cursor: 'not-allowed'} : {}}>
-        <ChildTaskIcon />
-        <div style={{fontSize:12,marginTop:-1}}>子任务</div>
-      </button>
-      <button className="toolbar-btn" title="添加细分任务" onClick={onAddSiblingTask} disabled={!hasSelectedTask} style={!hasSelectedTask ? {opacity: 0.4, cursor: 'not-allowed'} : {}}>
-        <SiblingTaskIcon />
-        <div style={{fontSize:12,marginTop:-1}}>细分任务</div>
-      </button>
+      <Tooltip text={t('child_task')}>
+        <button className="toolbar-btn" onClick={onAddChildTask} disabled={!hasSelectedTask} style={!hasSelectedTask ? {opacity: 0.4, cursor: 'not-allowed'} : {}}>
+          <ChildTaskIcon />
+          <div style={{fontSize:12,marginTop:-1}}>{t('child_task')}</div>
+        </button>
+      </Tooltip>
+      <Tooltip text={t('fine_task')}>
+        <button className="toolbar-btn" onClick={onAddSiblingTask} disabled={!hasSelectedTask} style={!hasSelectedTask ? {opacity: 0.4, cursor: 'not-allowed'} : {}}>
+          <SiblingTaskIcon />
+          <div style={{fontSize:12,marginTop:-1}}>{t('fine_task')}</div>
+        </button>
+      </Tooltip>
       <div className="toolbar-divider" />
       <div className="zoom-toolbar">
-        <button className="zoom-btn" onClick={handleZoomOut} title="缩小"><MinusIcon /></button>
+        <Tooltip text={t('zoom_out')}>
+          <button className="zoom-btn" onClick={handleZoomOut}><MinusIcon /></button>
+        </Tooltip>
         <div className="zoom-select" onClick={() => setDropdownOpen(v => !v)} ref={dropdownRef}>
           {`${Math.round(scale * 100)}%`} <span className="arrow"><ArrowIcon /></span>
           {dropdownOpen && (
@@ -145,15 +192,21 @@ const CanvasToolbar = ({ onStartLink, onSetScale, onFitView, onAlignToTimeline, 
             </div>
           )}
         </div>
-        <button className="zoom-btn" onClick={handleZoomIn} title="放大"><PlusIcon /></button>
+        <Tooltip text={t('zoom_in')}>
+          <button className="zoom-btn" onClick={handleZoomIn}><PlusIcon /></button>
+        </Tooltip>
       </div>
       <div className="toolbar-divider" />
-      <button className="toolbar-btn" title="自适应" onClick={onFitView}>
-        <FitIcon />
-      </button>
-      <button className="toolbar-btn" title="刷新对齐" onClick={onAlignToTimeline}>
-        <RefreshIcon />
-      </button>
+      <Tooltip text={t('fit_view')}>
+        <button className="toolbar-btn" onClick={onFitView}>
+          <FitIcon />
+        </button>
+      </Tooltip>
+      <Tooltip text={t('refresh_align')}>
+        <button className="toolbar-btn" onClick={onAlignToTimeline}>
+          <RefreshIcon />
+        </button>
+      </Tooltip>
     </div>
   );
 };

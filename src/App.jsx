@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import Login from "./components/Login";
 import app from "./cloudbase";
 import MainCanvas from "./components/MainCanvas";
+import { LanguageProvider } from "./LanguageContext";
 
 export default function App() {
   const [loggedIn, setLoggedIn] = useState(false);
@@ -14,8 +15,16 @@ export default function App() {
   }, []);
 
   if (!loggedIn) {
-    return <Login onLogin={() => setLoggedIn(true)} />;
+    return (
+      <LanguageProvider>
+        <Login onLogin={() => setLoggedIn(true)} />
+      </LanguageProvider>
+    );
   }
 
-  return <MainCanvas />;
+  return (
+    <LanguageProvider>
+      <MainCanvas />
+    </LanguageProvider>
+  );
 }
