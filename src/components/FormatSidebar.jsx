@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { SketchPicker } from 'react-color';
 import { useTaskStore, defaultTaskStyle, defaultLinkStyle } from '../store/taskStore';
 import PopupPortal from './PopupPortal';
+import LayoutH from '../../assets/LayoutH.png';
+import LayoutV from '../../assets/LayoutV.png';
 
 const COLOR_SCHEMES = [
   { name: '彩虹', colors: ['#f44336', '#ff9800', '#ffeb3b', '#4caf50', '#2196f3', '#9c27b0', '#00bcd4'] },
@@ -542,38 +544,48 @@ const FormatSidebar = ({
               border: '0px solid var(--sidebar-border)',
               position: 'relative',
             }}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--sidebar-text)', marginBottom: 10 }}>主线任务方向</div>
+              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--sidebar-text)', marginBottom: 10 }}>布局</div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button
                   style={{
                     flex: 1,
-                    padding: '6px 0',
+                    padding: 0,
                     borderRadius: 8,
                     border: '1.5px solid var(--sidebar-border)',
-                    background: (localProps.mainDirection || 'horizontal') === 'horizontal' ? '#316acb' : 'var(--sidebar-bg)',
-                    color: (localProps.mainDirection || 'horizontal') === 'horizontal' ? '#fff' : 'var(--sidebar-text)',
-                    fontWeight: (localProps.mainDirection || 'horizontal') === 'horizontal' ? 700 : 500,
+                    background: (localProps.mainDirection || 'horizontal') === 'horizontal' ? '#316acb22' : 'var(--sidebar-bg)',
                     cursor: 'pointer',
-                    fontSize: 15,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 40,
+                    height: 64,
                     transition: 'background 0.2s',
                   }}
                   onClick={() => handleChange('mainDirection', 'horizontal')}
-                >水平</button>
+                  title="水平布局"
+                >
+                  <img src={LayoutH} alt="水平布局" style={{ width: '100%', height: '100%', objectFit: 'contain', opacity: (localProps.mainDirection || 'horizontal') === 'horizontal' ? 1 : 0.6, borderRadius: 8 }} />
+                </button>
                 <button
                   style={{
                     flex: 1,
-                    padding: '6px 0',
+                    padding: 0,
                     borderRadius: 8,
                     border: '1.5px solid var(--sidebar-border)',
-                    background: localProps.mainDirection === 'vertical' ? '#316acb' : 'var(--sidebar-bg)',
-                    color: localProps.mainDirection === 'vertical' ? '#fff' : 'var(--sidebar-text)',
-                    fontWeight: localProps.mainDirection === 'vertical' ? 700 : 500,
+                    background: localProps.mainDirection === 'vertical' ? '#316acb22' : 'var(--sidebar-bg)',
                     cursor: 'pointer',
-                    fontSize: 15,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 40,
+                    height: 64,
                     transition: 'background 0.2s',
                   }}
                   onClick={() => handleChange('mainDirection', 'vertical')}
-                >垂直</button>
+                  title="垂直布局"
+                >
+                  <img src={LayoutV} alt="垂直布局" style={{ width: '100%', height: '100%', objectFit: 'contain', opacity: localProps.mainDirection === 'vertical' ? 1 : 0.6, borderRadius: 8 }} />
+                </button>
               </div>
             </div>
             {/* 卡片1：背景颜色 */}

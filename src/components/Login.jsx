@@ -31,7 +31,7 @@ const outerStyle = {
   backgroundRepeat: "no-repeat"
 };
 const cardStyle = {
-  maxWidth: 320,
+  maxWidth: 360,
   width: "100%",
   padding: 32,
   borderRadius: 16,

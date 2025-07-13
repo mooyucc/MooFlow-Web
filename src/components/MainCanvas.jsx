@@ -476,7 +476,7 @@ const MainCanvas = () => {
   // 计算所有任务节点的包围盒
   const CARD_WIDTH = 180;
   const CARD_HEIGHT = 72;
-  const CARD_PADDING_Y = 40; // 卡片垂直间距
+  const CARD_PADDING_Y = 68; // 卡片垂直间距
 
   /**
    * 检查两个矩形是否重叠
@@ -1184,6 +1184,119 @@ const MainCanvas = () => {
 
   // 读取主线方向
   const mainDirection = canvasProps.mainDirection || 'horizontal';
+
+  // 在MainCanvas组件内部添加autoArrangeTasks函数
+  const autoArrangeTasks = () => {
+    const allTasks = useTaskStore.getState().tasks;
+    const updateTask = useTaskStore.getState().updateTask;
+    const mainDirection = canvasProps.mainDirection || 'horizontal';
+
+    const startX = 100, startY = 200;
+    const mainGapH = 300, childGapH = 180, fineGapH = 180;
+    const mainGapV = 180, childGapV = 300, fineGapV = 300;
+
+    const mainTasks = allTasks.filter(t => !t.parentId);
+    const centerTask = allTasks[0];
+
+    if (mainDirection === 'vertical') {
+      // 主线任务纵向排列在中心任务下方
+      mainTasks.forEach((mainTask, i) => {
+        const mainX = startX;
+        const mainY = startY + i * mainGapV;
+        updateTask(mainTask.id, { position: { x: mainX, y: mainY } });
+
+        // 子任务横向排列在主线任务右侧
+        const children = allTasks.filter(t => t.parentId === mainTask.id);
+        children.forEach((child, j) => {
+          const childX = mainX + (j + 1) * childGapV;
+          const childY = mainY;
+          updateTask(child.id, { position: { x: childX, y: childY } });
+
+          // 细分任务横向排列在子任务右侧
+          const fineTasks = allTasks.filter(t => t.parentId === child.id);
+          fineTasks.forEach((fine, k) => {
+            const fineX = childX + (k + 1) * fineGapV;
+            const fineY = childY;
+            updateTask(fine.id, { position: { x: fineX, y: fineY } });
+          });
+        });
+      });
+    } else {
+      // 主线任务横向一排
+      mainTasks.forEach((mainTask, i) => {
+        const mainX = startX + i * mainGapH;
+        const mainY = startY;
+        updateTask(mainTask.id, { position: { x: mainX, y: mainY } });
+
+        // 子任务纵向排列在主线任务正下方
+        const children = allTasks.filter(t => t.parentId === mainTask.id);
+        children.forEach((child, j) => {
+          const childX = mainX;
+          const childY = mainY + (j + 1) * childGapH;
+          updateTask(child.id, { position: { x: childX, y: childY } });
+
+          // 细分任务纵向排列在子任务正下方
+          const fineTasks = allTasks.filter(t => t.parentId === child.id);
+          fineTasks.forEach((fine, k) => {
+            const fineX = childX;
+            const fineY = childY + (k + 1) * fineGapH;
+            updateTask(fine.id, { position: { x: fineX, y: fineY } });
+          });
+        });
+      });
+    }
+
+    setTimeout(() => {
+      // 自动更新所有连线锚点
+      const tasksNow = useTaskStore.getState().tasks;
+      const addLink = useTaskStore.getState().addLink;
+      const CARD_WIDTH = 180, CARD_HEIGHT = 72;
+      tasksNow.forEach(fromTask => {
+        (fromTask.links || []).forEach(link => {
+          const toTask = tasksNow.find(t => t.id === link.toId);
+          if (!toTask) return;
+          // 计算中心点
+          const fromCenter = {
+            x: fromTask.position.x + CARD_WIDTH / 2,
+            y: fromTask.position.y + CARD_HEIGHT / 2
+          };
+          const toCenter = {
+            x: toTask.position.x + CARD_WIDTH / 2,
+            y: toTask.position.y + CARD_HEIGHT / 2
+          };
+          const dx = toCenter.x - fromCenter.x;
+          const dy = toCenter.y - fromCenter.y;
+          let fromAnchor, toAnchor;
+          if (Math.abs(dx) > Math.abs(dy)) {
+            // 水平为主，左右中点
+            fromAnchor = { x: dx > 0 ? CARD_WIDTH : 0, y: CARD_HEIGHT / 2 };
+            toAnchor = { x: dx > 0 ? 0 : CARD_WIDTH, y: CARD_HEIGHT / 2 };
+          } else {
+            // 垂直为主，上下中点
+            fromAnchor = { x: CARD_WIDTH / 2, y: dy > 0 ? CARD_HEIGHT : 0 };
+            toAnchor = { x: CARD_WIDTH / 2, y: dy > 0 ? 0 : CARD_HEIGHT };
+          }
+          // 用addLink覆盖锚点
+          addLink(fromTask.id, link.toId, fromAnchor, toAnchor, link.label);
+        });
+      });
+      // 画布缩放比例恢复100%，中心任务放到左1/4、垂直居中
+      const centerTask = tasksNow[0];
+      if (centerTask) {
+        setTransform({
+          scale: 1,
+          offsetX: window.innerWidth / 4 - centerTask.position.x,
+          offsetY: window.innerHeight / 2 - centerTask.position.y - CARD_HEIGHT / 2
+        });
+      }
+    }, 200);
+  };
+
+  // 监听布局方向变化，自动排列卡片
+  useEffect(() => {
+    autoArrangeTasks();
+    // eslint-disable-next-line
+  }, [canvasProps.mainDirection]);
 
   return (
     <div

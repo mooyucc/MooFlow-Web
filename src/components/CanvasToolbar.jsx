@@ -67,7 +67,7 @@ const SiblingTaskIcon = () => (
   </svg>
 );
 
-const CanvasToolbar = ({ onStartLink, onSetScale, onFitView, onAlignToTimeline, scale, onAddChildTask, onAddSiblingTask, hasSelectedTask }) => {
+const CanvasToolbar = ({ onStartLink, onSetScale, onFitView, onAlignToTimeline, scale, onAddChildTask, onAddSiblingTask, hasSelectedTask, onAutoArrange }) => {
   const addTask = useTaskStore((state) => state.addTask);
   const undo = useTaskStore((state) => state.undo);
   const redo = useTaskStore((state) => state.redo);
