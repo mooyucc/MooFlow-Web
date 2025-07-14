@@ -87,7 +87,7 @@ const defaultFile = () => {
   const timeStr = `${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
   return {
     id: Date.now(),
-    name: `未命名${timeStr}`,
+    name: `MF${timeStr}`,
     tasks: [
       {
         id: 1,
@@ -291,6 +291,7 @@ const CanvasFileToolbar = ({
     clearTasks();
     newFile.tasks.forEach(t => addTask(t));
     setActiveFileId(newFile.id);
+    setCanvasProps(prev => ({ ...prev, mainDirection: newFile.mainDirection })); // 新增：同步布局
     recordRecentFile(newFile);
   };
 

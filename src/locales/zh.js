@@ -5,6 +5,7 @@ export default {
   'lang_zh': '中文',
   'lang_en': 'English',
   'new_task': '新任务',
+  'add_task': '新建任务',
   'child_task': '子任务',
   'fine_task': '细分任务',
   'set_date': '设置日期',

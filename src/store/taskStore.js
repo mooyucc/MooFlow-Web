@@ -12,9 +12,32 @@ sessionStorage.setItem('moo_file_id', fileId);
 // 本地存储 key（每个 tab 独立）
 const TASKS_KEY = `moo_tasks_${fileId}`;
 
-// 辅助函数：保证所有 links 都有 label 字段
-function ensureLinksLabel(tasks) {
+// 辅助函数：根据 parentId/level 推断 type
+function inferTaskType(task, tasks) {
+  if (task.parentId === null) return 'center';
+  if (task.level === 1) return 'main';
+  if (task.level === 2) return 'sub';
+  if (task.level >= 3) return 'detail';
+  // 兜底：根据父任务类型
+  const parent = tasks.find(t => t.id === task.parentId);
+  if (!parent) return 'main';
+  if (parent.type === 'center') return 'main';
+  if (parent.type === 'main') return 'sub';
+  return 'detail';
+}
+
+// 辅助函数：保证所有任务都有 type 字段
+function ensureTaskType(tasks) {
   return tasks.map(t => ({
+    ...t,
+    type: t.type || inferTaskType(t, tasks)
+  }));
+}
+
+// 辅助函数：保证所有 links 都有 label 字段和所有任务有 type 字段
+function ensureLinksLabel(tasks) {
+  const withType = ensureTaskType(tasks);
+  return withType.map(t => ({
     ...t,
     links: (t.links || []).map(l => ({ ...l, label: typeof l.label === 'string' ? l.label : '' }))
   }));
@@ -87,7 +110,23 @@ export const useTaskStore = create((set, get) => ({
   addTask: (task) => {
     get()._saveSnapshot();
     set((state) => {
-      const newTasks = ensureLinksLabel([...state.tasks, { ...task, date: task.date || null, collapsed: false, importantLevel: task.importantLevel || 'normal' }]);
+      // 自动分配 type 字段
+      let type = task.type;
+      if (!type) {
+        if (task.parentId === null) type = 'center';
+        else if (task.level === 1) type = 'main';
+        else if (task.level === 2) type = 'sub';
+        else if (task.level >= 3) type = 'detail';
+        else {
+          // 兜底：根据父任务类型
+          const parent = state.tasks.find(t => t.id === task.parentId);
+          if (!parent) type = 'main';
+          else if (parent.type === 'center') type = 'main';
+          else if (parent.type === 'main') type = 'sub';
+          else type = 'detail';
+        }
+      }
+      const newTasks = ensureLinksLabel([...state.tasks, { ...task, type, date: task.date || null, collapsed: false, importantLevel: task.importantLevel || 'normal' }]);
       saveTasksToStorage(newTasks); // 保存到本地
       return { tasks: newTasks };
     });

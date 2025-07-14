@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ANCHORS } from './TaskNode';
 
 const getEdgePoint = (rect, target) => {
   // rect: {x, y, width, height}，target: {x, y}
@@ -40,10 +41,12 @@ const LinkLine = ({
   lineStyle = 'solid',      // 线形：solid, dashed, dotted
   arrowStyle = 'normal',    // 箭头：normal, triangle, diamond, none
   lineWidth = 2,            // 线宽：默认2
+  selected = false, // 由外部props控制
+  onClick,
 }) => {
   // source/target: {position, ...}
   // 任务卡片尺寸
-  const nodeRect = { width: 180, height: 72 };
+  const nodeRect = { width: ANCHORS.RightAnchor.x, height: ANCHORS.DownAnchor.y };
   // 计算source/target中心
   const sourceRect = { x: source.position.x, y: source.position.y, ...nodeRect };
   const targetRect = { x: target.position.x, y: target.position.y, ...nodeRect };
@@ -235,7 +238,14 @@ const LinkLine = ({
   let path = `M ${x1} ${y1} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${x2} ${y2}`;
 
   // 曲线中点
-  const mid = { x: (x1 + x2) / 2, y: (y1 + y2) / 2 };
+  // const mid = { x: (x1 + x2) / 2, y: (y1 + y2) / 2 };
+  // 新增：贝塞尔曲线t=0.5点
+  function getCubicBezierPoint(t, p0, p1, p2, p3) {
+    const x = (1 - t) ** 3 * p0.x + 3 * (1 - t) ** 2 * t * p1.x + 3 * (1 - t) * t ** 2 * p2.x + t ** 3 * p3.x;
+    const y = (1 - t) ** 3 * p0.y + 3 * (1 - t) ** 2 * t * p1.y + 3 * (1 - t) * t ** 2 * p2.y + t ** 3 * p3.y;
+    return { x, y };
+  }
+  const mid = getCubicBezierPoint(0.5, { x: x1, y: y1 }, { x: c1x, y: c1y }, { x: c2x, y: c2y }, { x: x2, y: y2 });
 
   // 渲染高亮边线/角点
   let highlightElement = null;
@@ -263,26 +273,6 @@ const LinkLine = ({
   const [inputFocused, setInputFocused] = useState(false);
   // 新增：聚焦时hovered保持true
   const effectiveHovered = hovered || inputFocused;
-  // 新增：选中状态
-  const [selected, setSelected] = useState(false);
-
-  // 点击连线切换选中
-  const handleLineClick = (e) => {
-    e.stopPropagation();
-    setSelected(true);
-  };
-  // 点击空白处取消选中
-  React.useEffect(() => {
-    const handleDocClick = () => setSelected(false);
-    if (selected) {
-      document.addEventListener('mousedown', handleDocClick);
-    } else {
-      document.removeEventListener('mousedown', handleDocClick);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleDocClick);
-    };
-  }, [selected]);
 
   // 监听键盘删除事件
   React.useEffect(() => {
@@ -335,7 +325,7 @@ const LinkLine = ({
 
   return (
     <g
-      onClick={handleLineClick}
+      onClick={e => { e.stopPropagation(); onClick && onClick(e); }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
@@ -371,7 +361,7 @@ const LinkLine = ({
         strokeDasharray={getStrokeDasharray()}
         fill="none"
         markerEnd={arrowStyle !== 'none' ? `url(#${markerId})` : ''}
-        style={{ cursor: 'pointer', transition: 'stroke 0.2s, stroke-width 0.2s' }}
+        style={{ cursor: 'pointer', transition: 'stroke 0.2s, stroke-width 0.2s', filter: selected ? 'drop-shadow(0 0 6px #316acb88)' : undefined }}
       />
       {/* 连线中点文本输入框 */}
       {!isMainChain && ((inputValue && inputValue !== '0') || effectiveHovered) && (

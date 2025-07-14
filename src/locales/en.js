@@ -5,6 +5,7 @@ export default {
   'lang_zh': 'Chinese',
   'lang_en': 'English',
   'new_task': 'New Task',
+  'add_task': 'Add Task',
   'child_task': 'SubTask',
   'fine_task': 'Detail Task',
   'set_date': 'Set Date',

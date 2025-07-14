@@ -103,7 +103,8 @@ const SiblingTaskIcon = () => (
   </svg>
 );
 
-const CanvasToolbar = ({ onStartLink, onSetScale, onFitView, onAlignToTimeline, scale, onAddChildTask, onAddSiblingTask, hasSelectedTask, onAutoArrange }) => {
+// 修改props定义，移除onAddChildTask和onAddSiblingTask，只保留onAddTask
+const CanvasToolbar = ({ onStartLink, onSetScale, onFitView, onAlignToTimeline, scale, onAddTask, hasSelectedTask, onAutoArrange }) => {
   const addTask = useTaskStore((state) => state.addTask);
   const undo = useTaskStore((state) => state.undo);
   const redo = useTaskStore((state) => state.redo);
@@ -163,16 +164,10 @@ const CanvasToolbar = ({ onStartLink, onSetScale, onFitView, onAlignToTimeline, 
         </button>
       </Tooltip>
       <div className="toolbar-divider" />
-      <Tooltip text={t('child_task')}>
-        <button className="toolbar-btn" onClick={onAddChildTask} disabled={!hasSelectedTask} style={!hasSelectedTask ? {opacity: 0.4, cursor: 'not-allowed'} : {}}>
-          <ChildTaskIcon />
-          <div style={{fontSize:12,marginTop:-1}}>{t('child_task')}</div>
-        </button>
-      </Tooltip>
-      <Tooltip text={t('fine_task')}>
-        <button className="toolbar-btn" onClick={onAddSiblingTask} disabled={!hasSelectedTask} style={!hasSelectedTask ? {opacity: 0.4, cursor: 'not-allowed'} : {}}>
-          <SiblingTaskIcon />
-          <div style={{fontSize:12,marginTop:-1}}>{t('fine_task')}</div>
+      <Tooltip text={t('add_task')}>
+        <button className="toolbar-btn" onClick={onAddTask} disabled={!hasSelectedTask} style={!hasSelectedTask ? {opacity: 0.4, cursor: 'not-allowed'} : {}}>
+          <AddIcon />
+          <div style={{fontSize:12,marginTop:-1}}>{t('add_task')}</div>
         </button>
       </Tooltip>
       <div className="toolbar-divider" />

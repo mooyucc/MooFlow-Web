@@ -8,6 +8,8 @@ import CanvasThemeToolbar from './CanvasThemeToolbar';
 import { addDays } from 'date-fns';
 import FormatSidebar from './FormatSidebar';
 import { useTranslation } from '../LanguageContext';
+// 引入锚点常量
+import { ANCHORS } from './TaskNode';
 
 const CANVAS_SIZE = 100000; // 无限画布逻辑尺寸
 
@@ -33,7 +35,9 @@ const MainCanvas = () => {
   // 新增 svgRef
   const svgRef = useRef(null);
 
-  const [selectedTaskId, setSelectedTaskId] = useState(null);
+  // 替换原有的selectedTaskId、selectedTaskIds、selectedLink等选中状态
+  const [selectedElement, setSelectedElement] = useState(null); // { type: 'task', id } | { type: 'link', fromId, toId } | null
+
   const [selectedTaskIds, setSelectedTaskIds] = useState([]); // 多选
   const [selectBox, setSelectBox] = useState(null); // 框选区域
   const [multiDragging, setMultiDragging] = useState(false);
@@ -236,7 +240,7 @@ const MainCanvas = () => {
         const sx = (px) => (px - transform.offsetX) / transform.scale;
         const sy = (py) => (py - transform.offsetY) / transform.scale;
         setSelectBox({ x1: sx(e.clientX), y1: sy(e.clientY), x2: sx(e.clientX), y2: sy(e.clientY) });
-        setSelectedTaskId(null);
+        setSelectedElement(null); // 清空选中状态
       } else {
         // 判断是否点在多选卡片上，准备批量移动
         const pt = e.target.closest('[data-task-id]');
@@ -455,9 +459,8 @@ const MainCanvas = () => {
     if (!linking) return;
     if (fromTask && fromTask.id !== task.id) {
       // 默认锚点：from右中，to左中
-      const nodeWidth = 180, nodeHeight = 72;
-      const fromAnchor = { x: nodeWidth, y: nodeHeight / 2 };
-      const toAnchor = { x: 0, y: nodeHeight / 2 };
+      const fromAnchor = ANCHORS.RightAnchor;
+      const toAnchor = ANCHORS.LeftAnchor;
       addLink(fromTask.id, task.id, fromAnchor, toAnchor);
       setFromTask(null);
       setLinking(false);
@@ -608,9 +611,7 @@ const MainCanvas = () => {
   // 画布空白处点击，取消选中并选中画布
   const handleCanvasClick = (e) => {
     if (e.target === svgRef.current) {
-      setSelectedTaskId(null);
-      // 新增：选中画布
-      // setSelectedElement({ type: 'canvas' }); // 预留
+      setSelectedElement(null);
     }
   };
 
@@ -630,20 +631,23 @@ const MainCanvas = () => {
     const handleKeyDown = (e) => {
       if (isEditing) return;
       if (e.key === 'Delete' || e.key === 'Backspace') {
-        if (selectedTaskIds.length > 0) {
-          // 多选删除
+        if (selectedTaskIds && selectedTaskIds.length > 0) {
+          // 批量删除多选卡片
           selectedTaskIds.forEach(id => deleteTask(id));
           setSelectedTaskIds([]);
-        } else if (selectedTaskId) {
-          // 单选删除
-          deleteTask(selectedTaskId);
-          setSelectedTaskId(null);
+          setSelectedElement(null);
+        } else if (selectedElement?.type === 'task') {
+          deleteTask(selectedElement.id);
+          setSelectedElement(null);
+        } else if (selectedElement?.type === 'link') {
+          deleteLink(selectedElement.fromId, selectedElement.toId);
+          setSelectedElement(null);
         }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedTaskId, selectedTaskIds, deleteTask, isEditing]);
+  }, [selectedElement, selectedTaskIds, deleteTask, deleteLink, isEditing]);
 
   // 禁用右键菜单，防止右键拖动时弹出
   useEffect(() => {
@@ -773,218 +777,19 @@ const MainCanvas = () => {
     return 'unknown';
   }
 
-  // 工具栏：添加子任务
-  const handleAddChildTask = () => {
-    if (!selectedTaskId) return;
-    const task = tasks.find(t => t.id === selectedTaskId);
-    if (!task) return;
-
-    // 如果是中心任务，直接新建主线任务
-    const isCenterTask = tasks.length > 0 && task.id === tasks[0].id;
-    if (isCenterTask) {
-      handleAddSiblingTask();
-      return;
-    }
-
-    // 新增：如果是子任务，直接新建细分任务
-    const taskType = getTaskType(task, tasks);
-    if (taskType === 'child') {
-      const proposedPosition = { x: task.position.x + 300, y: task.position.y };
-      const finalPosition = findAvailablePosition(proposedPosition, tasks);
-      const newTask = {
-        id: Date.now(),
-        title: '细分任务',
-        position: finalPosition,
-        links: [],
-        parentId: task.id, // 子任务id
-        level: (task.level || 0) + 1,
-      };
-      useTaskStore.getState().addTask(newTask);
-      useTaskStore.getState().addLink(task.id, newTask.id, { x: 180, y: 36 }, { x: 0, y: 36 });
-      return;
-    }
-
-    // 判断当前选中任务类型
-    if (taskType === 'main') {
-      if (canvasProps.mainDirection === 'vertical') {
-        // 垂直主线时，子任务始终出现在右侧
-        const children = tasks.filter(t => t.parentId === task.id);
-        let maxX = task.position.x;
-        if (children.length > 0) {
-          maxX = Math.max(...children.map(c => c.position.x), maxX);
-        }
-        const proposedPosition = { x: maxX + 300, y: task.position.y };
-        const finalPosition = findAvailablePosition(proposedPosition, tasks);
-        const newTask = {
-          id: Date.now(),
-          title: '子任务',
-          position: finalPosition,
-          links: [],
-          parentId: task.id,
-          level: (task.level || 0) + 1,
-          date: task.date ? task.date : undefined,
-        };
-        useTaskStore.getState().addTask(newTask);
-        useTaskStore.getState().addLink(task.id, newTask.id, { x: 180, y: 36 }, { x: 0, y: 36 });
-      } else {
-        // 水平主线时，保持原有上下分布逻辑
-        let yOffset = 180; // 默认向下（偶数位）
-        let fromAnchor = { x: 90, y: 72 }; // from bottom-center
-        let toAnchor = { x: 90, y: 0 };   // to top-center
-
-        const mainLineTasks = tasks
-          .filter(t => !t.parentId)
-          .sort((a, b) => a.position.x - b.position.x);
-        const taskIndex = mainLineTasks.findIndex(t => t.id === task.id);
-        if (taskIndex !== -1 && taskIndex % 2 === 0) {
-          yOffset = -180; // 向上
-          fromAnchor = { x: 90, y: 0 }; // from top-center
-          toAnchor = { x: 90, y: 72 };   // to bottom-center
-        }
-
-        // 找到该主线任务下所有子任务
-        const children = tasks.filter(t => t.parentId === task.id);
-        let newY;
-        if (children.length === 0) {
-          newY = task.position.y + yOffset;
-        } else if (yOffset > 0) {
-          // 下方，找最大y
-          newY = Math.max(...children.map(c => c.position.y)) + yOffset;
-        } else {
-          // 上方，找最小y
-          newY = Math.min(...children.map(c => c.position.y)) + yOffset;
-        }
-        const proposedPosition = { x: task.position.x, y: newY };
-        const finalPosition = findAvailablePosition(proposedPosition, tasks);
-        const newTask = {
-          id: Date.now(),
-          title: '子任务',
-          position: finalPosition,
-          links: [],
-          parentId: task.id, // 主任务id
-          level: (task.level || 0) + 1,
-          date: task.date ? task.date : undefined,
-        };
-        useTaskStore.getState().addTask(newTask);
-        useTaskStore.getState().addLink(task.id, newTask.id, fromAnchor, toAnchor);
-      }
-    } else if (taskType === 'fine') {
-      // 细分任务下继续添加细分任务
-      const proposedPosition = { x: task.position.x + 300, y: task.position.y };
-      const finalPosition = findAvailablePosition(proposedPosition, tasks);
-      const newTask = {
-        id: Date.now(),
-        title: '细分任务',
-        position: finalPosition,
-        links: [],
-        parentId: task.parentId, // 保持同级
-        level: task.level,
-      };
-      useTaskStore.getState().addTask(newTask);
-      useTaskStore.getState().addLink(task.id, newTask.id, { x: 180, y: 36 }, { x: 0, y: 36 });
-    }
-  };
-
-  // 工具栏：添加细分任务
-  const handleAddSiblingTask = () => {
-    if (!selectedTaskId) return;
-    const task = tasks.find(t => t.id === selectedTaskId);
-    if (!task) return;
-    const taskType = getTaskType(task, tasks);
-
-    // 新增：如果是子任务，直接新建细分任务
-    if (taskType === 'child') {
-      const proposedPosition = { x: task.position.x + 300, y: task.position.y };
-      const finalPosition = findAvailablePosition(proposedPosition, tasks);
-      const newTask = {
-        id: Date.now(),
-        title: '细分任务',
-        position: finalPosition,
-        links: [],
-        parentId: task.id, // 子任务id
-        level: (task.level || 0) + 1,
-      };
-      useTaskStore.getState().addTask(newTask);
-      useTaskStore.getState().addLink(task.id, newTask.id, { x: 180, y: 36 }, { x: 0, y: 36 });
-      return;
-    }
-
-    let proposedPosition;
-    if (taskType === 'main') {
-      // 主任务下添加主线任务
-      const mainLineTasks = tasks.filter(t => !t.parentId);
-      // 根据主线方向决定新主线任务的插入位置
-      if (canvasProps.mainDirection === 'horizontal') {
-        const maxX = mainLineTasks.length > 0 ? Math.max(...mainLineTasks.map(t => t.position.x)) : 0;
-        const y = mainLineTasks.length > 0 ? mainLineTasks[0].position.y : 0;
-        proposedPosition = { x: maxX + 300, y };
-      } else {
-        const maxY = mainLineTasks.length > 0 ? Math.max(...mainLineTasks.map(t => t.position.y)) : 0;
-        const x = mainLineTasks.length > 0 ? mainLineTasks[0].position.x : 0;
-        proposedPosition = { x, y: maxY + 180 };
-      }
-      const finalPosition = findAvailablePosition(proposedPosition, tasks);
-      const newTask = {
-        id: Date.now(),
-        title: '主线任务',
-        position: finalPosition,
-        links: [],
-        parentId: null,
-        level: 0,
-      };
-      useTaskStore.getState().addTask(newTask);
-    } else if (taskType === 'child' || taskType === 'fine') {
-      // 子任务或细分任务下添加同级细分任务
-      proposedPosition = { x: task.position.x + 300, y: task.position.y };
-      const finalPosition = findAvailablePosition(proposedPosition, tasks);
-      const newTask = {
-        id: Date.now(),
-        title: '细分任务',
-        position: finalPosition,
-        links: [],
-        parentId: task.parentId, // 保持同级
-        level: task.level,
-      };
-      useTaskStore.getState().addTask(newTask);
-      useTaskStore.getState().addLink(task.id, newTask.id, { x: 180, y: 36 }, { x: 0, y: 36 });
-    }
-  };
-
-  // 键盘快捷键：Tab=细分任务，Enter=子任务
+  // 键盘快捷键：Tab/Enter统一调用handleAddTask
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (!selectedTaskId) return;
-      const task = tasks.find(t => t.id === selectedTaskId);
-      if (!task) return;
-
-      // 检查是否为中心任务
-      const isCenterTask = tasks.length > 0 && task.id === tasks[0].id;
-      const isMainlineTask = !task.parentId;
-
-      if (e.key === 'Tab') {
+      if (!selectedElement?.type === 'task') return;
+      if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;
+      if (e.key === 'Tab' || e.key === 'Enter') {
         e.preventDefault();
-        if (isMainlineTask) {
-          handleAddSiblingTask();
-        } else {
-          // 子任务下Tab新建细分任务
-          handleAddChildTask();
-        }
-      } else if (e.key === 'Enter') {
-        if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;
-        e.preventDefault();
-        if (isCenterTask) {
-          handleAddSiblingTask();
-        } else if (isMainlineTask) {
-          handleAddChildTask();
-        } else {
-          // 子任务下Enter新建细分任务
-          handleAddChildTask();
-        }
+        handleAddTask();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedTaskId, tasks]);
+  }, [selectedElement, tasks]);
 
   // 自动推算B卡片日期的增强版label更新函数
   const handleUpdateLinkLabel = (fromId, toId, label) => {
@@ -1265,57 +1070,224 @@ const MainCanvas = () => {
       });
     }
 
-    setTimeout(() => {
-      // 自动更新所有连线锚点
-      const tasksNow = useTaskStore.getState().tasks;
-      const addLink = useTaskStore.getState().addLink;
-      const CARD_WIDTH = 180, CARD_HEIGHT = 72;
-      tasksNow.forEach(fromTask => {
-        (fromTask.links || []).forEach(link => {
-          const toTask = tasksNow.find(t => t.id === link.toId);
-          if (!toTask) return;
-          // 计算中心点
-          const fromCenter = {
-            x: fromTask.position.x + CARD_WIDTH / 2,
-            y: fromTask.position.y + CARD_HEIGHT / 2
-          };
-          const toCenter = {
-            x: toTask.position.x + CARD_WIDTH / 2,
-            y: toTask.position.y + CARD_HEIGHT / 2
-          };
-          const dx = toCenter.x - fromCenter.x;
-          const dy = toCenter.y - fromCenter.y;
-          let fromAnchor, toAnchor;
-          if (Math.abs(dx) > Math.abs(dy)) {
-            // 水平为主，左右中点
-            fromAnchor = { x: dx > 0 ? CARD_WIDTH : 0, y: CARD_HEIGHT / 2 };
-            toAnchor = { x: dx > 0 ? 0 : CARD_WIDTH, y: CARD_HEIGHT / 2 };
-          } else {
-            // 垂直为主，上下中点
-            fromAnchor = { x: CARD_WIDTH / 2, y: dy > 0 ? CARD_HEIGHT : 0 };
-            toAnchor = { x: CARD_WIDTH / 2, y: dy > 0 ? 0 : CARD_HEIGHT };
-          }
-          // 用addLink覆盖锚点
-          addLink(fromTask.id, link.toId, fromAnchor, toAnchor, link.label);
-        });
+    // --- 立即批量更新所有连线锚点 ---
+    const tasksNow = useTaskStore.getState().tasks;
+    const addLink = useTaskStore.getState().addLink;
+    const CARD_WIDTH = 180, CARD_HEIGHT = 72;
+    tasksNow.forEach(fromTask => {
+      (fromTask.links || []).forEach(link => {
+        const toTask = tasksNow.find(t => t.id === link.toId);
+        if (!toTask) return;
+        // 计算中心点
+        const fromCenter = {
+          x: fromTask.position.x + CARD_WIDTH / 2,
+          y: fromTask.position.y + CARD_HEIGHT / 2
+        };
+        const toCenter = {
+          x: toTask.position.x + CARD_WIDTH / 2,
+          y: toTask.position.y + CARD_HEIGHT / 2
+        };
+        const dx = toCenter.x - fromCenter.x;
+        const dy = toCenter.y - fromCenter.y;
+        let fromAnchor, toAnchor;
+        if (Math.abs(dx) > Math.abs(dy)) {
+          // 水平为主，左右中点
+          fromAnchor = ANCHORS.RightAnchor;
+          toAnchor = ANCHORS.LeftAnchor;
+        } else {
+          // 垂直为主，上下中点
+          fromAnchor = dy > 0 ? ANCHORS.DownAnchor : ANCHORS.UpAnchor;
+          toAnchor = dy > 0 ? ANCHORS.UpAnchor : ANCHORS.DownAnchor;
+        }
+        // 用addLink覆盖锚点
+        addLink(fromTask.id, link.toId, fromAnchor, toAnchor, link.label);
       });
-      // 画布缩放比例恢复100%，中心任务放到左1/4、垂直居中
-      const centerTask = tasksNow[0];
-      if (centerTask) {
-        setTransform({
-          scale: 1,
-          offsetX: window.innerWidth / 4 - centerTask.position.x,
-          offsetY: window.innerHeight / 2 - centerTask.position.y - CARD_HEIGHT / 2
-        });
-      }
-    }, 200);
+    });
+    // 画布缩放比例恢复100%，中心任务放到左1/4、垂直居中
+    const centerTaskNow = tasksNow[0];
+    if (centerTaskNow) {
+      setTransform({
+        scale: 1,
+        offsetX: window.innerWidth / 4 - centerTaskNow.position.x,
+        offsetY: window.innerHeight / 2 - centerTaskNow.position.y - CARD_HEIGHT / 2
+      });
+    }
   };
 
   // 监听布局方向变化，自动排列卡片
-  // useEffect(() => {
-  //   autoArrangeTasks();
-  //   // eslint-disable-next-line
-  // }, [canvasProps.mainDirection]);
+  useEffect(() => {
+    autoArrangeTasks();
+    // eslint-disable-next-line
+  }, [canvasProps.mainDirection]);
+
+  // 统一新建任务逻辑，参考原有的连线锚点和卡片避让逻辑
+  const handleAddTask = () => {
+    if (!selectedElement?.type === 'task') return;
+    const task = tasks.find(t => t.id === selectedElement.id);
+    if (!task) return;
+    let newTask = null;
+    let newType = '';
+    let newTitle = '';
+    let newParentId = null;
+    let newLevel = 0;
+    let newPosition = { x: task.position.x + 300, y: task.position.y };
+    let fromAnchor = { x: 180, y: 36 }, toAnchor = { x: 0, y: 36 };
+    if (task.type === 'center') {
+      // 新建主线任务，横/纵向排列
+      const siblings = tasks.filter(t => t.parentId === null);
+      if ((canvasProps.mainDirection || 'horizontal') === 'horizontal') {
+        let maxX = task.position.x;
+        if (siblings.length > 0) {
+          maxX = Math.max(...siblings.map(c => c.position.x), maxX);
+        }
+        newPosition = { x: maxX + 300, y: task.position.y };
+      } else {
+        let maxY = task.position.y;
+        if (siblings.length > 0) {
+          maxY = Math.max(...siblings.map(c => c.position.y), maxY);
+        }
+        newPosition = { x: task.position.x, y: maxY + 180 };
+      }
+      newType = 'main';
+      newTitle = '主线任务';
+      newParentId = null; // 关键修正，主线任务parentId为null
+      newLevel = 1;
+      fromAnchor = { x: 180, y: 36 };
+      toAnchor = { x: 0, y: 36 };
+    } else if (task.type === 'main') {
+      // 新建子任务，主线方向决定排列方式
+      const children = tasks.filter(t => t.parentId === task.id);
+      if ((canvasProps.mainDirection || 'horizontal') === 'horizontal') {
+        // 横向主线，子任务纵向排列
+        let newY = task.position.y + 180;
+        if (children.length > 0) {
+          newY = Math.max(...children.map(c => c.position.y)) + 180;
+        }
+        newPosition = { x: task.position.x, y: newY };
+        fromAnchor = { x: 90, y: 72 }; // 下中
+        toAnchor = { x: 90, y: 0 };    // 上中
+      } else {
+        // 纵向主线，子任务横向排列
+        let maxX = task.position.x;
+        if (children.length > 0) {
+          maxX = Math.max(...children.map(c => c.position.x), maxX);
+        }
+        newPosition = { x: maxX + 300, y: task.position.y };
+        fromAnchor = { x: 180, y: 36 }; // 右中
+        toAnchor = { x: 0, y: 36 };     // 左中
+      }
+      newType = 'sub';
+      newTitle = '子任务';
+      newParentId = task.id;
+      newLevel = 2;
+    } else if (task.type === 'sub' || task.type === 'detail') {
+      // 新建细分任务，横向排列
+      const siblings = tasks.filter(t => t.parentId === task.id);
+      let maxX = task.position.x;
+      if (siblings.length > 0) {
+        maxX = Math.max(...siblings.map(c => c.position.x), maxX);
+      }
+      newPosition = { x: maxX + 300, y: task.position.y };
+      newType = 'detail';
+      newTitle = '细分任务';
+      newParentId = task.id;
+      newLevel = (task.level || 2) + 1;
+      fromAnchor = { x: 180, y: 36 };
+      toAnchor = { x: 0, y: 36 };
+    }
+    // 避让重叠
+    const finalPosition = findAvailablePosition(newPosition, tasks);
+    newTask = {
+      id: Date.now(),
+      title: newTitle,
+      position: finalPosition,
+      links: [],
+      parentId: newParentId,
+      level: newLevel,
+      type: newType,
+      // 不再自动继承日期
+    };
+    // 计算连线颜色
+    let linkColor = '#86868b';
+    if (task.type === 'center' && newType === 'main') {
+      linkColor = '#e11d48'; // 主链
+    } else if (task.type === 'main' && newType === 'main') {
+      linkColor = '#e11d48'; // 主链
+    } else if (task.type === 'main' && newType === 'sub') {
+      linkColor = '#ff9800'; // 子任务
+    } else if ((task.type === 'sub' && newType === 'detail') || (task.type === 'detail' && newType === 'detail')) {
+      linkColor = '#86868b'; // 细分任务
+    }
+    useTaskStore.getState().addTask(newTask);
+    // 只对子任务和细分任务addLink，主线任务之间不addLink
+    if (task.type === 'main' && newType === 'sub') {
+      useTaskStore.getState().addLink(task.id, newTask.id, fromAnchor, toAnchor, '', { color: '#ff9800' });
+    } else if ((task.type === 'sub' && newType === 'detail') || (task.type === 'detail' && newType === 'detail')) {
+      useTaskStore.getState().addLink(task.id, newTask.id, fromAnchor, toAnchor, '', { color: '#86868b' });
+    }
+  };
+
+  // 新增锚点连线模式状态
+  const [linkingAnchor, setLinkingAnchor] = useState(null); // { fromTaskId, fromAnchorKey, fromPos, mousePos }
+  const [hoveredAnchor, setHoveredAnchor] = useState(null); // { taskId, anchorKey, pos }
+
+  // 处理锚点按下，进入锚点连线模式
+  const handleAnchorMouseDown = (task, anchorKey, pos, e) => {
+    setLinkingAnchor({
+      fromTaskId: task.id,
+      fromAnchorKey: anchorKey,
+      fromPos: { x: task.position.x + pos.x, y: task.position.y + pos.y },
+      mousePos: { x: task.position.x + pos.x, y: task.position.y + pos.y },
+    });
+    // 监听全局鼠标移动和松开
+    const handleMove = evt => {
+      const svg = svgRef.current;
+      if (!svg) return;
+      const pt = svg.createSVGPoint();
+      pt.x = evt.clientX;
+      pt.y = evt.clientY;
+      const svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
+      setLinkingAnchor(anchor => anchor ? { ...anchor, mousePos: { x: svgP.x, y: svgP.y } } : null);
+    };
+    const handleUp = evt => {
+      // 判断是否在另一个锚点上
+      if (hoveredAnchor && hoveredAnchor.taskId !== linkingAnchor?.fromTaskId) {
+        // 建立连线
+        const toTask = tasks.find(t => t.id === hoveredAnchor.taskId);
+        if (toTask) {
+          const fromAnchor = ANCHORS[linkingAnchor.fromAnchorKey];
+          const toAnchor = ANCHORS[hoveredAnchor.anchorKey];
+          addLink(linkingAnchor.fromTaskId, toTask.id, fromAnchor, toAnchor);
+        }
+      }
+      setLinkingAnchor(null);
+      setHoveredAnchor(null);
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleUp);
+    };
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleUp);
+  };
+  // 处理锚点悬停
+  const handleAnchorMouseEnter = (task, anchorKey, pos, e) => {
+    setHoveredAnchor({ taskId: task.id, anchorKey, pos });
+  };
+  const handleAnchorMouseLeave = (task, anchorKey, pos, e) => {
+    setHoveredAnchor(null);
+  };
+
+  // 新增：ESC中断锚点连线
+  useEffect(() => {
+    if (!linkingAnchor) return;
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') {
+        setLinkingAnchor(null);
+        setHoveredAnchor(null);
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [linkingAnchor]);
 
   return (
     <div
@@ -1402,16 +1374,14 @@ const MainCanvas = () => {
         onFitView={handleFitView}
         onAlignToTimeline={handleAlignToTimeline}
         scale={transform.scale}
-        onAddChildTask={handleAddChildTask}
-        onAddSiblingTask={handleAddSiblingTask}
-        hasSelectedTask={!!selectedTaskId}
-        // onAutoArrange={autoArrangeTasks} // 移除自动布局按钮
+        onAddTask={handleAddTask}
+        hasSelectedTask={!!selectedElement?.type === 'task'}
       />
       <CanvasFileToolbar 
         canvasProps={canvasProps}
         setCanvasProps={setCanvasProps}
-        selectedTaskId={selectedTaskId}
-        setSelectedTaskId={setSelectedTaskId}
+        selectedTaskId={selectedElement?.type === 'task' ? selectedElement.id : null}
+        setSelectedTaskId={setSelectedElement}
         selectedTaskIds={selectedTaskIds}
         onBranchStyleChange={handleBranchStyleChange}
         autoArrangeTasks={autoArrangeTasks} // 传递给FileToolbar
@@ -1456,6 +1426,18 @@ const MainCanvas = () => {
           >
             <path d="M 0 0 L 10 5 L 0 10 z" fill="#9ca3af" />
           </marker>
+          {/* 虚拟连线专用小箭头 */}
+          <marker
+            id="virtual-arrowhead"
+            markerWidth="6"
+            markerHeight="6"
+            refX="5"
+            refY="3"
+            orient="auto"
+            markerUnits="strokeWidth"
+          >
+            <path d="M 0 0 L 6 3 L 0 6 z" fill="#316acb" />
+          </marker>
         </defs>
         {/* 所有链式连线（主线和细分任务） */}
         {(() => {
@@ -1492,11 +1474,11 @@ const MainCanvas = () => {
 
               // 根据主线方向设置锚点
               const fromAnchor = mainDirection === 'horizontal'
-                ? { x: 180, y: 36 } // 右中
-                : { x: 90, y: 72 }; // 下中
+                ? ANCHORS.RightAnchor // 右中
+                : ANCHORS.DownAnchor; // 下中
               const toAnchor = mainDirection === 'horizontal'
-                ? { x: 0, y: 36 }   // 左中
-                : { x: 90, y: 0 };  // 上中
+                ? ANCHORS.LeftAnchor   // 左中
+                : ANCHORS.UpAnchor;  // 上中
 
               lines.push(
                 <LinkLine
@@ -1522,6 +1504,8 @@ const MainCanvas = () => {
                       handleUpdateLinkLabel(fromId, toId, label);
                     }
                   }}
+                  selected={selectedElement?.type === 'link' && selectedElement.fromId === from.id && selectedElement.toId === to.id}
+                  onClick={() => setSelectedElement({ type: 'link', fromId: from.id, toId: to.id })}
                 />
               );
             }
@@ -1577,6 +1561,8 @@ const MainCanvas = () => {
                 arrowStyle={link.arrowStyle || 'normal'}
                 lineWidth={link.lineWidth || 2}
                 color={lineColor}
+                selected={selectedElement?.type === 'link' && selectedElement.fromId === task.id && selectedElement.toId === link.toId}
+                onClick={() => setSelectedElement({ type: 'link', fromId: task.id, toId: link.toId })}
               />
             ) : null;
           }) : []
@@ -1628,36 +1614,41 @@ const MainCanvas = () => {
             key={task.id}
             task={task}
             onClick={e => {
-              // 支持 Ctrl/Cmd 多选
               if (e.ctrlKey || e.metaKey) {
-                setSelectedTaskIds(prev => {
-                  if (prev.includes(task.id)) {
-                    // 已选中则取消
-                    return prev.filter(id => id !== task.id);
-                  } else {
-                    // 未选中则加入
-                    return [...prev, task.id];
-                  }
-                });
-                setSelectedTaskId(null); // 多选时取消单选
+                // 多选逻辑如有需要可扩展
               } else {
-                // 单选
-                setSelectedTaskId(task.id);
-                setSelectedTaskIds([task.id]);
+                setSelectedElement({ type: 'task', id: task.id });
               }
               handleNodeClick(task);
             }}
             onStartLink={handleStartLink}
             onDelete={handleDeleteTask}
-            selected={selectedTaskId === task.id}
+            selected={selectedElement?.type === 'task' && selectedElement.id === task.id}
             multiSelected={selectedTaskIds.includes(task.id)}
             onDrag={handleTaskDrag}
             data-task-id={task.id}
             isFirst={task.id === (tasks[0]?.id)}
             onEditingChange={setIsEditing}
             transform={transform}
+            onAnchorMouseDown={handleAnchorMouseDown}
+            onAnchorMouseEnter={handleAnchorMouseEnter}
+            onAnchorMouseLeave={handleAnchorMouseLeave}
           />
         ))}
+        {/* 虚拟连线：锚点拖动时渲染 */}
+        {linkingAnchor && (
+          <line
+            x1={linkingAnchor.fromPos.x}
+            y1={linkingAnchor.fromPos.y}
+            x2={linkingAnchor.mousePos.x}
+            y2={linkingAnchor.mousePos.y}
+            stroke="#316acb"
+            strokeWidth={2}
+            strokeDasharray="4 4"
+            markerEnd="url(#virtual-arrowhead)"
+            pointerEvents="none"
+          />
+        )}
         {/* 时间标尺（底部固定，随画布缩放/平移） */}
         <g>
           {/* 标尺主线 */}
