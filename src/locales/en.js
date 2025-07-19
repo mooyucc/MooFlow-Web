@@ -67,7 +67,7 @@ export default {
   'align_left': 'Align Left',
   'align_center': 'Align Center',
   'align_right': 'Align Right',
-  'branch': 'Branch',
+  'branch': 'Connection Line',
   'line_style': 'Line Style',
   'arrow_style': 'Arrow',
   'reset_style': 'Reset Style',
@@ -114,5 +114,7 @@ export default {
   'refresh_align': 'Refresh Align',
   'auto_arrange': 'Auto Arrange',
   'clear_date': 'Clear Date',
+  'select_line_color': 'Select Line Color',
+  'color': 'Color',
   // You can add more keys as needed
 }; 

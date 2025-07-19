@@ -67,7 +67,7 @@ export default {
   'align_left': '左对齐',
   'align_center': '居中',
   'align_right': '右对齐',
-  'branch': '分支',
+  'branch': '连线',
   'line_style': '线条',
   'arrow_style': '终点',
   'reset_style': '恢复默认样式',
@@ -114,5 +114,7 @@ export default {
   'refresh_align': '刷新对齐',
   'auto_arrange': '自动布局',
   'clear_date': '清除日期',
+  'select_line_color': '选择线条颜色',
+  'color': '颜色',
   // 你可以继续补充其它 key
 }; 

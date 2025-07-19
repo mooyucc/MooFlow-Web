@@ -80,6 +80,7 @@ const FormatSidebar = ({
   selectedTask,
   selectedTasks = [],
   selectedTaskIds = [],
+  selectedLink = null,
   onTaskStyleChange,
   onBranchStyleChange,
   branchStyle = {},
@@ -105,7 +106,16 @@ const FormatSidebar = ({
 
   // 辅助函数：获取分支样式，支持单选和多选
   const getBranchStyleValue = (key) => {
-    if (selectedTasks && selectedTasks.length > 0) {
+    if (selectedLink) {
+      // 处理选中连线的情况
+      const allTasks = useTaskStore.getState().tasks;
+      const sourceTask = allTasks.find(t => t.id === selectedLink.fromId);
+      if (sourceTask) {
+        const link = (sourceTask.links || []).find(l => l.toId === selectedLink.toId);
+        return link?.[key] ?? defaultLinkStyle[key];
+      }
+      return defaultLinkStyle[key];
+    } else if (selectedTasks && selectedTasks.length > 0) {
       const firstLink = getIncomingLink(selectedTasks[0].id, tasks);
       const firstValue = firstLink?.[key] ?? defaultLinkStyle[key];
 
@@ -141,6 +151,7 @@ const FormatSidebar = ({
   const borderPickerRef = useRef(null);
   const bgPickerRef = useRef(null);
   const fontPickerRef = useRef(null);
+  const branchPickerRef = useRef(null);
 
   const [colorPickerPosition, setColorPickerPosition] = useState({ top: 0 });
 
@@ -176,12 +187,21 @@ const FormatSidebar = ({
   }, [selectedTasks]);
   // 新增：选中任务卡片时自动切换到样式Tab
   useEffect(() => {
-    if (visible && selectedTask) {
+    if (visible && (selectedTask || selectedTasks.length > 0)) {
       setTab('style');
-    } else if (visible && (!selectedTask && (!selectedTasks || selectedTasks.length === 0))) {
+    } else if (visible && selectedLink) {
+      setTab('style');
+    } else if (visible && (!selectedTask && selectedTasks.length === 0 && !selectedLink)) {
       setTab('canvas');
     }
-  }, [visible, selectedTask, selectedTasks]);
+  }, [visible, selectedTask, selectedTasks, selectedLink]);
+  // 新增：当选中连线变为空时也关闭弹窗
+  useEffect(() => {
+    if (!selectedLink) {
+      setColorPickerOpen(null);
+      setShapeMenuOpen(false);
+    }
+  }, [selectedLink]);
 
   // 处理属性变更
   const handleChange = (key, value) => {
@@ -243,6 +263,10 @@ const FormatSidebar = ({
       }
       // 新增：字体颜色选择器
       if (colorPickerOpen === 'font' && fontPickerRef.current && !fontPickerRef.current.contains(e.target)) {
+        setColorPickerOpen(null);
+      }
+      // 新增：分支颜色选择器
+      if (colorPickerOpen === 'branch' && branchPickerRef.current && !branchPickerRef.current.contains(e.target)) {
         setColorPickerOpen(null);
       }
     };
@@ -727,7 +751,7 @@ const FormatSidebar = ({
             </div>
           </>
         )}
-        {tab === 'style' && (selectedTask || (selectedTasks && selectedTasks.length > 1)) && (
+        {tab === 'style' && (selectedTask || selectedTasks.length > 0) && (
           <div>
             {/* 多选提示 */}
             {selectedTasks && selectedTasks.length > 1 && (
@@ -1399,7 +1423,38 @@ const FormatSidebar = ({
                 </button>
               </div>
             </div>
-            {/* 新增：分支样式卡片 */}
+            {/* 恢复默认样式按钮 */}
+            <div style={{ marginTop: 32, textAlign: 'center' }}>
+              <button
+                onClick={() => {
+                  // 恢复任务样式
+                  if (onTaskStyleChange && (selectedTask || selectedTasks?.length > 0)) {
+                    Object.entries(defaultTaskStyle).forEach(([key, value]) => {
+                      onTaskStyleChange(key, value);
+                    });
+                  }
+                }}
+                style={{
+                  padding: '8px 24px',
+                  borderRadius: 8,
+                  border: '1px solid var(--button-border)',
+                  background: 'none',
+                  color: 'var(--sidebar-text)',
+                  fontWeight: 600,
+                  fontSize: 14,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  ':hover': {
+                    background: 'var(--button-hover-bg)',
+                  }
+                }}
+              >{t('reset_style')}</button>
+            </div>
+          </div>
+        )}
+        {tab === 'style' && selectedLink && (
+          <div>
+            {/* 分支样式卡片 */}
             <div style={{
               background: 'var(--card-bg)',
               backdropFilter: 'blur(20px)',
@@ -1525,6 +1580,7 @@ const FormatSidebar = ({
                   {colorPickerOpen === 'branch' && (
                     <PopupPortal onClickOutside={() => setColorPickerOpen(null)}>
                       <div
+                        ref={branchPickerRef}
                         style={{
                           position: 'fixed',
                           top: colorPickerPosition.top,
@@ -1567,14 +1623,8 @@ const FormatSidebar = ({
             <div style={{ marginTop: 32, textAlign: 'center' }}>
               <button
                 onClick={() => {
-                  // 恢复任务样式
-                  if (onTaskStyleChange && (selectedTask || selectedTasks?.length > 0)) {
-                    Object.entries(defaultTaskStyle).forEach(([key, value]) => {
-                      onTaskStyleChange(key, value);
-                    });
-                  }
                   // 恢复分支样式
-                  if (onBranchStyleChange && (selectedTask || selectedTasks?.length > 0)) {
+                  if (onBranchStyleChange && selectedLink) {
                     Object.entries(defaultLinkStyle).forEach(([key, value]) => {
                        onBranchStyleChange(key, value);
                     });
@@ -1598,7 +1648,7 @@ const FormatSidebar = ({
             </div>
           </div>
         )}
-        {tab === 'style' && !selectedTask && (!selectedTasks || selectedTasks.length === 0) && (
+        {tab === 'style' && !selectedTask && selectedTasks.length === 0 && !selectedLink && (
           <div style={{ color: 'var(--sidebar-text)', textAlign: 'center', marginTop: 60, fontSize: 16 }}>{t('no_card_selected')}</div>
         )}
       </div>

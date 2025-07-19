@@ -364,6 +364,7 @@ export const useTaskStore = create((set, get) => ({
     });
   },
   updateLinkStyle: (fromId, toId, style) => {
+    get()._saveSnapshot();
     set((state) => {
       const newTasks = ensureLinksLabel(state.tasks.map((t) => {
         if (t.id === fromId) {

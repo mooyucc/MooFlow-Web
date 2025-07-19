@@ -166,8 +166,10 @@ const CanvasToolbar = ({ onStartLink, onSetScale, onFitView, onAlignToTimeline, 
       <div className="toolbar-divider" />
       <Tooltip text={t('add_task')}>
         <button className="toolbar-btn" onClick={onAddTask} disabled={!hasSelectedTask} style={!hasSelectedTask ? {opacity: 0.4, cursor: 'not-allowed'} : {}}>
-          <AddIcon />
-          <div style={{fontSize:12,marginTop:-1}}>{t('add_task')}</div>
+          <div style={{display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center'}}>
+            <AddIcon />
+            <div style={{fontSize:12, marginLeft: 6}}>{t('add_task')}</div>
+          </div>
         </button>
       </Tooltip>
       <div className="toolbar-divider" />

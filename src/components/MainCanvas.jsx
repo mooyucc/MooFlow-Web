@@ -38,7 +38,7 @@ const MainCanvas = () => {
   // 替换原有的selectedTaskId、selectedTaskIds、selectedLink等选中状态
   const [selectedElement, setSelectedElement] = useState(null); // { type: 'task', id } | { type: 'link', fromId, toId } | null
 
-  const [selectedTaskIds, setSelectedTaskIds] = useState([]); // 多选
+  const [selectedTaskIds, setSelectedTaskIds] = useState([]);
   const [selectBox, setSelectBox] = useState(null); // 框选区域
   const [multiDragging, setMultiDragging] = useState(false);
   const multiDragOffset = useRef({ x: 0, y: 0 });
@@ -968,22 +968,27 @@ const MainCanvas = () => {
     touchState.current.dragNodeId = null;
   };
 
-  // 处理分支样式变更（支持多选）
+  // 处理分支样式变更（支持多选和单选连线）
   const handleBranchStyleChange = (key, value) => {
-    if (selectedTaskIds.length === 0) return;
-    const allTasks = useTaskStore.getState().tasks;
+    if (selectedLink) {
+      // 处理选中连线的样式变更
+      updateLinkStyle(selectedLink.fromId, selectedLink.toId, { [key]: value });
+    } else if (selectedTaskIds.length > 0) {
+      // 处理多选任务的连线样式变更
+      const allTasks = useTaskStore.getState().tasks;
 
-    selectedTaskIds.forEach(taskId => {
-      // 找到链接到当前选中任务的源头任务
-      const sourceTask = allTasks.find(source => 
-        (source.links || []).some(link => link.toId === taskId)
-      );
+      selectedTaskIds.forEach(taskId => {
+        // 找到链接到当前选中任务的源头任务
+        const sourceTask = allTasks.find(source => 
+          (source.links || []).some(link => link.toId === taskId)
+        );
 
-      if (sourceTask) {
-        // 更新从源头到当前任务的连线样式
-        updateLinkStyle(sourceTask.id, taskId, { [key]: value });
-      }
-    });
+        if (sourceTask) {
+          // 更新从源头到当前任务的连线样式
+          updateLinkStyle(sourceTask.id, taskId, { [key]: value });
+        }
+      });
+    }
   };
 
   // 辅助函数：根据任务ID找到其父任务指向它的那条连线
@@ -994,9 +999,33 @@ const MainCanvas = () => {
   const [showFormatSidebar, setShowFormatSidebar] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
   const [selectedTasks, setSelectedTasks] = useState([]);
+  const [selectedLink, setSelectedLink] = useState(null); // 新增：选中连线状态
+
+  // 新增：根据selectedElement更新选中状态
+  useEffect(() => {
+    if (selectedElement?.type === 'task') {
+      const task = tasks.find(t => t.id === selectedElement.id);
+      setSelectedTask(task || null);
+      setSelectedTasks([]);
+      setSelectedLink(null);
+    } else if (selectedTaskIds.length > 0) {
+      const selectedTaskObjects = tasks.filter(t => selectedTaskIds.includes(t.id));
+      setSelectedTask(null);
+      setSelectedTasks(selectedTaskObjects);
+      setSelectedLink(null);
+    } else if (selectedElement?.type === 'link') {
+      setSelectedTask(null);
+      setSelectedTasks([]);
+      setSelectedLink(selectedElement);
+    } else {
+      setSelectedTask(null);
+      setSelectedTasks([]);
+      setSelectedLink(null);
+    }
+  }, [selectedElement, selectedTaskIds, tasks]);
 
   const handleTaskStyleChange = (key, value) => {
-    const ids = selectedTaskIds.length > 0 ? selectedTaskIds : (selectedTaskId ? [selectedTaskId] : []);
+    const ids = selectedTaskIds.length > 0 ? selectedTaskIds : (selectedElement?.type === 'task' ? [selectedElement.id] : []);
     if (ids.length === 0) return;
     
     ids.forEach(id => {
@@ -1375,7 +1404,7 @@ const MainCanvas = () => {
         onAlignToTimeline={handleAlignToTimeline}
         scale={transform.scale}
         onAddTask={handleAddTask}
-        hasSelectedTask={!!selectedElement?.type === 'task'}
+        hasSelectedTask={selectedElement?.type === 'task'}
       />
       <CanvasFileToolbar 
         canvasProps={canvasProps}
@@ -1383,6 +1412,7 @@ const MainCanvas = () => {
         selectedTaskId={selectedElement?.type === 'task' ? selectedElement.id : null}
         setSelectedTaskId={setSelectedElement}
         selectedTaskIds={selectedTaskIds}
+        selectedLink={selectedLink}
         onBranchStyleChange={handleBranchStyleChange}
         autoArrangeTasks={autoArrangeTasks} // 传递给FileToolbar
       />
@@ -1395,6 +1425,7 @@ const MainCanvas = () => {
         selectedTask={selectedTask}
         selectedTasks={selectedTasks}
         selectedTaskIds={selectedTaskIds}
+        selectedLink={selectedLink}
         onTaskStyleChange={handleTaskStyleChange}
         onBranchStyleChange={handleBranchStyleChange}
       />
@@ -1531,14 +1562,17 @@ const MainCanvas = () => {
             const fromType = getTaskType(fromTask, tasks);
             const toType = getTaskType(target, tasks);
             let lineColor = link.color || '#86868b';
-            // 只有主任务->子任务、子任务->子任务为橙色，其余全部灰色
-            if (
-              (fromType === 'main' && toType === 'child' && target.parentId === fromTask.id) ||
-              (fromType === 'child' && toType === 'child' && fromTask.parentId === target.parentId)
-            ) {
-              lineColor = '#ff9800';
-            } else {
-              lineColor = '#86868b';
+            // 只有在没有自定义颜色时才使用默认逻辑
+            if (!link.color) {
+              // 只有主任务->子任务、子任务->子任务为橙色，其余全部灰色
+              if (
+                (fromType === 'main' && toType === 'child' && target.parentId === fromTask.id) ||
+                (fromType === 'child' && toType === 'child' && fromTask.parentId === target.parentId)
+              ) {
+                lineColor = '#ff9800';
+              } else {
+                lineColor = '#86868b';
+              }
             }
 
             return target ? (

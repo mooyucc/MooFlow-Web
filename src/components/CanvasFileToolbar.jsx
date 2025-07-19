@@ -112,6 +112,7 @@ const CanvasFileToolbar = ({
   selectedTaskId,
   setSelectedTaskId,
   selectedTaskIds,
+  selectedLink,
   // 新增：分支样式属性
   branchStyle,
   onBranchStyleChange,
@@ -819,6 +820,7 @@ const CanvasFileToolbar = ({
         selectedTask={selectedTask}
         selectedTasks={selectedTasks}
         selectedTaskIds={selectedTaskIds}
+        selectedLink={selectedLink}
         onTaskStyleChange={handleTaskStyleChange}
         // 新增：传递分支样式属性
         branchStyle={branchStyle}
