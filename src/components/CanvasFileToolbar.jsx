@@ -3,7 +3,6 @@ import { useTaskStore, defaultTaskStyle } from '../store/taskStore';
 import './CanvasToolbar.css';
 import FormatSidebar from './FormatSidebar';
 import Papa from 'papaparse';
-import app from '../cloudbase';
 import { useTranslation } from '../LanguageContext';
 
 // 简单Tooltip组件（与CanvasToolbar一致）
@@ -159,6 +158,8 @@ const CanvasFileToolbar = ({
 
   // 新增：格式侧边栏显示状态
   const [showFormatSidebar, setShowFormatSidebar] = useState(false);
+  // 新增：登出确认弹窗状态
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   // 获取所有任务
   const tasksAll = useTaskStore(state => state.tasks);
   // 获取updateTask
@@ -529,14 +530,34 @@ const CanvasFileToolbar = ({
     e.stopPropagation();
   };
 
+  // 处理登出确认
+  const handleLogoutConfirm = async () => {
+    try {
+      console.log('开始登出流程...');
+      
+      // 清除本地存储的数据
+      localStorage.removeItem('moo_files');
+      localStorage.removeItem('moo_active_file_id');
+      localStorage.removeItem('moo_files_history');
+      localStorage.removeItem('mooflow-login-state');
+      console.log('本地数据已清除');
+      
+      // 等待一小段时间确保状态更新，然后刷新页面
+      setTimeout(() => {
+        console.log('刷新页面...');
+        window.location.reload();
+      }, 100);
+    } catch (error) {
+      console.error('登出失败:', error);
+      alert('登出失败，请重试');
+    }
+  };
+
   return (
     <div className="canvas-toolbar minimal filebar" style={{ display: 'flex', alignItems: 'center' }}>
       {/* 登出按钮 */}
       <Tooltip text={t('logout')}>
-        <button className="toolbar-btn" onClick={async () => {
-          await app.auth().signOut();
-          window.location.reload();
-        }} style={{ marginRight: 8 }}>
+        <button className="toolbar-btn" onClick={() => setShowLogoutConfirm(true)} style={{ marginRight: 8 }}>
           {/* 退出SVG图标 */}
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M16 17l5-5-5-5" />
@@ -829,6 +850,136 @@ const CanvasFileToolbar = ({
         onPaletteChange={handlePaletteChange}
         autoArrangeTasks={typeof autoArrangeTasks === 'function' ? autoArrangeTasks : undefined}
       />
+      
+      {/* 登出确认弹窗 */}
+      {showLogoutConfirm && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+            backdropFilter: 'blur(4px)',
+          }}
+          onClick={() => setShowLogoutConfirm(false)}
+        >
+          <div 
+            style={{
+              background: '#fff',
+              borderRadius: 16,
+              padding: 32,
+              maxWidth: 400,
+              width: '90%',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+              border: '1px solid rgba(0, 0, 0, 0.1)',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* 警告图标 */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'center',
+              marginBottom: 20,
+            }}>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+            </div>
+            
+            {/* 标题 */}
+            <h3 style={{
+              margin: '0 0 16px 0',
+              fontSize: 20,
+              fontWeight: 600,
+              color: '#1f2937',
+              textAlign: 'center',
+            }}>
+              确认登出？
+            </h3>
+            
+            {/* 警告内容 */}
+            <div style={{
+              marginBottom: 24,
+              color: '#6b7280',
+              fontSize: 14,
+              lineHeight: 1.6,
+            }}>
+              <p style={{ margin: '0 0 12px 0' }}>
+                登出后将清除所有未保存的数据，包括：
+              </p>
+              <ul style={{
+                margin: '0 0 16px 0',
+                paddingLeft: 20,
+                color: '#ef4444',
+              }}>
+                <li>当前编辑的文件</li>
+                <li>最近打开记录</li>
+                <li>所有本地存储数据</li>
+              </ul>
+              <p style={{
+                margin: 0,
+                color: '#f59e0b',
+                fontWeight: 500,
+                fontSize: 13,
+              }}>
+                ⚠️ 此操作不可撤销！
+              </p>
+            </div>
+            
+            {/* 按钮组 */}
+            <div style={{
+              display: 'flex',
+              gap: 12,
+              justifyContent: 'center',
+            }}>
+              <button
+                onClick={() => setShowLogoutConfirm(false)}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: 8,
+                  border: '1px solid #d1d5db',
+                  background: '#fff',
+                  color: '#374151',
+                  fontSize: 14,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = '#f9fafb'}
+                onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+              >
+                取消
+              </button>
+              <button
+                onClick={handleLogoutConfirm}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: 8,
+                  border: 'none',
+                  background: '#ef4444',
+                  color: '#fff',
+                  fontSize: 14,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = '#dc2626'}
+                onMouseLeave={e => e.currentTarget.style.background = '#ef4444'}
+              >
+                确认登出
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

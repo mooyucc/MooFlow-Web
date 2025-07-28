@@ -13,7 +13,7 @@ import { ANCHORS } from './TaskNode';
 
 const CANVAS_SIZE = 100000; // 无限画布逻辑尺寸
 
-const MainCanvas = () => {
+const MainCanvas = ({ onLogout }) => {
   const [t, lang] = useTranslation(); // 移到最前面，防止未初始化
   const [transform, setTransform] = useState({ scale: 1, offsetX: 0, offsetY: 0 });
   const dragging = useRef(false);
