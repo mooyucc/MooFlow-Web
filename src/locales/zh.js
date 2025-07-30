@@ -116,5 +116,6 @@ export default {
   'clear_date': '清除日期',
   'select_line_color': '选择线条颜色',
   'color': '颜色',
+  'press_space_to_edit': '按空格键编辑',
   // 你可以继续补充其它 key
 }; 

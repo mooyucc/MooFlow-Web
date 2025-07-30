@@ -310,6 +310,55 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
     e.stopPropagation();
   };
 
+  // 新增：键盘事件处理 - 按空格键进入编辑状态，在编辑状态下阻止Enter键触发其他功能
+  const handleKeyDown = (e) => {
+    // 在编辑状态下，阻止Enter键触发其他功能（如新建任务）
+    if (editing && e.key === 'Enter') {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    
+    // 只有在选中状态且未在编辑状态时，按空格键才进入编辑
+    if (selected && !editing && e.key === ' ' && !e.target.matches('input, textarea')) {
+      e.preventDefault();
+      setEditing(true);
+      setTitle(getDisplayTitle());
+    }
+  };
+
+  // 监听全局键盘事件
+  useEffect(() => {
+    if (selected) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => {
+        document.removeEventListener('keydown', handleKeyDown);
+      };
+    }
+  }, [selected, editing, task.id]);
+
+  // 新增：在编辑状态下阻止全局Enter键事件，但允许输入框的Enter键事件
+  useEffect(() => {
+    if (editing) {
+      const handleGlobalKeyDown = (e) => {
+        if (e.key === 'Enter') {
+          // 如果事件目标是输入框，不阻止事件
+          if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
+            return;
+          }
+          // 否则阻止事件传播到MainCanvas
+          e.preventDefault();
+          e.stopPropagation();
+          return false;
+        }
+      };
+      document.addEventListener('keydown', handleGlobalKeyDown, true); // 使用捕获阶段
+      return () => {
+        document.removeEventListener('keydown', handleGlobalKeyDown, true);
+      };
+    }
+  }, [editing, task.id]);
+
   const handleInputBlur = () => {
     setEditing(false);
     // 如果输入内容和翻译文本一致，保存原始 key，否则保存用户输入
@@ -505,7 +554,16 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
               onChange={e => setTitle(e.target.value)}
               onBlur={handleInputBlur}
               onKeyDown={e => {
-                if (e.key === 'Enter') handleInputBlur();
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleInputBlur();
+                } else if (e.key === 'Escape') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setEditing(false);
+                  setTitle(getDisplayTitle()); // 恢复原始文本
+                }
               }}
             />
           </foreignObject>
@@ -740,6 +798,19 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
           }
           return renderShape(shape, { ...commonProps, ...shapeProps });
         })()}
+        {/* 键盘提示：选中且未编辑时显示空格键提示 */}
+        {selected && !editing && !hoveredAnchorKey && (
+          <text
+            x={NODE_WIDTH / 2}
+            y={NODE_HEIGHT + 20}
+            fontSize={10}
+            fill="#666"
+            textAnchor="middle"
+            style={{ pointerEvents: 'none', userSelect: 'none' }}
+          >
+            {t('press_space_to_edit')}
+          </text>
+        )}
       </g>
     </>
   );

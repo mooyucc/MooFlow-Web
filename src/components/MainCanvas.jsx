@@ -781,7 +781,33 @@ const MainCanvas = ({ onLogout }) => {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (!selectedElement?.type === 'task') return;
-      if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;
+      
+      // 更严格的检查：如果有任何输入框获得焦点，直接返回
+      if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
+        return;
+      }
+      
+      // 检查是否有任务正在编辑状态（通过检查foreignObject中的input）
+      const isAnyTaskEditing = tasks.some(task => {
+        const taskElement = document.querySelector(`[data-task-id="${task.id}"]`);
+        if (!taskElement) return false;
+        
+        // 检查是否有foreignObject中的input获得焦点
+        const foreignObject = taskElement.querySelector('foreignObject');
+        if (foreignObject) {
+          const input = foreignObject.querySelector('input');
+          if (input && document.activeElement === input) {
+            return true;
+          }
+        }
+        return false;
+      });
+      
+      // 如果有任务正在编辑，阻止新建任务
+      if (isAnyTaskEditing) {
+        return;
+      }
+      
       if (e.key === 'Tab' || e.key === 'Enter') {
         e.preventDefault();
         handleAddTask();
@@ -874,6 +900,9 @@ const MainCanvas = ({ onLogout }) => {
   }, []);
 
   const handleTouchStart = (e) => {
+    // 阻止默认行为，防止浏览器触控板手势干扰
+    e.preventDefault();
+    
     if (e.touches.length === 1) {
       // 判断是否点在节点上
       const touch = e.touches[0];
@@ -911,6 +940,9 @@ const MainCanvas = ({ onLogout }) => {
   };
 
   const handleTouchMove = (e) => {
+    // 阻止默认行为，防止浏览器触控板手势干扰
+    e.preventDefault();
+    
     if (touchState.current.mode === 'pan' && e.touches.length === 1) {
       const touch = e.touches[0];
       const last = touchState.current.lastTouches[0];
@@ -960,6 +992,9 @@ const MainCanvas = ({ onLogout }) => {
   };
 
   const handleTouchEnd = (e) => {
+    // 阻止默认行为，防止浏览器触控板手势干扰
+    e.preventDefault();
+    
     // 结束拖动/缩放，重置状态
     if (touchState.current.mode === 'node-drag') {
       setAlignLines([]);
@@ -1042,6 +1077,7 @@ const MainCanvas = ({ onLogout }) => {
   const autoArrangeTasks = () => {
     const allTasks = useTaskStore.getState().tasks;
     const updateTask = useTaskStore.getState().updateTask;
+    const addLink = useTaskStore.getState().addLink;
     const mainDirection = canvasProps.mainDirection || 'horizontal';
 
     const startX = 100, startY = 200;
@@ -1051,26 +1087,29 @@ const MainCanvas = ({ onLogout }) => {
     const mainTasks = allTasks.filter(t => !t.parentId);
     const centerTask = allTasks[0];
 
+    // 先计算所有任务的新位置
+    const newPositions = new Map();
+    
     if (mainDirection === 'vertical') {
       // 主线任务纵向排列在中心任务下方
       mainTasks.forEach((mainTask, i) => {
         const mainX = startX;
         const mainY = startY + i * mainGapV;
-        updateTask(mainTask.id, { position: { x: mainX, y: mainY } });
+        newPositions.set(mainTask.id, { x: mainX, y: mainY });
 
         // 子任务横向排列在主线任务右侧
         const children = allTasks.filter(t => t.parentId === mainTask.id);
         children.forEach((child, j) => {
           const childX = mainX + (j + 1) * childGapV;
           const childY = mainY;
-          updateTask(child.id, { position: { x: childX, y: childY } });
+          newPositions.set(child.id, { x: childX, y: childY });
 
           // 细分任务横向排列在子任务右侧
           const fineTasks = allTasks.filter(t => t.parentId === child.id);
           fineTasks.forEach((fine, k) => {
             const fineX = childX + (k + 1) * fineGapV;
             const fineY = childY;
-            updateTask(fine.id, { position: { x: fineX, y: fineY } });
+            newPositions.set(fine.id, { x: fineX, y: fineY });
           });
         });
       });
@@ -1079,34 +1118,41 @@ const MainCanvas = ({ onLogout }) => {
       mainTasks.forEach((mainTask, i) => {
         const mainX = startX + i * mainGapH;
         const mainY = startY;
-        updateTask(mainTask.id, { position: { x: mainX, y: mainY } });
+        newPositions.set(mainTask.id, { x: mainX, y: mainY });
 
         // 子任务纵向排列在主线任务正下方
         const children = allTasks.filter(t => t.parentId === mainTask.id);
         children.forEach((child, j) => {
           const childX = mainX;
           const childY = mainY + (j + 1) * childGapH;
-          updateTask(child.id, { position: { x: childX, y: childY } });
+          newPositions.set(child.id, { x: childX, y: childY });
 
           // 细分任务纵向排列在子任务正下方
           const fineTasks = allTasks.filter(t => t.parentId === child.id);
           fineTasks.forEach((fine, k) => {
             const fineX = childX;
             const fineY = childY + (k + 1) * fineGapH;
-            updateTask(fine.id, { position: { x: fineX, y: fineY } });
+            newPositions.set(fine.id, { x: fineX, y: fineY });
           });
         });
       });
     }
 
-    // --- 立即批量更新所有连线锚点 ---
+    // 批量更新所有任务位置
+    newPositions.forEach((position, taskId) => {
+      updateTask(taskId, { position }, false); // 不保存快照，避免多次快照
+    });
+
+    // 立即获取更新后的任务数据
     const tasksNow = useTaskStore.getState().tasks;
-    const addLink = useTaskStore.getState().addLink;
     const CARD_WIDTH = 180, CARD_HEIGHT = 72;
+    
+    // 批量更新所有连线锚点
     tasksNow.forEach(fromTask => {
       (fromTask.links || []).forEach(link => {
         const toTask = tasksNow.find(t => t.id === link.toId);
         if (!toTask) return;
+        
         // 计算中心点
         const fromCenter = {
           x: fromTask.position.x + CARD_WIDTH / 2,
@@ -1132,6 +1178,44 @@ const MainCanvas = ({ onLogout }) => {
         addLink(fromTask.id, link.toId, fromAnchor, toAnchor, link.label);
       });
     });
+
+    // 处理主线任务之间的链式连线
+    // 获取所有主线任务（parentId为null）
+    const mainTasksForChain = tasksNow.filter(t => t.parentId === null);
+    if (mainTasksForChain.length >= 2) {
+      // 按主线方向排序
+      const sortedMainTasks = [...mainTasksForChain];
+      if (mainDirection === 'horizontal') {
+        sortedMainTasks.sort((a, b) => a.position.x - b.position.x);
+      } else {
+        sortedMainTasks.sort((a, b) => a.position.y - b.position.y);
+      }
+
+      // 在相邻的主线任务之间创建连线
+      for (let i = 0; i < sortedMainTasks.length - 1; i++) {
+        const from = sortedMainTasks[i];
+        const to = sortedMainTasks[i + 1];
+        
+        // 根据主线方向设置锚点
+        const fromAnchor = mainDirection === 'horizontal'
+          ? ANCHORS.RightAnchor // 右中
+          : ANCHORS.DownAnchor; // 下中
+        const toAnchor = mainDirection === 'horizontal'
+          ? ANCHORS.LeftAnchor   // 左中
+          : ANCHORS.UpAnchor;  // 上中
+
+        // 检查是否已存在连线
+        const existingLink = from.links?.find(l => l.toId === to.id);
+        if (existingLink) {
+          // 更新现有连线的锚点
+          addLink(from.id, to.id, fromAnchor, toAnchor, existingLink.label || '');
+        } else {
+          // 创建新连线
+          addLink(from.id, to.id, fromAnchor, toAnchor, '');
+        }
+      }
+    }
+
     // 画布缩放比例恢复100%，中心任务放到左1/4、垂直居中
     const centerTaskNow = tasksNow[0];
     if (centerTaskNow) {
@@ -1144,10 +1228,13 @@ const MainCanvas = ({ onLogout }) => {
   };
 
   // 监听布局方向变化，自动排列卡片
-  useEffect(() => {
-    autoArrangeTasks();
-    // eslint-disable-next-line
-  }, [canvasProps.mainDirection]);
+  // 注意：这个useEffect会在文件切换时触发，但我们不希望在这种情况下自动排列
+  // 只有在FormatSidebar中手动改变布局时才应该自动排列
+  // 因此我们暂时注释掉这个自动排列逻辑
+  // useEffect(() => {
+  //   autoArrangeTasks();
+  //   // eslint-disable-next-line
+  // }, [canvasProps.mainDirection]);
 
   // 统一新建任务逻辑，参考原有的连线锚点和卡片避让逻辑
   const handleAddTask = () => {
@@ -1331,6 +1418,13 @@ const MainCanvas = ({ onLogout }) => {
         background: canvasProps.backgroundColor || '#fff',
         fontFamily: canvasProps.fontFamily === '默认' ? undefined : canvasProps.fontFamily,
         touchAction: 'none', // 禁用默认手势，支持触屏
+        // 新增：禁用Mac触控板默认行为
+        WebkitOverflowScrolling: 'auto',
+        overscrollBehavior: 'none',
+        WebkitUserSelect: 'none',
+        MozUserSelect: 'none',
+        msUserSelect: 'none',
+        userSelect: 'none',
       }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
@@ -1340,6 +1434,10 @@ const MainCanvas = ({ onLogout }) => {
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
+      // 新增：阻止触控板默认行为
+      onTouchStartCapture={(e) => e.preventDefault()}
+      onTouchMoveCapture={(e) => e.preventDefault()}
+      onTouchEndCapture={(e) => e.preventDefault()}
     >
       {/* 时间颗粒度切换工具栏（右下角） */}
       <div style={{

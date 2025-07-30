@@ -116,5 +116,6 @@ export default {
   'clear_date': 'Clear Date',
   'select_line_color': 'Select Line Color',
   'color': 'Color',
+  'press_space_to_edit': 'Press Space to Edit',
   // You can add more keys as needed
 }; 

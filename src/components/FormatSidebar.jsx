@@ -231,6 +231,13 @@ const FormatSidebar = ({
     }
   }, [visible]);
 
+  // 监听canvasProps.mainDirection变化，自动调用autoArrangeTasks
+  useEffect(() => {
+    if (autoArrangeTasks && canvasProps.mainDirection) {
+      autoArrangeTasks();
+    }
+  }, [canvasProps.mainDirection]); // 移除autoArrangeTasks依赖，避免无限循环
+
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const [shapeMenuOpen, setShapeMenuOpen] = useState(false);
 
@@ -604,7 +611,9 @@ const FormatSidebar = ({
                     height: 64,
                     transition: 'background 0.2s',
                   }}
-                  onClick={() => { handleChange('mainDirection', 'horizontal'); if (autoArrangeTasks) autoArrangeTasks(); }}
+                  onClick={() => { 
+                    handleChange('mainDirection', 'horizontal'); 
+                  }}
                   title={t('horizontal_layout')}
                 >
                   <img src={LayoutH} alt={t('horizontal_layout')} style={{ width: '100%', height: '100%', objectFit: 'contain', opacity: (localProps.mainDirection || 'horizontal') === 'horizontal' ? 1 : 0.6, borderRadius: 8 }} />
@@ -624,7 +633,9 @@ const FormatSidebar = ({
                     height: 64,
                     transition: 'background 0.2s',
                   }}
-                  onClick={() => { handleChange('mainDirection', 'vertical'); if (autoArrangeTasks) autoArrangeTasks(); }}
+                  onClick={() => { 
+                    handleChange('mainDirection', 'vertical'); 
+                  }}
                   title={t('vertical_layout')}
                 >
                   <img src={LayoutV} alt={t('vertical_layout')} style={{ width: '100%', height: '100%', objectFit: 'contain', opacity: localProps.mainDirection === 'vertical' ? 1 : 0.6, borderRadius: 8 }} />

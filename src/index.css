@@ -122,3 +122,69 @@ html, body, #root {
   margin: 0;
   padding: 0;
 }
+
+/* 禁用Mac触控板默认行为，防止晃动效果 */
+html {
+  /* 禁用弹性滚动 */
+  -webkit-overflow-scrolling: auto;
+  /* 禁用惯性滚动 */
+  overscroll-behavior: none;
+  /* 禁用触控板手势 */
+  touch-action: none;
+  /* 禁用页面弹性效果 */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+body {
+  /* 禁用弹性滚动 */
+  -webkit-overflow-scrolling: auto;
+  /* 禁用惯性滚动 */
+  overscroll-behavior: none;
+  /* 禁用触控板手势 */
+  touch-action: none;
+  /* 禁用页面弹性效果 */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* 针对画布容器的特殊处理 */
+.canvas-container {
+  /* 禁用弹性滚动 */
+  -webkit-overflow-scrolling: auto;
+  /* 禁用惯性滚动 */
+  overscroll-behavior: none;
+  /* 禁用触控板手势 */
+  touch-action: none;
+  /* 禁用页面弹性效果 */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  /* 禁用Mac触控板默认行为 */
+  -webkit-overflow-scrolling: auto;
+  /* 禁用页面弹性效果 */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* 针对SVG画布的特殊处理 */
+.canvas-content {
+  /* 禁用弹性滚动 */
+  -webkit-overflow-scrolling: auto;
+  /* 禁用惯性滚动 */
+  overscroll-behavior: none;
+  /* 禁用触控板手势 */
+  touch-action: none;
+  /* 禁用页面弹性效果 */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}

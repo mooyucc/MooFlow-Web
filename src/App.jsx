@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import MainCanvas from "./components/MainCanvas";
 import { LanguageProvider } from "./LanguageContext";
+import bgLoginImage from "../public/bg-login.png";
 
 export default function App() {
   const [loggedIn, setLoggedIn] = useState(false);
@@ -69,7 +70,7 @@ export default function App() {
           alignItems: "center",
           justifyContent: "center",
           background: "#f8f9fb",
-          backgroundImage: "url('assets/bg-login.png')",
+          backgroundImage: `url(${bgLoginImage})`,
           backgroundSize: "cover",
           backgroundPosition: "center"
         }}>

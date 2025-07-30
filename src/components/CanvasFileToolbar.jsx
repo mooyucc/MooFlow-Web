@@ -272,18 +272,42 @@ const CanvasFileToolbar = ({
   const switchFile = (fileId) => {
     const file = files.find(f => f.id === fileId);
     if (file) {
+      // 先保存当前文件的布局信息
+      setFiles(prev => {
+        const updated = prev.map(f => 
+          f.id === activeFileId ? { 
+            ...f, 
+            mainDirection: canvasProps.mainDirection || 'horizontal' 
+          } : f
+        );
+        localStorage.setItem('moo_files', JSON.stringify(updated));
+        return updated;
+      });
+      
       clearTasks();
       file.tasks.forEach(t => addTask(t));
       setActiveFileId(fileId);
       // 切换时同步 mainDirection 到 canvasProps
       setCanvasProps(prev => ({ ...prev, mainDirection: file.mainDirection ?? 'horizontal' }));
       localStorage.setItem('moo_active_file_id', fileId);
+      
       recordRecentFile(file);
     }
   };
 
   // 新建文件(Tab)时也记录
   const handleNewFile = () => {
+    // 先保存当前文件的布局信息
+    setFiles(prev => {
+      const updated = prev.map(f => 
+        f.id === activeFileId ? { 
+          ...f, 
+          mainDirection: canvasProps.mainDirection || 'horizontal' 
+        } : f
+      );
+      return updated;
+    });
+    
     const newFile = defaultFile();
     setFiles(prev => {
       const updated = [...prev, newFile];
@@ -294,6 +318,7 @@ const CanvasFileToolbar = ({
     newFile.tasks.forEach(t => addTask(t));
     setActiveFileId(newFile.id);
     setCanvasProps(prev => ({ ...prev, mainDirection: newFile.mainDirection })); // 新增：同步布局
+    
     recordRecentFile(newFile);
   };
 
@@ -308,9 +333,24 @@ const CanvasFileToolbar = ({
       clearTasks();
       newFile.tasks.forEach(t => addTask(t));
       setActiveFileId(newFile.id);
+      setCanvasProps(prev => ({ ...prev, mainDirection: newFile.mainDirection }));
       localStorage.setItem('moo_files', JSON.stringify([newFile]));
       return;
     }
+    
+    // 如果关闭的是当前Tab，先保存当前文件的布局信息
+    if (activeFileId === fileId) {
+      setFiles(prev => {
+        const updated = prev.map(f => 
+          f.id === activeFileId ? { 
+            ...f, 
+            mainDirection: canvasProps.mainDirection || 'horizontal' 
+          } : f
+        );
+        return updated;
+      });
+    }
+    
     const newFiles = files.filter(f => f.id !== fileId);
     localStorage.setItem('moo_files', JSON.stringify(newFiles));
     setFiles(newFiles);
@@ -321,13 +361,20 @@ const CanvasFileToolbar = ({
       clearTasks();
       nextFile.tasks.forEach(t => addTask(t));
       setActiveFileId(nextFile.id);
+      setCanvasProps(prev => ({ ...prev, mainDirection: nextFile.mainDirection ?? 'horizontal' }));
     }
   };
 
   // 导出当前Tab
   const handleExport = async () => {
     const file = files.find(f => f.id === activeFileId);
-    const dataStr = JSON.stringify(file ? file.tasks : [], null, 2);
+    // 导出数据包含任务和布局方向
+    const exportData = {
+      tasks: file ? file.tasks : [],
+      mainDirection: file?.mainDirection || 'horizontal',
+      canvasProps: canvasProps
+    };
+    const dataStr = JSON.stringify(exportData, null, 2);
     // 生成文件名：Tab名-年月日小时分钟
     const now = new Date();
     const pad = n => n.toString().padStart(2, '0');
@@ -364,21 +411,60 @@ const CanvasFileToolbar = ({
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
-        const importedTasks = JSON.parse(evt.target.result);
-        if (Array.isArray(importedTasks)) {
-          clearTasks();
-          importedTasks.forEach(t => addTask(t));
-          // 同步到当前Tab
-          setFiles(prev => {
-            const updated = prev.map(f => f.id === activeFileId ? { ...f, tasks: importedTasks } : f);
-            localStorage.setItem('moo_files', JSON.stringify(updated));
-            return updated;
-          });
-          alert('导入成功！');
+        const importedData = JSON.parse(evt.target.result);
+        
+        // 兼容旧格式：如果直接是任务数组，则转换为新格式
+        let tasks, mainDirection, canvasProps;
+        if (Array.isArray(importedData)) {
+          // 旧格式：直接是任务数组
+          tasks = importedData;
+          mainDirection = 'horizontal'; // 默认水平布局
+          canvasProps = {};
+        } else if (importedData.tasks && Array.isArray(importedData.tasks)) {
+          // 新格式：包含任务和布局信息
+          tasks = importedData.tasks;
+          mainDirection = importedData.mainDirection || 'horizontal';
+          canvasProps = importedData.canvasProps || {};
         } else {
           alert('文件格式不正确');
+          return;
         }
-      } catch {
+
+        // 先保存当前文件的布局信息
+        setFiles(prev => {
+          const updated = prev.map(f => 
+            f.id === activeFileId ? { 
+              ...f, 
+              mainDirection: canvasProps.mainDirection || 'horizontal' 
+            } : f
+          );
+          return updated;
+        });
+        
+        clearTasks();
+        tasks.forEach(t => addTask(t));
+        
+        // 同步到当前Tab，包含布局方向
+        setFiles(prev => {
+          const updated = prev.map(f => f.id === activeFileId ? { 
+            ...f, 
+            tasks: tasks,
+            mainDirection: mainDirection
+          } : f);
+          localStorage.setItem('moo_files', JSON.stringify(updated));
+          return updated;
+        });
+
+        // 更新画布属性，包括布局方向
+        setCanvasProps(prev => ({
+          ...prev,
+          ...canvasProps,
+          mainDirection: mainDirection
+        }));
+
+        alert('导入成功！');
+      } catch (error) {
+        console.error('导入错误:', error);
         alert('导入失败，文件格式错误');
       }
     };
@@ -399,15 +485,23 @@ const CanvasFileToolbar = ({
   // 监听任务变化，自动同步到当前Tab
   React.useEffect(() => {
     setFiles(prev => {
-      const updated = prev.map(f => f.id === activeFileId ? { ...f, tasks } : f);
+      const updated = prev.map(f => f.id === activeFileId ? { 
+        ...f, 
+        tasks,
+        mainDirection: canvasProps.mainDirection || 'horizontal' // 同步布局方向
+      } : f);
       localStorage.setItem('moo_files', JSON.stringify(updated));
       return updated;
     });
     // 自动同步到最近打开
     const file = files.find(f => f.id === activeFileId);
-    if (file) recordRecentFile({ ...file, tasks });
+    if (file) recordRecentFile({ 
+      ...file, 
+      tasks,
+      mainDirection: canvasProps.mainDirection || 'horizontal' // 同步布局方向
+    });
     // eslint-disable-next-line
-  }, [tasks]);
+  }, [tasks, canvasProps.mainDirection]);
 
   // Tab重命名提交
   const handleRenameSubmit = (fileId) => {
@@ -430,6 +524,17 @@ const CanvasFileToolbar = ({
 
   // 点击最近文件打开
   const handleOpenRecent = (file) => {
+    // 先保存当前文件的布局信息
+    setFiles(prev => {
+      const updated = prev.map(f => 
+        f.id === activeFileId ? { 
+          ...f, 
+          mainDirection: canvasProps.mainDirection || 'horizontal' 
+        } : f
+      );
+      return updated;
+    });
+    
     // 如果当前files没有该文件，则加入
     if (!files.find(f => f.id === file.id)) {
       setFiles(prev => {
@@ -441,6 +546,11 @@ const CanvasFileToolbar = ({
     clearTasks();
     file.tasks.forEach(t => addTask(t));
     setActiveFileId(file.id);
+    
+    // 同步布局方向到画布属性
+    const fileMainDirection = file.mainDirection || 'horizontal';
+    setCanvasProps(prev => ({ ...prev, mainDirection: fileMainDirection }));
+    
     recordRecentFile(file);
     setShowRecent(false);
   };
@@ -836,7 +946,7 @@ const CanvasFileToolbar = ({
       <FormatSidebar
         visible={showFormatSidebar}
         onClose={() => setShowFormatSidebar(false)}
-        canvasProps={{ ...canvasProps, mainDirection }}
+        canvasProps={{ ...canvasProps, mainDirection: mainDirection }}
         onCanvasChange={handleCanvasChange}
         selectedTask={selectedTask}
         selectedTasks={selectedTasks}
