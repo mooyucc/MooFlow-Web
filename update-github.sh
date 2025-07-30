@@ -52,7 +52,7 @@ check_remote_config() {
         return 0
     else
         print_warning "远程仓库地址可能不正确，预期地址应为:"
-        print_warning "  - https://github.com/mooyucc/MooFlow.git (源代码仓库)"
+        print_warning "  - https://github.com/mooyucc/MooFlow-Web.git (源代码仓库)"
         print_warning "  - https://github.com/mooyucc/MooFlowPages.git (部署页面仓库)"
         return 1
     fi
@@ -69,8 +69,8 @@ setup_remote() {
     
     case $repo_type in
         "source"|"main")
-            git remote add origin https://github.com/mooyucc/MooFlow.git
-            print_message "已配置源代码仓库: https://github.com/mooyucc/MooFlow.git"
+            git remote add origin https://github.com/mooyucc/MooFlow-Web.git
+            print_message "已配置源代码仓库: https://github.com/mooyucc/MooFlow-Web.git"
             ;;
         "pages"|"deploy")
             git remote add origin https://github.com/mooyucc/MooFlowPages.git
@@ -165,7 +165,7 @@ show_help() {
     echo "  $0 --setup-pages             # 配置部署页面仓库"
     echo
     echo "支持的仓库地址:"
-    echo "  - 源代码仓库: https://github.com/mooyucc/MooFlow.git"
+    echo "  - 源代码仓库: https://github.com/mooyucc/MooFlow-Web.git"
     echo "  - 部署页面仓库: https://github.com/mooyucc/MooFlowPages.git"
     echo
 }

@@ -130,7 +130,7 @@ git remote -v
 先移除原有的远程仓库，再添加正确的仓库地址：
 ```bash
 git remote remove origin
-git remote add origin https://github.com/mooyucc/MooFlow.git
+git remote add origin https://github.com/mooyucc/MooFlow-Web.git
 ```
 或者
 ```bash
@@ -140,7 +140,7 @@ git remote add origin https://github.com/mooyucc/MooFlowPages.git
 ### 将本地代码推送到 GitHub MooFlow仓库
 1. 打开终端，进入项目目录：
 ```bash
-cd "/Users/kevinx/Documents/Ai Project/MooFlow"
+cd "/Users/kevinx/Documents/Ai Project/MooFlow-Web"
 ```
 2. 初始化 Git（如未初始化）：
 ```bash
@@ -148,7 +148,7 @@ git init
 ```
 3. 添加远程仓库（如未添加）：
 ```bash
-git remote add origin https://github.com/mooyucc/MooFlow.git
+git remote add origin https://github.com/mooyucc/MooFlow-Web.git
 ```
 4. 推送到 GitHub：
 ```bash
