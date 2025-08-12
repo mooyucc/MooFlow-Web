@@ -164,6 +164,9 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
     borderStyle = defaultTaskStyle.borderStyle,
   } = task;
 
+  // 强制中心任务使用黑色背景，防止被其他地方修改
+  const finalFillColor = isFirst ? "#222" : fillColor;
+
   // 阴影颜色：重要/次要任务与边框同色，一般任务为默认色
   const shadowColor =
     task.importantLevel === 'important' ? '#e11d48' :
@@ -484,7 +487,7 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
       >
         {/* 主体形状：支持多种流程图形状 */}
         {borderStyle !== 'none' && renderShape(shape, {
-          fill: fillColor,
+          fill: finalFillColor,
           stroke: borderColor,
           strokeWidth: borderWidth,
           style: {transition: 'all 0.2s cubic-bezier(.4,0,.2,1)'},
@@ -492,7 +495,7 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
           filter: !editing ? `url(#cardShadow-${task.id})` : undefined
         })}
         {borderStyle === 'none' && renderShape(shape, {
-          fill: fillColor,
+          fill: finalFillColor,
           stroke: 'none',
           strokeWidth: 0,
           filter: !editing ? `url(#cardShadow-${task.id})` : undefined

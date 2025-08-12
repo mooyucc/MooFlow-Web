@@ -1513,6 +1513,8 @@ const MainCanvas = ({ onLogout }) => {
         selectedLink={selectedLink}
         onBranchStyleChange={handleBranchStyleChange}
         autoArrangeTasks={autoArrangeTasks} // 传递给FileToolbar
+        timeScale={timeScale}
+        setTimeScale={setTimeScale}
       />
       <CanvasThemeToolbar canvasProps={canvasProps} setCanvasProps={setCanvasProps} />
       <FormatSidebar

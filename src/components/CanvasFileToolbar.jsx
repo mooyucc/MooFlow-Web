@@ -102,6 +102,7 @@ const defaultFile = () => {
     ],
     paletteIdx: null, // 新建文件无配色方案
     mainDirection: 'horizontal', // 新增：每个文件独立主线方向
+    timeScale: 'month', // 新增：每个文件独立时间颗粒度
   };
 };
 
@@ -115,7 +116,10 @@ const CanvasFileToolbar = ({
   // 新增：分支样式属性
   branchStyle,
   onBranchStyleChange,
-  autoArrangeTasks
+  autoArrangeTasks,
+  // 新增：时间颗粒度属性
+  timeScale,
+  setTimeScale
 }) => {
   const [t, lang, setLang] = useTranslation();
   // 多文件（Tab）本地状态
@@ -143,6 +147,7 @@ const CanvasFileToolbar = ({
   const tasks = useTaskStore(state => state.tasks);
   const addTask = useTaskStore(state => state.addTask);
   const clearTasks = useTaskStore(state => state.clearTasks);
+  const importTasks = useTaskStore(state => state.importTasks);
   const fileInputRef = useRef(null);
 
   // 最近打开弹窗状态
@@ -172,6 +177,7 @@ const CanvasFileToolbar = ({
   const activeFile = files.find(f => f.id === activeFileId);
   const paletteIdx = activeFile?.paletteIdx ?? null;
   const mainDirection = activeFile?.mainDirection ?? 'horizontal';
+  const fileTimeScale = activeFile?.timeScale ?? 'month';
   // 批量处理卡片样式变更
   const handleTaskStyleChange = (key, value) => {
     if (selectedTaskIds.length > 1) {
@@ -192,7 +198,11 @@ const CanvasFileToolbar = ({
     setCanvasProps(props);
     setFiles(prev => {
       const updated = prev.map(f =>
-        f.id === activeFileId ? { ...f, mainDirection: props.mainDirection ?? f.mainDirection } : f
+        f.id === activeFileId ? { 
+          ...f, 
+          mainDirection: props.mainDirection ?? f.mainDirection,
+          timeScale: timeScale ?? f.timeScale // 新增：同步时间颗粒度
+        } : f
       );
       localStorage.setItem('moo_files', JSON.stringify(updated));
       return updated;
@@ -277,7 +287,8 @@ const CanvasFileToolbar = ({
         const updated = prev.map(f => 
           f.id === activeFileId ? { 
             ...f, 
-            mainDirection: canvasProps.mainDirection || 'horizontal' 
+            mainDirection: canvasProps.mainDirection || 'horizontal',
+            timeScale: timeScale || 'month' // 新增：保存时间颗粒度
           } : f
         );
         localStorage.setItem('moo_files', JSON.stringify(updated));
@@ -288,7 +299,24 @@ const CanvasFileToolbar = ({
       file.tasks.forEach(t => addTask(t));
       setActiveFileId(fileId);
       // 切换时同步 mainDirection 到 canvasProps
-      setCanvasProps(prev => ({ ...prev, mainDirection: file.mainDirection ?? 'horizontal' }));
+      // 添加文件切换标志，防止自动排列
+      setCanvasProps(prev => ({ 
+        ...prev, 
+        mainDirection: file.mainDirection ?? 'horizontal',
+        _isSwitchingFile: true // 添加文件切换标志
+      }));
+      
+      // 清除文件切换标志
+      setTimeout(() => {
+        setCanvasProps(prev => {
+          const { _isSwitchingFile, ...rest } = prev;
+          return rest;
+        });
+      }, 200);
+      // 切换时同步时间颗粒度
+      if (setTimeScale && file.timeScale) {
+        setTimeScale(file.timeScale);
+      }
       localStorage.setItem('moo_active_file_id', fileId);
       
       recordRecentFile(file);
@@ -302,7 +330,8 @@ const CanvasFileToolbar = ({
       const updated = prev.map(f => 
         f.id === activeFileId ? { 
           ...f, 
-          mainDirection: canvasProps.mainDirection || 'horizontal' 
+          mainDirection: canvasProps.mainDirection || 'horizontal',
+          timeScale: timeScale || 'month' // 新增：保存时间颗粒度
         } : f
       );
       return updated;
@@ -317,7 +346,24 @@ const CanvasFileToolbar = ({
     clearTasks();
     newFile.tasks.forEach(t => addTask(t));
     setActiveFileId(newFile.id);
-    setCanvasProps(prev => ({ ...prev, mainDirection: newFile.mainDirection })); // 新增：同步布局
+    // 添加文件切换标志，防止自动排列
+    setCanvasProps(prev => ({ 
+      ...prev, 
+      mainDirection: newFile.mainDirection,
+      _isSwitchingFile: true // 添加文件切换标志
+    }));
+    
+    // 清除文件切换标志
+    setTimeout(() => {
+      setCanvasProps(prev => {
+        const { _isSwitchingFile, ...rest } = prev;
+        return rest;
+      });
+    }, 200);
+    // 同步时间颗粒度
+    if (setTimeScale) {
+      setTimeScale(newFile.timeScale);
+    }
     
     recordRecentFile(newFile);
   };
@@ -333,7 +379,20 @@ const CanvasFileToolbar = ({
       clearTasks();
       newFile.tasks.forEach(t => addTask(t));
       setActiveFileId(newFile.id);
-      setCanvasProps(prev => ({ ...prev, mainDirection: newFile.mainDirection }));
+      // 添加文件切换标志，防止自动排列
+      setCanvasProps(prev => ({ 
+        ...prev, 
+        mainDirection: newFile.mainDirection,
+        _isSwitchingFile: true // 添加文件切换标志
+      }));
+      
+      // 清除文件切换标志
+      setTimeout(() => {
+        setCanvasProps(prev => {
+          const { _isSwitchingFile, ...rest } = prev;
+          return rest;
+        });
+      }, 200);
       localStorage.setItem('moo_files', JSON.stringify([newFile]));
       return;
     }
@@ -344,7 +403,8 @@ const CanvasFileToolbar = ({
         const updated = prev.map(f => 
           f.id === activeFileId ? { 
             ...f, 
-            mainDirection: canvasProps.mainDirection || 'horizontal' 
+            mainDirection: canvasProps.mainDirection || 'horizontal',
+            timeScale: timeScale || 'month' // 新增：保存时间颗粒度
           } : f
         );
         return updated;
@@ -361,18 +421,32 @@ const CanvasFileToolbar = ({
       clearTasks();
       nextFile.tasks.forEach(t => addTask(t));
       setActiveFileId(nextFile.id);
-      setCanvasProps(prev => ({ ...prev, mainDirection: nextFile.mainDirection ?? 'horizontal' }));
+      // 添加文件切换标志，防止自动排列
+      setCanvasProps(prev => ({ 
+        ...prev, 
+        mainDirection: nextFile.mainDirection ?? 'horizontal',
+        _isSwitchingFile: true // 添加文件切换标志
+      }));
+      
+      // 清除文件切换标志
+      setTimeout(() => {
+        setCanvasProps(prev => {
+          const { _isSwitchingFile, ...rest } = prev;
+          return rest;
+        });
+      }, 200);
     }
   };
 
   // 导出当前Tab
   const handleExport = async () => {
     const file = files.find(f => f.id === activeFileId);
-    // 导出数据包含任务和布局方向
+    // 导出数据包含任务、布局方向和时间颗粒度
     const exportData = {
       tasks: file ? file.tasks : [],
       mainDirection: file?.mainDirection || 'horizontal',
-      canvasProps: canvasProps
+      canvasProps: canvasProps,
+      timeScale: timeScale || 'month' // 新增：时间颗粒度
     };
     const dataStr = JSON.stringify(exportData, null, 2);
     // 生成文件名：Tab名-年月日小时分钟
@@ -414,17 +488,19 @@ const CanvasFileToolbar = ({
         const importedData = JSON.parse(evt.target.result);
         
         // 兼容旧格式：如果直接是任务数组，则转换为新格式
-        let tasks, mainDirection, canvasProps;
+        let tasks, mainDirection, canvasProps, importedTimeScale;
         if (Array.isArray(importedData)) {
           // 旧格式：直接是任务数组
           tasks = importedData;
           mainDirection = 'horizontal'; // 默认水平布局
           canvasProps = {};
+          importedTimeScale = 'month'; // 默认月颗粒度
         } else if (importedData.tasks && Array.isArray(importedData.tasks)) {
-          // 新格式：包含任务和布局信息
+          // 新格式：包含任务、布局信息和时间颗粒度
           tasks = importedData.tasks;
           mainDirection = importedData.mainDirection || 'horizontal';
           canvasProps = importedData.canvasProps || {};
+          importedTimeScale = importedData.timeScale || 'month'; // 新增：时间颗粒度
         } else {
           alert('文件格式不正确');
           return;
@@ -435,32 +511,49 @@ const CanvasFileToolbar = ({
           const updated = prev.map(f => 
             f.id === activeFileId ? { 
               ...f, 
-              mainDirection: canvasProps.mainDirection || 'horizontal' 
+              mainDirection: mainDirection || 'horizontal' 
             } : f
           );
           return updated;
         });
         
+        // 清空当前任务并批量导入新任务
         clearTasks();
-        tasks.forEach(t => addTask(t));
+        importTasks(tasks);
         
-        // 同步到当前Tab，包含布局方向
+        // 同步到当前Tab，包含布局方向和时间颗粒度
         setFiles(prev => {
           const updated = prev.map(f => f.id === activeFileId ? { 
             ...f, 
             tasks: tasks,
-            mainDirection: mainDirection
+            mainDirection: mainDirection,
+            timeScale: importedTimeScale // 新增：保存导入的时间颗粒度
           } : f);
           localStorage.setItem('moo_files', JSON.stringify(updated));
           return updated;
         });
 
         // 更新画布属性，包括布局方向
+        // 添加导入标志，防止自动排列
         setCanvasProps(prev => ({
           ...prev,
           ...canvasProps,
-          mainDirection: mainDirection
+          mainDirection: mainDirection,
+          _isImporting: true // 添加导入标志
         }));
+
+        // 清除导入标志
+        setTimeout(() => {
+          setCanvasProps(prev => {
+            const { _isImporting, ...rest } = prev;
+            return rest;
+          });
+        }, 200);
+
+        // 更新时间颗粒度
+        if (setTimeScale && importedTimeScale) {
+          setTimeScale(importedTimeScale);
+        }
 
         alert('导入成功！');
       } catch (error) {
@@ -488,7 +581,8 @@ const CanvasFileToolbar = ({
       const updated = prev.map(f => f.id === activeFileId ? { 
         ...f, 
         tasks,
-        mainDirection: canvasProps.mainDirection || 'horizontal' // 同步布局方向
+        mainDirection: canvasProps.mainDirection || 'horizontal', // 同步布局方向
+        timeScale: timeScale || 'month' // 新增：同步时间颗粒度
       } : f);
       localStorage.setItem('moo_files', JSON.stringify(updated));
       return updated;
@@ -498,10 +592,11 @@ const CanvasFileToolbar = ({
     if (file) recordRecentFile({ 
       ...file, 
       tasks,
-      mainDirection: canvasProps.mainDirection || 'horizontal' // 同步布局方向
+      mainDirection: canvasProps.mainDirection || 'horizontal', // 同步布局方向
+      timeScale: timeScale || 'month' // 新增：同步时间颗粒度
     });
     // eslint-disable-next-line
-  }, [tasks, canvasProps.mainDirection]);
+  }, [tasks, canvasProps.mainDirection, timeScale]);
 
   // Tab重命名提交
   const handleRenameSubmit = (fileId) => {
@@ -529,7 +624,8 @@ const CanvasFileToolbar = ({
       const updated = prev.map(f => 
         f.id === activeFileId ? { 
           ...f, 
-          mainDirection: canvasProps.mainDirection || 'horizontal' 
+          mainDirection: canvasProps.mainDirection || 'horizontal',
+          timeScale: timeScale || 'month' // 新增：保存时间颗粒度
         } : f
       );
       return updated;
@@ -548,8 +644,26 @@ const CanvasFileToolbar = ({
     setActiveFileId(file.id);
     
     // 同步布局方向到画布属性
+    // 添加文件切换标志，防止自动排列
     const fileMainDirection = file.mainDirection || 'horizontal';
-    setCanvasProps(prev => ({ ...prev, mainDirection: fileMainDirection }));
+    setCanvasProps(prev => ({ 
+      ...prev, 
+      mainDirection: fileMainDirection,
+      _isSwitchingFile: true // 添加文件切换标志
+    }));
+    
+    // 清除文件切换标志
+    setTimeout(() => {
+      setCanvasProps(prev => {
+        const { _isSwitchingFile, ...rest } = prev;
+        return rest;
+      });
+    }, 200);
+    
+    // 同步时间颗粒度
+    if (setTimeScale && file.timeScale) {
+      setTimeScale(file.timeScale);
+    }
     
     recordRecentFile(file);
     setShowRecent(false);

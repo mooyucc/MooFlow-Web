@@ -232,9 +232,19 @@ const FormatSidebar = ({
   }, [visible]);
 
   // 监听canvasProps.mainDirection变化，自动调用autoArrangeTasks
+  // 注意：这个逻辑会在导入或文件切换时触发，但我们不希望在这种情况下自动排列
+  // 只有在用户手动改变布局时才应该自动排列
   useEffect(() => {
+    // 检查是否是导入操作或文件切换操作
+    if (canvasProps._isImporting || canvasProps._isSwitchingFile) {
+      return; // 如果是导入或文件切换，不执行自动排列
+    }
+    
     if (autoArrangeTasks && canvasProps.mainDirection) {
-      autoArrangeTasks();
+      // 延迟执行，确保状态更新完成
+      setTimeout(() => {
+        autoArrangeTasks();
+      }, 100);
     }
   }, [canvasProps.mainDirection]); // 移除autoArrangeTasks依赖，避免无限循环
 

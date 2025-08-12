@@ -34,12 +34,23 @@ function ensureTaskType(tasks) {
   }));
 }
 
-// 辅助函数：保证所有 links 都有 label 字段和所有任务有 type 字段
+// 辅助函数：保证所有 links 都有完整的属性字段和所有任务有 type 字段
 function ensureLinksLabel(tasks) {
   const withType = ensureTaskType(tasks);
   return withType.map(t => ({
     ...t,
-    links: (t.links || []).map(l => ({ ...l, label: typeof l.label === 'string' ? l.label : '' }))
+    links: (t.links || []).map(l => ({
+      ...l,
+      label: typeof l.label === 'string' ? l.label : '',
+      // 确保连线样式属性存在
+      lineStyle: l.lineStyle || defaultLinkStyle.lineStyle,
+      arrowStyle: l.arrowStyle || defaultLinkStyle.arrowStyle,
+      lineWidth: l.lineWidth || defaultLinkStyle.lineWidth,
+      color: l.color || defaultLinkStyle.color,
+      // 确保锚点信息存在
+      fromAnchor: l.fromAnchor || null,
+      toAnchor: l.toAnchor || null
+    }))
   }));
 }
 
@@ -126,7 +137,31 @@ export const useTaskStore = create((set, get) => ({
           else type = 'detail';
         }
       }
-      const newTasks = ensureLinksLabel([...state.tasks, { ...task, type, date: task.date || null, collapsed: false, importantLevel: task.importantLevel || 'normal' }]);
+      
+      // 确保任务有完整的位置信息
+      const processedTask = {
+        ...task,
+        type,
+        date: task.date || null,
+        collapsed: task.collapsed || false,
+        importantLevel: task.importantLevel || 'normal',
+        position: task.position || { x: 100, y: 100 },
+        // 确保样式字段存在
+        fillColor: task.fillColor || defaultTaskStyle.fillColor,
+        borderColor: task.borderColor || defaultTaskStyle.borderColor,
+        borderWidth: task.borderWidth || defaultTaskStyle.borderWidth,
+        borderStyle: task.borderStyle || defaultTaskStyle.borderStyle,
+        fontFamily: task.fontFamily || defaultTaskStyle.fontFamily,
+        fontSize: task.fontSize || defaultTaskStyle.fontSize,
+        fontWeight: task.fontWeight || defaultTaskStyle.fontWeight,
+        fontStyle: task.fontStyle || defaultTaskStyle.fontStyle,
+        textDecoration: task.textDecoration || defaultTaskStyle.textDecoration,
+        color: task.color || defaultTaskStyle.color,
+        textAlign: task.textAlign || defaultTaskStyle.textAlign,
+        shape: task.shape || defaultTaskStyle.shape,
+      };
+      
+      const newTasks = ensureLinksLabel([...state.tasks, processedTask]);
       saveTasksToStorage(newTasks); // 保存到本地
       return { tasks: newTasks };
     });
@@ -204,15 +239,32 @@ export const useTaskStore = create((set, get) => ({
         if (t.id === fromId) {
           const idx = t.links.findIndex(l => l.toId === toId);
           if (idx !== -1) {
-            // 已存在则更新锚点和label
+            // 已存在则更新锚点和label，保留现有样式属性
             const newLinks = [...t.links];
-            newLinks[idx] = { ...newLinks[idx], fromAnchor, toAnchor, label: typeof newLinks[idx].label === 'string' ? newLinks[idx].label : '', ...defaultLinkStyle };
+            const existingLink = newLinks[idx];
+            newLinks[idx] = {
+              ...existingLink,
+              fromAnchor,
+              toAnchor,
+              label: typeof existingLink.label === 'string' ? existingLink.label : '',
+              // 确保样式属性存在
+              lineStyle: existingLink.lineStyle || defaultLinkStyle.lineStyle,
+              arrowStyle: existingLink.arrowStyle || defaultLinkStyle.arrowStyle,
+              lineWidth: existingLink.lineWidth || defaultLinkStyle.lineWidth,
+              color: existingLink.color || defaultLinkStyle.color
+            };
             return { ...t, links: newLinks };
           } else {
-            // 不存在则添加
+            // 不存在则添加，包含完整的默认样式
             return {
               ...t,
-              links: [...t.links, { toId, fromAnchor, toAnchor, label: typeof label === 'string' ? label : '', ...defaultLinkStyle }]
+              links: [...t.links, {
+                toId,
+                fromAnchor,
+                toAnchor,
+                label: typeof label === 'string' ? label : '',
+                ...defaultLinkStyle
+              }]
             };
           }
         }
@@ -359,6 +411,72 @@ export const useTaskStore = create((set, get) => ({
   moveTaskSilently: (id, position) => {
     set((state) => {
       const newTasks = ensureLinksLabel(state.tasks.map((t) => (t.id === id ? { ...t, position } : t)));
+      saveTasksToStorage(newTasks);
+      return { tasks: newTasks };
+    });
+  },
+  
+  // 新增：批量导入任务（用于文件导入）
+  importTasks: (tasks) => {
+    set((state) => {
+      // 确保所有任务都有完整的信息
+      const processedTasks = tasks.map(task => {
+        // 自动分配 type 字段
+        let type = task.type;
+        if (!type) {
+          if (task.parentId === null) type = 'center';
+          else if (task.level === 1) type = 'main';
+          else if (task.level === 2) type = 'sub';
+          else if (task.level >= 3) type = 'detail';
+          else {
+            // 兜底：根据父任务类型
+            const parent = tasks.find(t => t.id === task.parentId);
+            if (!parent) type = 'main';
+            else if (parent.type === 'center') type = 'main';
+            else if (parent.type === 'main') type = 'sub';
+            else type = 'detail';
+          }
+        }
+        
+        // 确保连线信息完整
+        const processedLinks = (task.links || []).map(link => ({
+          ...link,
+          label: typeof link.label === 'string' ? link.label : '',
+          // 确保连线样式属性存在
+          lineStyle: link.lineStyle || defaultLinkStyle.lineStyle,
+          arrowStyle: link.arrowStyle || defaultLinkStyle.arrowStyle,
+          lineWidth: link.lineWidth || defaultLinkStyle.lineWidth,
+          color: link.color || defaultLinkStyle.color,
+          // 确保锚点信息存在
+          fromAnchor: link.fromAnchor || null,
+          toAnchor: link.toAnchor || null
+        }));
+        
+        return {
+          ...task,
+          type,
+          date: task.date || null,
+          collapsed: task.collapsed || false,
+          importantLevel: task.importantLevel || 'normal',
+          position: task.position || { x: 100, y: 100 },
+          links: processedLinks, // 使用处理后的连线信息
+          // 确保样式字段存在
+          fillColor: task.fillColor || defaultTaskStyle.fillColor,
+          borderColor: task.borderColor || defaultTaskStyle.borderColor,
+          borderWidth: task.borderWidth || defaultTaskStyle.borderWidth,
+          borderStyle: task.borderStyle || defaultTaskStyle.borderStyle,
+          fontFamily: task.fontFamily || defaultTaskStyle.fontFamily,
+          fontSize: task.fontSize || defaultTaskStyle.fontSize,
+          fontWeight: task.fontWeight || defaultTaskStyle.fontWeight,
+          fontStyle: task.fontStyle || defaultTaskStyle.fontStyle,
+          textDecoration: task.textDecoration || defaultTaskStyle.textDecoration,
+          color: task.color || defaultTaskStyle.color,
+          textAlign: task.textAlign || defaultTaskStyle.textAlign,
+          shape: task.shape || defaultTaskStyle.shape,
+        };
+      });
+      
+      const newTasks = ensureLinksLabel(processedTasks);
       saveTasksToStorage(newTasks);
       return { tasks: newTasks };
     });
