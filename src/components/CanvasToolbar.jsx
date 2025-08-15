@@ -152,7 +152,7 @@ const CanvasToolbar = ({ onStartLink, onSetScale, onFitView, onAlignToTimeline, 
   };
 
   return (
-    <div className="canvas-toolbar minimal">
+    <div className="canvas-toolbar minimal" style={{ touchAction: 'manipulation' }}>
       <Tooltip text={t('undo')}>
         <button className="toolbar-btn" onClick={undo} disabled={undoStack.length === 0} style={undoStack.length === 0 ? {opacity: 0.4, cursor: 'not-allowed'} : {}}>
           <div style={{marginTop:-3}}><UndoIcon /></div>

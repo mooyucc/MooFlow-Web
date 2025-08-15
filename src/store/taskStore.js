@@ -14,6 +14,9 @@ const TASKS_KEY = `moo_tasks_${fileId}`;
 
 // 辅助函数：根据 parentId/level 推断 type
 function inferTaskType(task, tasks) {
+  // 如果任务已经被标记为独立任务，保持该类型
+  if (task.type === 'independent') return 'independent';
+  
   if (task.parentId === null) return 'center';
   if (task.level === 1) return 'main';
   if (task.level === 2) return 'sub';
@@ -124,7 +127,8 @@ export const useTaskStore = create((set, get) => ({
       // 自动分配 type 字段
       let type = task.type;
       if (!type) {
-        if (task.parentId === null) type = 'center';
+        if (task.type === 'independent') type = 'independent';
+        else if (task.parentId === null) type = 'center';
         else if (task.level === 1) type = 'main';
         else if (task.level === 2) type = 'sub';
         else if (task.level >= 3) type = 'detail';
@@ -233,9 +237,89 @@ export const useTaskStore = create((set, get) => ({
     });
   },
   addLink: (fromId, toId, fromAnchor = null, toAnchor = null, label = "") => {
+    // 预校验：防环（仅针对非中心/主线任务）
+    const tasksBefore = get().tasks;
+    const targetPre = tasksBefore.find(t => t.id === toId);
+    if (!targetPre) return;
+    const isCenterOrMain = targetPre.type === 'center' || targetPre.type === 'main' || targetPre.id === tasksBefore[0]?.id;
+    if (!isCenterOrMain) {
+      // 如果把 toId 的父设为 fromId，会不会导致 fromId 的祖先链包含 toId
+      let cur = fromId;
+      const visited = new Set();
+      let cycle = false;
+      while (true) {
+        const node = tasksBefore.find(t => t.id === cur);
+        if (!node) break;
+        if (node.parentId == null) break;
+        if (visited.has(node.parentId)) break;
+        if (node.parentId === toId) { cycle = true; break; }
+        visited.add(node.parentId);
+        cur = node.parentId;
+      }
+      if (cycle) {
+        if (typeof window !== 'undefined' && window.alert) {
+          window.alert('该连线会导致父子关系形成闭环，已阻止连线。');
+        }
+        return;
+      }
+    }
+
     get()._saveSnapshot();
     set((state) => {
-      const newTasks = ensureLinksLabel(state.tasks.map((t) => {
+      const { tasks } = state;
+      
+      // 找到目标任务
+      const targetTask = tasks.find(t => t.id === toId);
+      if (!targetTask) {
+        return { tasks };
+      }
+      
+      // 检查是否是中心/主线任务（这些任务不受影响）
+      const isCenterOrMain = targetTask.type === 'center' || targetTask.type === 'main' || targetTask.id === tasks[0]?.id;
+      if (isCenterOrMain) {
+        // 中心任务、主线任务和独立任务不受影响，只添加连线
+        const newTasks = ensureLinksLabel(tasks.map((t) => {
+          if (t.id === fromId) {
+            const idx = t.links.findIndex(l => l.toId === toId);
+            if (idx !== -1) {
+              // 已存在则更新锚点和label，保留现有样式属性
+              const newLinks = [...t.links];
+              const existingLink = newLinks[idx];
+              newLinks[idx] = {
+                ...existingLink,
+                fromAnchor,
+                toAnchor,
+                label: typeof existingLink.label === 'string' ? existingLink.label : '',
+                // 确保样式属性存在
+                lineStyle: existingLink.lineStyle || defaultLinkStyle.lineStyle,
+                arrowStyle: existingLink.arrowStyle || defaultLinkStyle.arrowStyle,
+                lineWidth: existingLink.lineWidth || defaultLinkStyle.lineWidth,
+                color: existingLink.color || defaultLinkStyle.color
+              };
+              return { ...t, links: newLinks };
+            } else {
+              // 不存在则添加，包含完整的默认样式
+              return {
+                ...t,
+                links: [...t.links, {
+                  toId,
+                  fromAnchor,
+                  toAnchor,
+                  label: typeof label === 'string' ? label : '',
+                  ...defaultLinkStyle
+                }]
+              };
+            }
+          }
+          return t;
+        }));
+        saveTasksToStorage(newTasks);
+        return { tasks: newTasks };
+      }
+      
+      // 对于其他任务：添加/更新连线 + 建立父子关系（并继承折叠与层级/类型）
+      const fromTask = tasks.find(t => t.id === fromId);
+      const newTasks = ensureLinksLabel(tasks.map((t) => {
         if (t.id === fromId) {
           const idx = t.links.findIndex(l => l.toId === toId);
           if (idx !== -1) {
@@ -268,9 +352,23 @@ export const useTaskStore = create((set, get) => ({
             };
           }
         }
+        // 同时更新目标任务的父子关系
+        if (t.id === toId && fromTask) {
+          // 根据父任务类型推断新类型
+          const newType = fromTask.type === 'center' ? 'main' : (fromTask.type === 'main' ? 'sub' : 'detail');
+          return {
+            ...t,
+            parentId: fromId,
+            level: (fromTask.level || 1) + 1,
+            collapsed: fromTask.collapsed,
+            // 若 B 之前是独立任务，转回普通任务类型
+            type: newType
+          };
+        }
         return t;
       }));
-      saveTasksToStorage(newTasks); // 保存到本地
+      
+      saveTasksToStorage(newTasks);
       return { tasks: newTasks };
     });
   },
@@ -346,12 +444,83 @@ export const useTaskStore = create((set, get) => ({
   deleteLink: (fromId, toId) => {
     get()._saveSnapshot();
     set((state) => {
-      const newTasks = ensureLinksLabel(state.tasks.map((t) =>
+      const { tasks } = state;
+      
+      // 找到目标任务
+      const targetTask = tasks.find(t => t.id === toId);
+      if (!targetTask) {
+        return { tasks };
+      }
+      
+      // 检查是否是中心任务、主线任务或独立任务（这些任务不受影响）
+      if (targetTask.parentId === null || targetTask.type === 'center' || targetTask.type === 'independent') {
+        // 中心任务、主线任务和独立任务不受影响，只删除连线
+        const newTasks = ensureLinksLabel(tasks.map((t) =>
+          t.id === fromId
+            ? { ...t, links: t.links.filter((l) => l.toId !== toId) }
+            : t
+        ));
+        saveTasksToStorage(newTasks);
+        return { tasks: newTasks };
+      }
+      
+      // 删除连线
+      const newTasks = ensureLinksLabel(tasks.map((t) =>
         t.id === fromId
           ? { ...t, links: t.links.filter((l) => l.toId !== toId) }
           : t
       ));
-      saveTasksToStorage(newTasks); // 保存到本地
+      
+      // 计算目标任务的入线数量（删除连线后的状态）
+      const incomingLinks = newTasks.flatMap(t => 
+        (t.links || []).filter(l => l.toId === toId)
+      );
+      
+      // 检查是否是被删除的父子关系连线
+      const wasParentChildLink = targetTask.parentId === fromId;
+      
+      if (wasParentChildLink) {
+        // 删除的是父子关系连线
+        if (incomingLinks.length === 0) {
+          // 没有其他入线，变成独立任务
+          const updatedTasks = newTasks.map((t) => {
+            if (t.id === toId) {
+              return { 
+                ...t, 
+                parentId: null,
+                level: 1, // 重置为一级任务
+                type: 'independent' // 标记为独立任务
+              };
+            }
+            return t;
+          });
+          saveTasksToStorage(updatedTasks);
+          return { tasks: updatedTasks };
+        } else {
+          // 有其他入线，选择第一个作为新的父子关系
+          const newParentId = incomingLinks[0].fromId;
+          const newParent = newTasks.find(t => t.id === newParentId);
+          
+          if (newParent) {
+            const updatedTasks = newTasks.map((t) => {
+              if (t.id === toId) {
+                return { 
+                  ...t, 
+                  parentId: newParentId,
+                  level: (newParent.level || 1) + 1, // 根据新父任务的层级设置
+                  collapsed: newParent.collapsed // 继承新父任务的折叠状态
+                };
+              }
+              return t;
+            });
+            saveTasksToStorage(updatedTasks);
+            return { tasks: updatedTasks };
+          }
+        }
+      }
+      
+      // 如果不是父子关系连线，只删除连线，不改变父子关系
+      saveTasksToStorage(newTasks);
       return { tasks: newTasks };
     });
   },
@@ -424,7 +593,8 @@ export const useTaskStore = create((set, get) => ({
         // 自动分配 type 字段
         let type = task.type;
         if (!type) {
-          if (task.parentId === null) type = 'center';
+          if (task.type === 'independent') type = 'independent';
+          else if (task.parentId === null) type = 'center';
           else if (task.level === 1) type = 'main';
           else if (task.level === 2) type = 'sub';
           else if (task.level >= 3) type = 'detail';
@@ -496,6 +666,180 @@ export const useTaskStore = create((set, get) => ({
       saveTasksToStorage(newTasks);
       return { tasks: newTasks };
     });
+  },
+  // 复制所选任务（含可选后代），保存到应用剪贴板（localStorage）
+  copyTasksToClipboard: (selectedIds, options = {}) => {
+    const { includeDescendants = true } = options;
+    const tasks = get().tasks;
+    const selectedSet = new Set(selectedIds);
+
+    // 收集层级后代（不包含细分同级链）
+    if (includeDescendants) {
+      const queue = [...selectedIds];
+      while (queue.length) {
+        const pid = queue.shift();
+        tasks.filter(t => t.parentId === pid).forEach(child => {
+          if (!selectedSet.has(child.id)) {
+            selectedSet.add(child.id);
+            queue.push(child.id);
+          }
+        });
+      }
+    }
+
+    const subsetTasks = tasks.filter(t => selectedSet.has(t.id));
+    if (subsetTasks.length === 0) return;
+
+    // 仅保留子集内部的连线
+    const subsetIds = new Set(subsetTasks.map(t => t.id));
+    const subsetWithLinks = subsetTasks.map(t => ({
+      ...t,
+      links: (t.links || []).filter(l => subsetIds.has(l.toId))
+    }));
+
+    // 归一化位置基准（左上对齐），方便粘贴时整体偏移
+    const minX = Math.min(...subsetWithLinks.map(t => t.position.x));
+    const minY = Math.min(...subsetWithLinks.map(t => t.position.y));
+
+    const payload = {
+      version: 1,
+      base: { x: minX, y: minY },
+      tasks: subsetWithLinks,
+    };
+
+    try {
+      localStorage.setItem(`moo_clipboard_${fileId}`, JSON.stringify(payload));
+    } catch (e) {
+      // ignore
+    }
+  },
+  // 从剪贴板粘贴任务：
+  // - contextTaskId: 将顶层粘贴项作为该卡片的同级（默认），或作为子级（asChild=true）
+  // - asChild: 是否作为 context 的子任务
+  // - offset: 粘贴偏移
+  pasteTasksFromClipboard: (contextTaskId = null, asChild = false, offset = { x: 40, y: 40 }, options = {}) => {
+    const { forceIndependentTopLevel = false } = options;
+    const clipboardRaw = localStorage.getItem(`moo_clipboard_${fileId}`);
+    if (!clipboardRaw) return;
+    let data;
+    try {
+      data = JSON.parse(clipboardRaw);
+    } catch (e) {
+      return;
+    }
+    if (!data || !Array.isArray(data.tasks) || !data.base) return;
+
+    const state = get();
+    state._saveSnapshot();
+
+    const allTasks = state.tasks;
+    const contextTask = contextTaskId ? allTasks.find(t => t.id === contextTaskId) : null;
+    const contextParentId = contextTask ? (asChild ? contextTask.id : contextTask.parentId ?? null) : null;
+    const contextLevel = (() => {
+      if (!contextTask) return 1;
+      return asChild ? (contextTask.level || 1) + 1 : (contextTask.level || 1);
+    })();
+
+    const idMap = new Map();
+    const now = Date.now();
+    let seq = 0;
+
+    // 先创建所有任务副本（不含链接），计算新位置与父级
+    const originalIdToTask = new Map(data.tasks.map(t => [t.id, t]));
+    // 找到子集中的“顶层”任务：其 parentId 不在子集内
+    const subsetIds = new Set(data.tasks.map(t => t.id));
+    const isTopOfSubset = (t) => !subsetIds.has(t.parentId);
+
+    // 生成新任务数组
+    const newTasks = data.tasks.map(orig => {
+      const newId = now + (++seq);
+      idMap.set(orig.id, newId);
+
+      // 相对偏移到新位置
+      const dx = (orig.position.x - data.base.x) + (offset?.x || 0);
+      const dy = (orig.position.y - data.base.y) + (offset?.y || 0);
+
+      // 计算父级：
+      // - 若原父在子集中，指向其映射的新ID
+      // - 否则：若存在 context，则把“子集顶层任务”放到 context 上（同级或子级），其余保持层内结构
+      let parentId = null;
+      if (subsetIds.has(orig.parentId)) {
+        parentId = idMap.get(orig.parentId) || null;
+      } else if (contextTask) {
+        parentId = isTopOfSubset(orig) ? contextParentId : null;
+      } else {
+        parentId = null; // 顶层仍为 null，但可按 independent 处理
+      }
+
+      // 计算层级与类型
+      let level = 1;
+      if (parentId == null) {
+        level = 1;
+      } else if (subsetIds.has(orig.parentId)) {
+        // 继承原相对层级
+        const parentOriginal = originalIdToTask.get(orig.parentId);
+        const parentOriginalLevel = (parentOriginal?.level || 1);
+        level = parentOriginalLevel + 1;
+      } else if (contextTask) {
+        level = contextLevel + (isTopOfSubset(orig) ? 0 : 1);
+      }
+
+      let type = 'main';
+      if (parentId === null) {
+        // 若没有上下文且要求顶层为独立任务
+        if (!contextTask && isTopOfSubset(orig) && forceIndependentTopLevel) type = 'independent';
+        else type = 'main';
+      } else if (level === 2) type = 'sub';
+      else if (level >= 3) type = 'detail';
+
+      // 若粘贴到折叠父下方，保持与父相同的折叠可见性
+      const collapsed = parentId != null ? (allTasks.find(t => t.id === parentId)?.collapsed || false) : (orig.collapsed || false);
+
+      return {
+        ...orig,
+        id: newId,
+        parentId,
+        level,
+        type,
+        collapsed,
+        position: { x: (contextTask ? contextTask.position.x : 0) + dx, y: (contextTask ? contextTask.position.y : 0) + dy },
+        links: [], // 链接稍后重建
+      };
+    });
+
+    // 将新任务插入状态
+    set({ tasks: ensureLinksLabel([...allTasks, ...newTasks]) });
+
+    // 重建子集内部连线（只保留两端都在子集内的连线）
+    const stateAfter = get();
+    // 若作为子级粘贴：为每个“子集顶层任务”建立从 context 到它的连线
+    if (contextTask && asChild) {
+      data.tasks.filter(isTopOfSubset).forEach(origTop => {
+        const newTo = idMap.get(origTop.id);
+        if (newTo) {
+          stateAfter.addLink(contextTask.id, newTo, null, null, '');
+        }
+      });
+    }
+    data.tasks.forEach(orig => {
+      (orig.links || []).forEach(l => {
+        const newFrom = idMap.get(orig.id);
+        const newTo = idMap.get(l.toId);
+        if (newFrom && newTo) {
+          stateAfter.addLink(newFrom, newTo, null, null, typeof l.label === 'string' ? l.label : '');
+          // 恢复样式
+          stateAfter.updateLinkStyle(newFrom, newTo, {
+            lineStyle: l.lineStyle,
+            arrowStyle: l.arrowStyle,
+            lineWidth: l.lineWidth,
+            color: l.color,
+          });
+        }
+      });
+    });
+
+    // 保存最终结果
+    saveTasksToStorage(get().tasks);
   },
 }));
 

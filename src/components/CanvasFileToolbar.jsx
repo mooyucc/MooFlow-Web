@@ -204,7 +204,14 @@ const CanvasFileToolbar = ({
           timeScale: timeScale ?? f.timeScale // 新增：同步时间颗粒度
         } : f
       );
-      localStorage.setItem('moo_files', JSON.stringify(updated));
+      
+      // 添加错误处理
+      try {
+        localStorage.setItem('moo_files', JSON.stringify(updated));
+      } catch (error) {
+        console.warn('保存文件数据失败，可能是localStorage配额超限:', error);
+      }
+      
       return updated;
     });
   };
@@ -213,7 +220,14 @@ const CanvasFileToolbar = ({
   const handlePaletteChange = (idx) => {
     setFiles(prev => {
       const updated = prev.map(f => f.id === activeFileId ? { ...f, paletteIdx: idx } : f);
-      localStorage.setItem('moo_files', JSON.stringify(updated));
+      
+      // 添加错误处理
+      try {
+        localStorage.setItem('moo_files', JSON.stringify(updated));
+      } catch (error) {
+        console.warn('保存配色方案失败，可能是localStorage配额超限:', error);
+      }
+      
       return updated;
     });
 
@@ -267,13 +281,53 @@ const CanvasFileToolbar = ({
     }
   };
 
+  // 清理localStorage的辅助函数
+  const cleanupLocalStorage = () => {
+    try {
+      // 清理最近文件历史，只保留最新的5个
+      const saved = localStorage.getItem('moo_files_history');
+      if (saved) {
+        const history = JSON.parse(saved);
+        const cleaned = history.slice(0, 5);
+        localStorage.setItem('moo_files_history', JSON.stringify(cleaned));
+      }
+      
+      // 清理文件数据，只保留当前活动的文件
+      const currentFiles = files.filter(f => f.id === activeFileId);
+      if (currentFiles.length > 0) {
+        localStorage.setItem('moo_files', JSON.stringify(currentFiles));
+      }
+      
+      console.log('localStorage清理完成');
+    } catch (error) {
+      console.error('清理localStorage失败:', error);
+    }
+  };
+
   // 记录最近打开文件
   const recordRecentFile = (file) => {
     setRecentFiles(prev => {
       // 去重，最新在前
       const filtered = prev.filter(f => f.id !== file.id);
       const newList = [{ ...file, lastOpen: Date.now() }, ...filtered].slice(0, 20);
-      localStorage.setItem('moo_files_history', JSON.stringify(newList));
+      
+      // 添加错误处理，防止localStorage配额超限
+      try {
+        localStorage.setItem('moo_files_history', JSON.stringify(newList));
+      } catch (error) {
+        console.warn('记录最近文件失败，可能是localStorage配额超限:', error);
+        // 尝试清理一些旧数据
+        try {
+          // 只保留最新的10个文件
+          const reducedList = newList.slice(0, 10);
+          localStorage.setItem('moo_files_history', JSON.stringify(reducedList));
+        } catch (cleanupError) {
+          console.error('清理后仍无法写入localStorage:', cleanupError);
+          // 如果还是失败，执行深度清理
+          cleanupLocalStorage();
+        }
+      }
+      
       return newList;
     });
   };
@@ -291,7 +345,14 @@ const CanvasFileToolbar = ({
             timeScale: timeScale || 'month' // 新增：保存时间颗粒度
           } : f
         );
-        localStorage.setItem('moo_files', JSON.stringify(updated));
+        
+        // 添加错误处理
+        try {
+          localStorage.setItem('moo_files', JSON.stringify(updated));
+        } catch (error) {
+          console.warn('保存文件数据失败，可能是localStorage配额超限:', error);
+        }
+        
         return updated;
       });
       
@@ -317,7 +378,12 @@ const CanvasFileToolbar = ({
       if (setTimeScale && file.timeScale) {
         setTimeScale(file.timeScale);
       }
-      localStorage.setItem('moo_active_file_id', fileId);
+      // 添加错误处理
+      try {
+        localStorage.setItem('moo_active_file_id', fileId);
+      } catch (error) {
+        console.warn('保存活动文件ID失败，可能是localStorage配额超限:', error);
+      }
       
       recordRecentFile(file);
     }
@@ -340,7 +406,14 @@ const CanvasFileToolbar = ({
     const newFile = defaultFile();
     setFiles(prev => {
       const updated = [...prev, newFile];
-      localStorage.setItem('moo_files', JSON.stringify(updated));
+      
+      // 添加错误处理
+      try {
+        localStorage.setItem('moo_files', JSON.stringify(updated));
+      } catch (error) {
+        console.warn('保存新文件失败，可能是localStorage配额超限:', error);
+      }
+      
       return updated;
     });
     clearTasks();
@@ -393,7 +466,12 @@ const CanvasFileToolbar = ({
           return rest;
         });
       }, 200);
-      localStorage.setItem('moo_files', JSON.stringify([newFile]));
+      // 添加错误处理
+      try {
+        localStorage.setItem('moo_files', JSON.stringify([newFile]));
+      } catch (error) {
+        console.warn('保存新文件失败，可能是localStorage配额超限:', error);
+      }
       return;
     }
     
@@ -412,7 +490,14 @@ const CanvasFileToolbar = ({
     }
     
     const newFiles = files.filter(f => f.id !== fileId);
-    localStorage.setItem('moo_files', JSON.stringify(newFiles));
+    
+    // 添加错误处理
+    try {
+      localStorage.setItem('moo_files', JSON.stringify(newFiles));
+    } catch (error) {
+      console.warn('保存文件列表失败，可能是localStorage配额超限:', error);
+    }
+    
     setFiles(newFiles);
     // 如果关闭的是当前Tab，切换到前一个或第一个
     if (activeFileId === fileId) {
@@ -529,7 +614,14 @@ const CanvasFileToolbar = ({
             mainDirection: mainDirection,
             timeScale: importedTimeScale // 新增：保存导入的时间颗粒度
           } : f);
-          localStorage.setItem('moo_files', JSON.stringify(updated));
+          
+          // 添加错误处理
+          try {
+            localStorage.setItem('moo_files', JSON.stringify(updated));
+          } catch (error) {
+            console.warn('保存导入数据失败，可能是localStorage配额超限:', error);
+          }
+          
           return updated;
         });
 
@@ -577,33 +669,69 @@ const CanvasFileToolbar = ({
 
   // 监听任务变化，自动同步到当前Tab
   React.useEffect(() => {
-    setFiles(prev => {
-      const updated = prev.map(f => f.id === activeFileId ? { 
-        ...f, 
-        tasks,
-        mainDirection: canvasProps.mainDirection || 'horizontal', // 同步布局方向
-        timeScale: timeScale || 'month' // 新增：同步时间颗粒度
-      } : f);
-      localStorage.setItem('moo_files', JSON.stringify(updated));
-      return updated;
-    });
-    // 自动同步到最近打开
-    const file = files.find(f => f.id === activeFileId);
-    if (file) recordRecentFile({ 
-      ...file, 
-      tasks,
-      mainDirection: canvasProps.mainDirection || 'horizontal', // 同步布局方向
-      timeScale: timeScale || 'month' // 新增：同步时间颗粒度
-    });
+    // 防止在文件切换过程中触发保存
+    if (!activeFileId || tasks.length === 0) return;
+    
+    // 使用防抖，避免频繁写入localStorage
+    const timeoutId = setTimeout(() => {
+      try {
+        setFiles(prev => {
+          const updated = prev.map(f => f.id === activeFileId ? { 
+            ...f, 
+            tasks,
+            mainDirection: canvasProps.mainDirection || 'horizontal', // 同步布局方向
+            timeScale: timeScale || 'month' // 新增：同步时间颗粒度
+          } : f);
+          
+          // 添加错误处理，防止localStorage配额超限
+          try {
+            localStorage.setItem('moo_files', JSON.stringify(updated));
+          } catch (error) {
+            console.warn('localStorage写入失败，可能是配额超限:', error);
+            // 尝试清理一些旧数据
+            try {
+              localStorage.removeItem('moo_files_history');
+              localStorage.setItem('moo_files', JSON.stringify(updated));
+            } catch (cleanupError) {
+              console.error('清理后仍无法写入localStorage:', cleanupError);
+              // 如果还是失败，执行深度清理
+              cleanupLocalStorage();
+            }
+          }
+          
+          return updated;
+        });
+        
+        // 自动同步到最近打开
+        const file = files.find(f => f.id === activeFileId);
+        if (file) recordRecentFile({ 
+          ...file, 
+          tasks,
+          mainDirection: canvasProps.mainDirection || 'horizontal', // 同步布局方向
+          timeScale: timeScale || 'month' // 新增：同步时间颗粒度
+        });
+      } catch (error) {
+        console.error('同步文件数据时出错:', error);
+      }
+    }, 500); // 500ms防抖
+    
+    return () => clearTimeout(timeoutId);
     // eslint-disable-next-line
-  }, [tasks, canvasProps.mainDirection, timeScale]);
+  }, [tasks, canvasProps.mainDirection, timeScale, activeFileId]);
 
   // Tab重命名提交
   const handleRenameSubmit = (fileId) => {
     if (!renameValue.trim()) return;
     setFiles(prev => {
       const updated = prev.map(f => f.id === fileId ? { ...f, name: renameValue.trim() } : f);
-      localStorage.setItem('moo_files', JSON.stringify(updated));
+      
+      // 添加错误处理
+      try {
+        localStorage.setItem('moo_files', JSON.stringify(updated));
+      } catch (error) {
+        console.warn('保存重命名失败，可能是localStorage配额超限:', error);
+      }
+      
       return updated;
     });
     setRenamingId(null);
@@ -635,7 +763,14 @@ const CanvasFileToolbar = ({
     if (!files.find(f => f.id === file.id)) {
       setFiles(prev => {
         const updated = [...prev, file];
-        localStorage.setItem('moo_files', JSON.stringify(updated));
+        
+        // 添加错误处理
+        try {
+          localStorage.setItem('moo_files', JSON.stringify(updated));
+        } catch (error) {
+          console.warn('保存最近文件失败，可能是localStorage配额超限:', error);
+        }
+        
         return updated;
       });
     }
@@ -696,7 +831,14 @@ const CanvasFileToolbar = ({
     e.stopPropagation();
     setRecentFiles(prev => {
       const updated = prev.filter(f => f.id !== fileId);
-      localStorage.setItem('moo_files_history', JSON.stringify(updated));
+      
+      // 添加错误处理
+      try {
+        localStorage.setItem('moo_files_history', JSON.stringify(updated));
+      } catch (error) {
+        console.warn('删除最近文件记录失败，可能是localStorage配额超限:', error);
+      }
+      
       return updated;
     });
   };
@@ -778,7 +920,7 @@ const CanvasFileToolbar = ({
   };
 
   return (
-    <div className="canvas-toolbar minimal filebar" style={{ display: 'flex', alignItems: 'center' }}>
+    <div className="canvas-toolbar minimal filebar" style={{ display: 'flex', alignItems: 'center', touchAction: 'manipulation' }}>
       {/* 登出按钮 */}
       <Tooltip text={t('logout')}>
         <button className="toolbar-btn" onClick={() => setShowLogoutConfirm(true)} style={{ marginRight: 8 }}>

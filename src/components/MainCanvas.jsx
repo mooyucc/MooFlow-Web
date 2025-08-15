@@ -461,6 +461,35 @@ const MainCanvas = ({ onLogout }) => {
       // 默认锚点：from右中，to左中
       const fromAnchor = ANCHORS.RightAnchor;
       const toAnchor = ANCHORS.LeftAnchor;
+      // 防环预校验：仅对非中心/主线任务启用
+      const rootTask = tasks[0];
+      const isCenter = task.id === rootTask?.id;
+      const isMain = task.parentId === null; // 按当前画布语义，主线任务 parentId 为 null
+      if (!isCenter && !isMain) {
+        // 若令 task(=to) 的父为 fromTask，会不会导致 fromTask 的祖先链包含 to
+        const willCycle = (() => {
+          let cur = fromTask.id;
+          const visited = new Set();
+          while (true) {
+            const node = tasks.find(t => t.id === cur);
+            if (!node) break;
+            if (node.parentId == null) break;
+            if (visited.has(node.parentId)) break;
+            if (node.parentId === task.id) return true;
+            visited.add(node.parentId);
+            cur = node.parentId;
+          }
+          return false;
+        })();
+        if (willCycle) {
+          if (typeof window !== 'undefined' && window.alert) {
+            window.alert(t('link_cycle_blocked') || '该连线会导致父子关系形成闭环，已阻止连线。');
+          }
+          setFromTask(null);
+          setLinking(false);
+          return;
+        }
+      }
       addLink(fromTask.id, task.id, fromAnchor, toAnchor);
       setFromTask(null);
       setLinking(false);
@@ -900,8 +929,14 @@ const MainCanvas = ({ onLogout }) => {
   }, []);
 
   const handleTouchStart = (e) => {
-    // 阻止默认行为，防止浏览器触控板手势干扰
-    e.preventDefault();
+    // 仅在非交互区域阻止默认行为，避免拦截按钮点击
+    const isInteractive = (el) => {
+      if (!el || !el.closest) return false;
+      return !!el.closest('button, input, textarea, select, a, [role="button"], .canvas-toolbar, .canvas-theme-toolbar, .filebar, #recent-popup, .zoom-toolbar, .zoom-select, .format-btn');
+    };
+    if (!isInteractive(e.target)) {
+      e.preventDefault();
+    }
     
     if (e.touches.length === 1) {
       // 判断是否点在节点上
@@ -940,8 +975,13 @@ const MainCanvas = ({ onLogout }) => {
   };
 
   const handleTouchMove = (e) => {
-    // 阻止默认行为，防止浏览器触控板手势干扰
-    e.preventDefault();
+    const isInteractive = (el) => {
+      if (!el || !el.closest) return false;
+      return !!el.closest('button, input, textarea, select, a, [role="button"], .canvas-toolbar, .canvas-theme-toolbar, .filebar, #recent-popup, .zoom-toolbar, .zoom-select, .format-btn');
+    };
+    if (!isInteractive(e.target)) {
+      e.preventDefault();
+    }
     
     if (touchState.current.mode === 'pan' && e.touches.length === 1) {
       const touch = e.touches[0];
@@ -992,8 +1032,13 @@ const MainCanvas = ({ onLogout }) => {
   };
 
   const handleTouchEnd = (e) => {
-    // 阻止默认行为，防止浏览器触控板手势干扰
-    e.preventDefault();
+    const isInteractive = (el) => {
+      if (!el || !el.closest) return false;
+      return !!el.closest('button, input, textarea, select, a, [role="button"], .canvas-toolbar, .canvas-theme-toolbar, .filebar, #recent-popup, .zoom-toolbar, .zoom-select, .format-btn');
+    };
+    if (!isInteractive(e.target)) {
+      e.preventDefault();
+    }
     
     // 结束拖动/缩放，重置状态
     if (touchState.current.mode === 'node-drag') {
@@ -1036,6 +1081,9 @@ const MainCanvas = ({ onLogout }) => {
   const [selectedTasks, setSelectedTasks] = useState([]);
   const [selectedLink, setSelectedLink] = useState(null); // 新增：选中连线状态
 
+  // 右键菜单状态
+  const [contextMenu, setContextMenu] = useState(null); // { x, y, taskId }
+
   // 新增：根据selectedElement更新选中状态
   useEffect(() => {
     if (selectedElement?.type === 'task') {
@@ -1058,6 +1106,76 @@ const MainCanvas = ({ onLogout }) => {
       setSelectedLink(null);
     }
   }, [selectedElement, selectedTaskIds, tasks]);
+
+  // 通用复制/剪切/粘贴操作
+  const getCurrentSelectionIds = (fallbackTaskId = null) => {
+    if (selectedTaskIds && selectedTaskIds.length > 0) return [...selectedTaskIds];
+    if (selectedElement?.type === 'task') return [selectedElement.id];
+    if (typeof fallbackTaskId === 'number') return [fallbackTaskId];
+    return [];
+  };
+
+  const handleCopySelected = (fallbackTaskId = null) => {
+    const ids = getCurrentSelectionIds(fallbackTaskId);
+    if (ids.length === 0) return;
+    useTaskStore.getState().copyTasksToClipboard(ids, { includeDescendants: true });
+  };
+
+  const handleCutSelected = (fallbackTaskId = null) => {
+    const ids = getCurrentSelectionIds(fallbackTaskId);
+    if (ids.length === 0) return;
+    const store = useTaskStore.getState();
+    store.copyTasksToClipboard(ids, { includeDescendants: true });
+    // 批量删除
+    ids.forEach(id => deleteTask(id));
+  };
+
+  const handlePaste = (contextTaskId = null, asChild = false) => {
+    useTaskStore.getState().pasteTasksFromClipboard(contextTaskId, asChild, { x: 40, y: 40 });
+  };
+
+  // 键盘快捷键：Cmd/Ctrl + C/X/V
+  useEffect(() => {
+    const handler = (e) => {
+      // 若正在编辑或输入聚焦，忽略
+      if (isEditing) return;
+      const active = document.activeElement;
+      if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable)) return;
+
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey) {
+        const k = e.key.toLowerCase();
+        if (k === 'c') {
+          e.preventDefault();
+          handleCopySelected();
+        } else if (k === 'x') {
+          e.preventDefault();
+          handleCutSelected();
+        } else if (k === 'v') {
+          e.preventDefault();
+          const ctxId = selectedElement?.type === 'task' ? selectedElement.id : null;
+          // 若有选中任务：作为其子任务粘贴，并建立连线
+          if (ctxId) {
+            useTaskStore.getState().pasteTasksFromClipboard(ctxId, true, { x: 40, y: 40 });
+          } else {
+            // 无选中任务：粘贴为独立任务（不进主线层）
+            useTaskStore.getState().pasteTasksFromClipboard(null, false, { x: 40, y: 40 }, { forceIndependentTopLevel: true });
+          }
+        }
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [isEditing, selectedElement, selectedTaskIds]);
+
+  // 右键菜单：在任务卡片上触发
+  const handleContextMenu = (e) => {
+    const el = e.target && e.target.closest ? e.target.closest('[data-task-id]') : null;
+    if (el) {
+      e.preventDefault();
+      const taskId = Number(el.dataset.taskId);
+      setContextMenu({ x: e.clientX, y: e.clientY, taskId });
+    }
+  };
 
   const handleTaskStyleChange = (key, value) => {
     const ids = selectedTaskIds.length > 0 ? selectedTaskIds : (selectedElement?.type === 'task' ? [selectedElement.id] : []);
@@ -1341,6 +1459,9 @@ const MainCanvas = ({ onLogout }) => {
     } else if ((task.type === 'sub' && newType === 'detail') || (task.type === 'detail' && newType === 'detail')) {
       useTaskStore.getState().addLink(task.id, newTask.id, fromAnchor, toAnchor, '', { color: '#86868b' });
     }
+    
+    // 新建任务后自动选中（不移动画布位置）
+    setSelectedElement({ type: 'task', id: newTask.id });
   };
 
   // 新增锚点连线模式状态
@@ -1373,6 +1494,36 @@ const MainCanvas = ({ onLogout }) => {
         if (toTask) {
           const fromAnchor = ANCHORS[linkingAnchor.fromAnchorKey];
           const toAnchor = ANCHORS[hoveredAnchor.anchorKey];
+          // 防环预校验：仅对非中心/主线任务启用
+          const rootTask = tasks[0];
+          const isCenter = toTask.id === rootTask?.id;
+          const isMain = toTask.parentId === null; // 主线任务 parentId 为 null
+          if (!isCenter && !isMain) {
+            const willCycle = (() => {
+              let cur = linkingAnchor.fromTaskId;
+              const visited = new Set();
+              while (true) {
+                const node = tasks.find(t => t.id === cur);
+                if (!node) break;
+                if (node.parentId == null) break;
+                if (visited.has(node.parentId)) break;
+                if (node.parentId === toTask.id) return true;
+                visited.add(node.parentId);
+                cur = node.parentId;
+              }
+              return false;
+            })();
+            if (willCycle) {
+              if (typeof window !== 'undefined' && window.alert) {
+                window.alert(t('link_cycle_blocked') || '该连线会导致父子关系形成闭环，已阻止连线。');
+              }
+              setLinkingAnchor(null);
+              setHoveredAnchor(null);
+              window.removeEventListener('mousemove', handleMove);
+              window.removeEventListener('mouseup', handleUp);
+              return;
+            }
+          }
           addLink(linkingAnchor.fromTaskId, toTask.id, fromAnchor, toAnchor);
         }
       }
@@ -1431,13 +1582,29 @@ const MainCanvas = ({ onLogout }) => {
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
       onWheel={handleWheel}
+      onContextMenu={handleContextMenu}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       // 新增：阻止触控板默认行为
-      onTouchStartCapture={(e) => e.preventDefault()}
-      onTouchMoveCapture={(e) => e.preventDefault()}
-      onTouchEndCapture={(e) => e.preventDefault()}
+      onTouchStartCapture={(e) => {
+        const el = e.target;
+        if (!el || !el.closest || !el.closest('button, input, textarea, select, a, [role="button"], .canvas-toolbar, .canvas-theme-toolbar, .filebar, #recent-popup, .zoom-toolbar, .zoom-select, .format-btn')) {
+          e.preventDefault();
+        }
+      }}
+      onTouchMoveCapture={(e) => {
+        const el = e.target;
+        if (!el || !el.closest || !el.closest('button, input, textarea, select, a, [role="button"], .canvas-toolbar, .canvas-theme-toolbar, .filebar, #recent-popup, .zoom-toolbar, .zoom-select, .format-btn')) {
+          e.preventDefault();
+        }
+      }}
+      onTouchEndCapture={(e) => {
+        const el = e.target;
+        if (!el || !el.closest || !el.closest('button, input, textarea, select, a, [role="button"], .canvas-toolbar, .canvas-theme-toolbar, .filebar, #recent-popup, .zoom-toolbar, .zoom-select, .format-btn')) {
+          e.preventDefault();
+        }
+      }}
     >
       {/* 时间颗粒度切换工具栏（右下角） */}
       <div style={{
@@ -1495,6 +1662,39 @@ const MainCanvas = ({ onLogout }) => {
           }}
         >{t('timeline.day_short')}</button>
       </div>
+      {/* 右键菜单 */}
+      {contextMenu && (
+        <div
+          style={{
+            position: 'fixed',
+            left: contextMenu.x,
+            top: contextMenu.y,
+            background: '#fff',
+            border: '1px solid #e0e0e0',
+            borderRadius: 6,
+            boxShadow: '0 6px 20px rgba(0,0,0,0.12)',
+            zIndex: 200,
+            overflow: 'hidden',
+          }}
+          onMouseLeave={() => setContextMenu(null)}
+        >
+          <button
+            className="format-btn"
+            style={{ display: 'block', width: 180, textAlign: 'left', padding: '8px 12px', border: 'none', background: 'transparent', cursor: 'pointer' }}
+            onClick={() => { handleCopySelected(contextMenu.taskId); setContextMenu(null); }}
+          >复制</button>
+          <button
+            className="format-btn"
+            style={{ display: 'block', width: 180, textAlign: 'left', padding: '8px 12px', border: 'none', background: 'transparent', cursor: 'pointer' }}
+            onClick={() => { handleCutSelected(contextMenu.taskId); setContextMenu(null); }}
+          >剪切</button>
+          <button
+            className="format-btn"
+            style={{ display: 'block', width: 180, textAlign: 'left', padding: '8px 12px', border: 'none', background: 'transparent', cursor: 'pointer' }}
+            onClick={() => { handlePaste(contextMenu.taskId, true); setContextMenu(null); }}
+          >粘贴为子级</button>
+        </div>
+      )}
       <CanvasToolbar 
         onStartLink={() => setLinking(true)} 
         onSetScale={handleSetScale}
@@ -1581,7 +1781,7 @@ const MainCanvas = ({ onLogout }) => {
             if (pid !== null) return;
 
             // 找出所有属于当前父节点的同级任务
-            const siblings = tasks.filter(t => t.parentId === pid);
+            const siblings = tasks.filter(t => t.parentId === pid && t.type !== 'independent');
             if (siblings.length < 2) return; // 至少需要两个任务才能形成连线
 
             // 按主线方向排序
@@ -1630,8 +1830,7 @@ const MainCanvas = ({ onLogout }) => {
                   lineWidth={linkData?.lineWidth || 2}
                   onUpdateLabel={(fromId, toId, label) => {
                     if (!isMainChain) {
-                      // 确保连线存在，以便更新或创建label
-                      useTaskStore.getState().addLink(fromId, toId, fromAnchor, toAnchor, label);
+                      // 直接更新label，不重新建立连线（避免重复建立父子关系）
                       handleUpdateLinkLabel(fromId, toId, label);
                     }
                   }}

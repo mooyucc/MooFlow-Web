@@ -186,6 +186,8 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
 
   // 拖拽逻辑
   const handleMouseDown = (e) => {
+    // 在编辑状态下，不处理拖拽
+    if (editing) return;
     // 多选且当前节点被选中时，不处理拖动，交给MainCanvas
     if (multiSelected) return;
     // 拖动开始时保存快照
@@ -203,7 +205,7 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
   };
 
   const handleMouseMove = (e) => {
-    if (!dragging) return;
+    if (!dragging || editing) return;
     e.stopPropagation();
 
     // 统一的函数，用于获取一个折叠任务下所有被隐藏的后代
@@ -284,7 +286,7 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
   };
 
   const handleMouseUp = () => {
-    if (!dragging) return;
+    if (!dragging || editing) return;
     setDragging(false);
     setDragStartPos(null);
     if (onDrag) {
@@ -480,7 +482,7 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
         transform={`translate(${task.position.x}, ${task.position.y})`}
         onMouseDown={handleMouseDown}
         onClick={onClick}
-        style={{ cursor: editing ? 'default' : 'move' }}
+        style={{ cursor: editing ? 'text' : 'move' }}
         data-task-id={task.id}
         onMouseEnter={() => setHover(true)}
         onMouseLeave={() => setHover(false)}
@@ -551,11 +553,13 @@ const TaskNode = ({ task, onClick, onStartLink, onDelete, selected, onDrag, mult
                 cursor: 'text',
                 fontStyle: task.fontStyle || 'normal',
                 textDecoration: task.textDecoration || 'none',
+                userSelect: 'text',
               }}
               value={title}
               autoFocus
               onChange={e => setTitle(e.target.value)}
               onBlur={handleInputBlur}
+              onMouseDown={e => e.stopPropagation()}
               onKeyDown={e => {
                 if (e.key === 'Enter') {
                   e.preventDefault();

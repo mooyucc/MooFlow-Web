@@ -49,7 +49,7 @@ const CanvasThemeToolbar = ({ canvasProps, setCanvasProps }) => {
     };
 
     return (
-        <div className="canvas-theme-toolbar">
+        <div className="canvas-theme-toolbar" style={{ touchAction: 'manipulation' }}>
             <button
                 className="toolbar-btn"
                 title={isDarkMode ? t('toggle_light') : t('toggle_dark')}

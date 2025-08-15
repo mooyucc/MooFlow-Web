@@ -37,42 +37,58 @@ MooFlow 致力于为用户提供高效、智能、可视化的项目管理体验
 ## 主要目录结构与核心组件说明
 ```
 MooFlow/
-├── electron-main.js           # Electron 主进程入口，负责窗口与文件导出
-├── preload.js                 # Electron 预加载脚本，安全暴露 IPC
-├── electron.cjs               # Electron 配置或辅助脚本
-├── package.json               # 项目依赖与脚本
-├── package-lock.json          # 依赖锁定文件
-├── vite.config.js             # Vite 构建配置
-├── eslint.config.js           # ESLint 配置
-├── index.html                 # HTML 模板入口
+├── electron-main.js           # Electron 主进程入口，窗口与导入/导出
+├── preload.js                 # 预加载脚本，安全暴露 IPC
+├── electron.cjs               # Electron 构建/启动配置
+├── package.json
+├── package-lock.json
+├── vite.config.js
+├── eslint.config.js
+├── index.html
 ├── public/                    # 静态资源目录
-│   └── vite.svg               # Vite 标志图片
+│   ├── bg-login.png
+│   ├── favicon.png
+│   ├── jspdf.umd.min.js
+│   └── svg2pdf.umd.min.js
+├── assets/                    # 应用图标与示意图
+│   ├── icon.icns
+│   ├── icon.ico
+│   ├── icon.png
+│   ├── LayoutH.png
+│   └── LayoutV.png
 ├── src/                       # 前端主代码目录
-│   ├── App.jsx                # React 应用主入口
-│   ├── App.css                # 应用样式
-│   ├── index.css              # 全局样式
-│   ├── main.jsx               # 前端入口文件
-│   ├── assets/                # 前端图片等资源
-│   │   └── react.svg          # React 标志图片
-│   ├── store/                 # 状态管理
-│   │   └── taskStore.js       # 任务状态管理
+│   ├── App.jsx
+│   ├── App.css
+│   ├── index.css
+│   ├── main.jsx
+│   ├── LanguageContext.jsx    # 语言上下文（中英切换）
+│   ├── locales/               # 多语言资源
+│   │   ├── en.js
+│   │   └── zh.js
+│   ├── assets/
+│   │   └── react.svg
+│   ├── store/
+│   │   └── taskStore.js       # 任务/画布状态（Zustand）
 │   └── components/            # 主要功能组件
-│        ├── MainCanvas.jsx         # 无限画布与任务可视化核心
-│        ├── TaskNode.jsx           # 单个任务节点，支持拖拽、编辑
-│        ├── LinkLine.jsx           # 任务依赖连线组件
-│        ├── CanvasToolbar.jsx      # 画布工具栏，常用操作入口
-│        ├── CanvasFileToolbar.jsx  # 文件导入导出工具栏
-│        ├── TaskTree.jsx           # 任务树结构，层级展示任务
-│        ├── DatePickerPortal.jsx   # 日期选择弹窗
-│        ├── CollapseButton.jsx     # 折叠/展开按钮
-│        └── FormatSidebar.jsx      # 右侧格式栏，任务属性编辑
-├── assets/                    # 应用图标等资源（如icon.ico, icon.icns, icon.png）
-├── dist/                      # 打包输出目录
-├── dmg/                       # Mac DMG 安装包输出目录
-├── .github/                   # GitHub 工作流等配置
-├── .gitignore                 # Git 忽略文件配置
+│       ├── MainCanvas.jsx          # 无限画布与节点渲染/交互核心
+│       ├── TaskNode.jsx            # 任务节点（拖拽、编辑、状态/进度）
+│       ├── LinkLine.jsx            # 任务依赖连线
+│       ├── CanvasToolbar.jsx       # 画布工具栏（缩放/布局/对齐等）
+│       ├── CanvasToolbar.css
+│       ├── CanvasFileToolbar.jsx   # 文件导入/导出（含布局方向）
+│       ├── CanvasThemeToolbar.jsx  # 主题切换（深色/浅色）
+│       ├── CanvasThemeToolbar.css
+│       ├── TaskTree.jsx            # 任务树（层级视图）
+│       ├── FormatSidebar.jsx       # 右侧属性/格式面板
+│       ├── DatePickerPortal.jsx    # 日期选择弹窗
+│       ├── PopupPortal.jsx         # 通用弹窗/浮层容器
+│       └── CollapseButton.jsx      # 折叠/展开按钮
+├── dist/                      # 网页版构建产物
+├── dmg/                       # 桌面版打包产物
+├── test-vertical-layout-import-export.js  # 纵向布局导入/导出测试脚本
+├── update-github.sh
+├── update-githubPages.sh
 ├── MooFlow 开发技术栈.md      # 详细技术方案与开发手册
-├── 「MooFlow」智能项目计划平台.md # 产品文档
 └── README.md                  # 项目说明文档
 ```
 
