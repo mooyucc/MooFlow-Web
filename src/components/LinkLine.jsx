@@ -366,11 +366,11 @@ const LinkLine = ({
       {/* 连线中点文本输入框 */}
       {!isMainChain && ((inputValue && inputValue !== '0') || effectiveHovered) && (
         <foreignObject
-          x={mid.x - 20}
-          y={mid.y - 13}
-          width={40}
-          height={20}
-          style={{ overflow: 'visible', pointerEvents: 'auto' }}
+          x={mid.x - 26}
+          y={mid.y - 14}
+          width={52}
+          height={24}
+          style={{ pointerEvents: 'auto' }}
         >
           <input
             type="text"
@@ -395,8 +395,9 @@ const LinkLine = ({
               }
             }}
             style={{
-              width: '100%',
-              height: '100%',
+              // 留出 2px 边距，避免被 foreignObject 边界裁切圆角/阴影
+              width: 'calc(100% - 4px)',
+              height: 'calc(100% - 4px)',
               fontSize: 12,
               textAlign: 'center',
               border: '1px solid #b3b3b3',
@@ -405,6 +406,7 @@ const LinkLine = ({
               boxShadow: '0 1px 2px #0001',
               outline: 'none',
               padding: 0,
+              margin: 2,
               color: '#fff'
             }}
             maxLength={8}

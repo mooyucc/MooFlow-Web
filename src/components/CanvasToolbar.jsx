@@ -88,6 +88,17 @@ const RefreshIcon = () => (
     <path d="M4 13a8.1 8.1 0 0 0 15.5 2M20 20v-5h-5" />
   </svg>
 );
+// 折叠/展开所有图标（与刷新图标同风格：描边、圆角端点/拐角）
+const CollapseAllIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    {/* 左侧两张卡片 */}
+    <rect x="4" y="4" width="7" height="7" rx="1.5" />
+    <rect x="4" y="13" width="7" height="7" rx="1.5" />
+    {/* 右侧上下双箭头，表示展开/折叠 */}
+    <polyline points="14,8 17,5 20,8" />
+    <polyline points="14,16 17,19 20,16" />
+  </svg>
+);
 // 子任务图标
 const ChildTaskIcon = () => (
   <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -113,6 +124,7 @@ const CanvasToolbar = ({ onStartLink, onSetScale, onFitView, onAlignToTimeline, 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
   const [t] = useTranslation();
+  const toggleCollapseAll = useTaskStore(state => state.toggleCollapseAll);
 
   // 缩放减小
   const handleZoomOut = () => {
@@ -202,6 +214,11 @@ const CanvasToolbar = ({ onStartLink, onSetScale, onFitView, onAlignToTimeline, 
       <Tooltip text={t('refresh_align')}>
         <button className="toolbar-btn" onClick={onAlignToTimeline}>
           <RefreshIcon />
+        </button>
+      </Tooltip>
+      <Tooltip text={t('toggle_all_collapse')}>
+        <button className="toolbar-btn" onClick={() => toggleCollapseAll()}>
+          <CollapseAllIcon />
         </button>
       </Tooltip>
     </div>

@@ -55,8 +55,8 @@ const CanvasThemeToolbar = ({ canvasProps, setCanvasProps }) => {
                 title={isDarkMode ? t('toggle_light') : t('toggle_dark')}
                 onClick={toggleTheme}
                 style={{
-                    width: 30,
-                    height: 30,
+                    width: 28,
+                    height: 28,
                     borderRadius: '50%',
                     fontWeight: 700,
                     fontSize: 16,
@@ -73,8 +73,8 @@ const CanvasThemeToolbar = ({ canvasProps, setCanvasProps }) => {
                 onClick={toggleLang}
                 style={{
                     marginLeft: 8,
-                    width: 32,
-                    height: 32,
+                    width: 28,
+                    height: 28,
                     borderRadius: '50%',
                     fontWeight: 600,
                     fontSize: 16,

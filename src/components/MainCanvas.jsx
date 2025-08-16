@@ -17,6 +17,7 @@ const MainCanvas = ({ onLogout }) => {
   const [t, lang] = useTranslation(); // 移到最前面，防止未初始化
   const [transform, setTransform] = useState({ scale: 1, offsetX: 0, offsetY: 0 });
   const dragging = useRef(false);
+  const rightDragPending = useRef(null);
   const lastPos = useRef({ x: 0, y: 0 });
   const tasks = useTaskStore((state) => state.tasks);
   const addLink = useTaskStore((state) => state.addLink);
@@ -143,6 +144,8 @@ const MainCanvas = ({ onLogout }) => {
     } else if (timeScale === 'day') {
       for (let i = -365; i < 365 * 5; i++) {
         const d = new Date(startDate);
+        // 归一化到本地当天0点，避免因时分秒/时区造成的偏移
+        d.setHours(0, 0, 0, 0);
         d.setDate(d.getDate() + i);
         ticks.push({
           label: `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`,
@@ -192,6 +195,10 @@ const MainCanvas = ({ onLogout }) => {
     mode: null, // 'pan' | 'zoom' | 'node-drag'
     dragNodeId: null,
     dragNodeOffset: { x: 0, y: 0 },
+    // Tap 选择支持
+    tapStartTime: 0,
+    tapStartPos: { x: 0, y: 0 },
+    tappedTaskId: null,
   });
 
   // 计算两点间距离
@@ -229,10 +236,11 @@ const MainCanvas = ({ onLogout }) => {
 
   // 鼠标按下
   const handleMouseDown = (e) => {
-    if (e.button === 2) { // 右键拖动画布
-      dragMode.current = 'canvas';
-      dragging.current = true;
-      lastPos.current = { x: e.clientX, y: e.clientY };
+    if (e.button === 2) { // 右键：延迟判断是否为拖拽，避免与右键菜单冲突
+      rightDragPending.current = { x: e.clientX, y: e.clientY };
+      dragging.current = false;
+      dragMode.current = null;
+      return;
     } else if (e.button === 0) { // 左键框选
       if (e.target === svgRef.current) {
         dragMode.current = 'select';
@@ -311,6 +319,23 @@ const MainCanvas = ({ onLogout }) => {
 
   // 鼠标移动
   const handleMouseMove = (e) => {
+    // 打开右键菜单时，禁止任何拖动/选择
+    if (contextMenu) return;
+
+    // 若右键按下但未超过阈值，不触发拖动
+    if (rightDragPending.current && !dragging.current) {
+      const dx0 = e.clientX - rightDragPending.current.x;
+      const dy0 = e.clientY - rightDragPending.current.y;
+      if (Math.hypot(dx0, dy0) > 6) {
+        dragMode.current = 'canvas';
+        dragging.current = true;
+        lastPos.current = { x: e.clientX, y: e.clientY };
+        rightDragPending.current = null;
+      } else {
+        return;
+      }
+    }
+
     if (dragMode.current === 'canvas' && dragging.current) {
       const dx = e.clientX - lastPos.current.x;
       const dy = e.clientY - lastPos.current.y;
@@ -377,6 +402,7 @@ const MainCanvas = ({ onLogout }) => {
 
   // 鼠标松开
   const handleMouseUp = (e) => {
+    rightDragPending.current = null;
     if (dragMode.current === 'canvas') {
       dragging.current = false;
     } else if (dragMode.current === 'select' && selectBox) {
@@ -929,10 +955,12 @@ const MainCanvas = ({ onLogout }) => {
   }, []);
 
   const handleTouchStart = (e) => {
+    // 若右键菜单已打开，直接忽略触摸开始，避免触发拖动
+    if (contextMenu) return;
     // 仅在非交互区域阻止默认行为，避免拦截按钮点击
     const isInteractive = (el) => {
       if (!el || !el.closest) return false;
-      return !!el.closest('button, input, textarea, select, a, [role="button"], .canvas-toolbar, .canvas-theme-toolbar, .filebar, #recent-popup, .zoom-toolbar, .zoom-select, .format-btn');
+      return !!el.closest('button, input, textarea, select, a, [role="button"], .canvas-toolbar, .canvas-theme-toolbar, .filebar, #recent-popup, .zoom-toolbar, .zoom-select, .format-btn, [data-task-id]');
     };
     if (!isInteractive(e.target)) {
       e.preventDefault();
@@ -944,20 +972,25 @@ const MainCanvas = ({ onLogout }) => {
       const el = document.elementFromPoint(touch.clientX, touch.clientY);
       const pt = el && el.closest && el.closest('[data-task-id]');
       if (pt) {
-        // 节点拖动
+        // 节点拖动（改为待定态，超过阈值才真正开始拖动）
         const id = Number(pt.dataset.taskId);
         const t = tasks.find(t => t.id === id);
         if (t) {
-          touchState.current.mode = 'node-drag';
+          touchState.current.mode = 'node-pending';
           touchState.current.dragNodeId = id;
           touchState.current.dragNodeOffset = {
             x: t.position.x - (touch.clientX - transform.offsetX) / transform.scale,
             y: t.position.y - (touch.clientY - transform.offsetY) / transform.scale,
           };
+          // 记录 Tap 起点
+          touchState.current.tapStartTime = Date.now();
+          touchState.current.tapStartPos = { x: touch.clientX, y: touch.clientY };
+          touchState.current.tappedTaskId = id;
         }
       } else {
         // 画布平移
         touchState.current.mode = 'pan';
+        touchState.current.tappedTaskId = null;
       }
       touchState.current.lastTouches = [
         { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY },
@@ -975,9 +1008,11 @@ const MainCanvas = ({ onLogout }) => {
   };
 
   const handleTouchMove = (e) => {
+    // 打开右键菜单时，禁止触摸移动
+    if (contextMenu) return;
     const isInteractive = (el) => {
       if (!el || !el.closest) return false;
-      return !!el.closest('button, input, textarea, select, a, [role="button"], .canvas-toolbar, .canvas-theme-toolbar, .filebar, #recent-popup, .zoom-toolbar, .zoom-select, .format-btn');
+      return !!el.closest('button, input, textarea, select, a, [role="button"], .canvas-toolbar, .canvas-theme-toolbar, .filebar, #recent-popup, .zoom-toolbar, .zoom-select, .format-btn, [data-task-id]');
     };
     if (!isInteractive(e.target)) {
       e.preventDefault();
@@ -1010,10 +1045,26 @@ const MainCanvas = ({ onLogout }) => {
         { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY },
         { clientX: e.touches[1].clientX, clientY: e.touches[1].clientY },
       ];
-    } else if (touchState.current.mode === 'node-drag' && e.touches.length === 1) {
+    } else if ((touchState.current.mode === 'node-drag' || touchState.current.mode === 'node-pending') && e.touches.length === 1) {
       const touch = e.touches[0];
+      // 若移动距离超过阈值，取消 Tap 判定
+      const dxTap = Math.abs(touch.clientX - (touchState.current.tapStartPos?.x || 0));
+      const dyTap = Math.abs(touch.clientY - (touchState.current.tapStartPos?.y || 0));
+      if (dxTap > 6 || dyTap > 6) {
+        touchState.current.tappedTaskId = null;
+      }
       const id = touchState.current.dragNodeId;
       if (id) {
+        // 若仍处于待定态，超过阈值后才进入真正拖动
+        if (touchState.current.mode === 'node-pending') {
+          if (Math.hypot(dxTap, dyTap) <= 6) {
+            touchState.current.lastTouches = [
+              { clientX: touch.clientX, clientY: touch.clientY },
+            ];
+            return;
+          }
+          touchState.current.mode = 'node-drag';
+        }
         const rawX = (touch.clientX - transform.offsetX) / transform.scale + touchState.current.dragNodeOffset.x;
         const rawY = (touch.clientY - transform.offsetY) / transform.scale + touchState.current.dragNodeOffset.y;
         
@@ -1034,18 +1085,26 @@ const MainCanvas = ({ onLogout }) => {
   const handleTouchEnd = (e) => {
     const isInteractive = (el) => {
       if (!el || !el.closest) return false;
-      return !!el.closest('button, input, textarea, select, a, [role="button"], .canvas-toolbar, .canvas-theme-toolbar, .filebar, #recent-popup, .zoom-toolbar, .zoom-select, .format-btn');
+      return !!el.closest('button, input, textarea, select, a, [role="button"], .canvas-toolbar, .canvas-theme-toolbar, .filebar, #recent-popup, .zoom-toolbar, .zoom-select, .format-btn, [data-task-id]');
     };
     if (!isInteractive(e.target)) {
       e.preventDefault();
     }
     
     // 结束拖动/缩放，重置状态
-    if (touchState.current.mode === 'node-drag') {
+    if (touchState.current.mode === 'node-drag' || touchState.current.mode === 'node-pending') {
       setAlignLines([]);
+    }
+    // 处理 Tap 选择
+    if (touchState.current.tappedTaskId) {
+      const duration = Date.now() - (touchState.current.tapStartTime || 0);
+      if (duration < 350) {
+        setSelectedElement({ type: 'task', id: touchState.current.tappedTaskId });
+      }
     }
     touchState.current.mode = null;
     touchState.current.dragNodeId = null;
+    touchState.current.tappedTaskId = null;
   };
 
   // 处理分支样式变更（支持多选和单选连线）
@@ -1172,6 +1231,15 @@ const MainCanvas = ({ onLogout }) => {
     const el = e.target && e.target.closest ? e.target.closest('[data-task-id]') : null;
     if (el) {
       e.preventDefault();
+      e.stopPropagation();
+      // 打开菜单时，终止一切拖动/手势，避免误触发移动
+      dragging.current = false;
+      dragMode.current = null;
+      rightDragPending.current = null;
+      setMultiDragging(false);
+      setAlignLines([]);
+      touchState.current.mode = null;
+      touchState.current.dragNodeId = null;
       const taskId = Number(el.dataset.taskId);
       setContextMenu({ x: e.clientX, y: e.clientY, taskId });
     }
@@ -1414,6 +1482,32 @@ const MainCanvas = ({ onLogout }) => {
       newTitle = '子任务';
       newParentId = task.id;
       newLevel = 2;
+    } else if (task.type === 'independent') {
+      // 独立任务：允许新建细分任务，布局与主任务一致
+      const children = tasks.filter(t => t.parentId === task.id);
+      if ((canvasProps.mainDirection || 'horizontal') === 'horizontal') {
+        // 横向主线，子任务纵向排列
+        let newY = task.position.y + 180;
+        if (children.length > 0) {
+          newY = Math.max(...children.map(c => c.position.y)) + 180;
+        }
+        newPosition = { x: task.position.x, y: newY };
+        fromAnchor = { x: 90, y: 72 }; // 下中
+        toAnchor = { x: 90, y: 0 };    // 上中
+      } else {
+        // 纵向主线，子任务横向排列
+        let maxX = task.position.x;
+        if (children.length > 0) {
+          maxX = Math.max(...children.map(c => c.position.x), maxX);
+        }
+        newPosition = { x: maxX + 300, y: task.position.y };
+        fromAnchor = { x: 180, y: 36 }; // 右中
+        toAnchor = { x: 0, y: 36 };     // 左中
+      }
+      newType = 'detail';
+      newTitle = '细分任务';
+      newParentId = task.id;
+      newLevel = (task.level || 1) + 1;
     } else if (task.type === 'sub' || task.type === 'detail') {
       // 新建细分任务，横向排列
       const siblings = tasks.filter(t => t.parentId === task.id);
@@ -1457,6 +1551,9 @@ const MainCanvas = ({ onLogout }) => {
     if (task.type === 'main' && newType === 'sub') {
       useTaskStore.getState().addLink(task.id, newTask.id, fromAnchor, toAnchor, '', { color: '#ff9800' });
     } else if ((task.type === 'sub' && newType === 'detail') || (task.type === 'detail' && newType === 'detail')) {
+      useTaskStore.getState().addLink(task.id, newTask.id, fromAnchor, toAnchor, '', { color: '#86868b' });
+    } else if (task.type === 'independent' && newType === 'detail') {
+      // 独立任务与其细分任务之间建立连线（灰色）
       useTaskStore.getState().addLink(task.id, newTask.id, fromAnchor, toAnchor, '', { color: '#86868b' });
     }
     
@@ -1589,19 +1686,19 @@ const MainCanvas = ({ onLogout }) => {
       // 新增：阻止触控板默认行为
       onTouchStartCapture={(e) => {
         const el = e.target;
-        if (!el || !el.closest || !el.closest('button, input, textarea, select, a, [role="button"], .canvas-toolbar, .canvas-theme-toolbar, .filebar, #recent-popup, .zoom-toolbar, .zoom-select, .format-btn')) {
+        if (!el || !el.closest || !el.closest('button, input, textarea, select, a, [role="button"], .canvas-toolbar, .canvas-theme-toolbar, .filebar, #recent-popup, .zoom-toolbar, .zoom-select, .format-btn, [data-task-id]')) {
           e.preventDefault();
         }
       }}
       onTouchMoveCapture={(e) => {
         const el = e.target;
-        if (!el || !el.closest || !el.closest('button, input, textarea, select, a, [role="button"], .canvas-toolbar, .canvas-theme-toolbar, .filebar, #recent-popup, .zoom-toolbar, .zoom-select, .format-btn')) {
+        if (!el || !el.closest || !el.closest('button, input, textarea, select, a, [role="button"], .canvas-toolbar, .canvas-theme-toolbar, .filebar, #recent-popup, .zoom-toolbar, .zoom-select, .format-btn, [data-task-id]')) {
           e.preventDefault();
         }
       }}
       onTouchEndCapture={(e) => {
         const el = e.target;
-        if (!el || !el.closest || !el.closest('button, input, textarea, select, a, [role="button"], .canvas-toolbar, .canvas-theme-toolbar, .filebar, #recent-popup, .zoom-toolbar, .zoom-select, .format-btn')) {
+        if (!el || !el.closest || !el.closest('button, input, textarea, select, a, [role="button"], .canvas-toolbar, .canvas-theme-toolbar, .filebar, #recent-popup, .zoom-toolbar, .zoom-select, .format-btn, [data-task-id]')) {
           e.preventDefault();
         }
       }}
@@ -1669,30 +1766,79 @@ const MainCanvas = ({ onLogout }) => {
             position: 'fixed',
             left: contextMenu.x,
             top: contextMenu.y,
-            background: '#fff',
-            border: '1px solid #e0e0e0',
-            borderRadius: 6,
-            boxShadow: '0 6px 20px rgba(0,0,0,0.12)',
+            background: 'rgba(255,255,255,0.92)',
+            border: '1px solid rgba(0,0,0,0.08)',
+            borderRadius: 8,
+            boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+            backdropFilter: 'saturate(180%) blur(16px)',
+            WebkitBackdropFilter: 'saturate(180%) blur(16px)',
             zIndex: 200,
             overflow: 'hidden',
+            padding: '6px 0',
+            minWidth: 200,
           }}
           onMouseLeave={() => setContextMenu(null)}
         >
           <button
             className="format-btn"
-            style={{ display: 'block', width: 180, textAlign: 'left', padding: '8px 12px', border: 'none', background: 'transparent', cursor: 'pointer' }}
+            style={{
+              display: 'block',
+              width: 'calc(100% - 8px)',
+              textAlign: 'left',
+              padding: '8px 16px',
+              border: 'none',
+              background: 'transparent',
+              cursor: 'pointer',
+              fontSize: 13,
+              fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro', 'Helvetica Neue', Arial, sans-serif",
+              color: '#1f1f1f',
+              margin: '0 4px',
+              borderRadius: 6,
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0.06)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
             onClick={() => { handleCopySelected(contextMenu.taskId); setContextMenu(null); }}
           >复制</button>
           <button
             className="format-btn"
-            style={{ display: 'block', width: 180, textAlign: 'left', padding: '8px 12px', border: 'none', background: 'transparent', cursor: 'pointer' }}
+            style={{
+              display: 'block',
+              width: 'calc(100% - 8px)',
+              textAlign: 'left',
+              padding: '8px 16px',
+              border: 'none',
+              background: 'transparent',
+              cursor: 'pointer',
+              fontSize: 13,
+              fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro', 'Helvetica Neue', Arial, sans-serif",
+              color: '#1f1f1f',
+              margin: '0 4px',
+              borderRadius: 6,
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0.06)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
             onClick={() => { handleCutSelected(contextMenu.taskId); setContextMenu(null); }}
           >剪切</button>
           <button
             className="format-btn"
-            style={{ display: 'block', width: 180, textAlign: 'left', padding: '8px 12px', border: 'none', background: 'transparent', cursor: 'pointer' }}
+            style={{
+              display: 'block',
+              width: 'calc(100% - 8px)',
+              textAlign: 'left',
+              padding: '8px 16px',
+              border: 'none',
+              background: 'transparent',
+              cursor: 'pointer',
+              fontSize: 13,
+              fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro', 'Helvetica Neue', Arial, sans-serif",
+              color: '#1f1f1f',
+              margin: '0 4px',
+              borderRadius: 6,
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0.06)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
             onClick={() => { handlePaste(contextMenu.taskId, true); setContextMenu(null); }}
-          >粘贴为子级</button>
+          >粘贴</button>
         </div>
       )}
       <CanvasToolbar 

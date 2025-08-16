@@ -4,6 +4,8 @@ import './CanvasToolbar.css';
 import FormatSidebar from './FormatSidebar';
 import Papa from 'papaparse';
 import { useTranslation } from '../LanguageContext';
+import LayoutH from '../../assets/LayoutH.png';
+import LayoutV from '../../assets/LayoutV.png';
 
 // 简单Tooltip组件（与CanvasToolbar一致）
 const Tooltip = ({ text, children }) => {
@@ -142,6 +144,27 @@ const CanvasFileToolbar = ({
   // 新增：记录正在重命名的Tab id和输入值
   const [renamingId, setRenamingId] = useState(null);
   const [renameValue, setRenameValue] = useState('');
+  // 新建文件：布局选择面板（右侧滑入，参考“最近打开”）
+  const [showNewFileDialog, setShowNewFileDialog] = useState(false);
+  const newFilePopupRef = useRef(null);
+  const [newFilePopupVisible, setNewFilePopupVisible] = useState(false);
+  useEffect(() => {
+    if (showNewFileDialog) {
+      setTimeout(() => setNewFilePopupVisible(true), 10);
+    } else {
+      setNewFilePopupVisible(false);
+    }
+  }, [showNewFileDialog]);
+  useEffect(() => {
+    if (!showNewFileDialog) return;
+    const handleClick = (e) => {
+      if (newFilePopupRef.current && !newFilePopupRef.current.contains(e.target)) {
+        setShowNewFileDialog(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showNewFileDialog]);
 
   // 任务相关
   const tasks = useTaskStore(state => state.tasks);
@@ -334,6 +357,8 @@ const CanvasFileToolbar = ({
 
   // 切换Tab时同步store并记录最近打开
   const switchFile = (fileId) => {
+    // 切换文件时关闭格式面板
+    setShowFormatSidebar(false);
     const file = files.find(f => f.id === fileId);
     if (file) {
       // 先保存当前文件的布局信息
@@ -390,7 +415,9 @@ const CanvasFileToolbar = ({
   };
 
   // 新建文件(Tab)时也记录
-  const handleNewFile = () => {
+  const handleNewFile = (direction = 'horizontal') => {
+    // 新建文件时关闭格式面板
+    setShowFormatSidebar(false);
     // 先保存当前文件的布局信息
     setFiles(prev => {
       const updated = prev.map(f => 
@@ -403,7 +430,7 @@ const CanvasFileToolbar = ({
       return updated;
     });
     
-    const newFile = defaultFile();
+    const newFile = { ...defaultFile(), mainDirection: direction };
     setFiles(prev => {
       const updated = [...prev, newFile];
       
@@ -444,6 +471,8 @@ const CanvasFileToolbar = ({
   // 关闭文件(Tab)
   const handleCloseFile = (fileId, e) => {
     e.stopPropagation();
+    // 关闭文件时关闭格式面板
+    setShowFormatSidebar(false);
     let idx = files.findIndex(f => f.id === fileId);
     if (files.length === 1) {
       // 最后一个Tab不能关闭，重置内容
@@ -525,6 +554,8 @@ const CanvasFileToolbar = ({
 
   // 导出当前Tab
   const handleExport = async () => {
+    // 导出时关闭格式面板
+    setShowFormatSidebar(false);
     const file = files.find(f => f.id === activeFileId);
     // 导出数据包含任务、布局方向和时间颗粒度
     const exportData = {
@@ -845,6 +876,8 @@ const CanvasFileToolbar = ({
 
   // CSV导出
   const handleExportCSV = () => {
+    // 导出CSV时关闭格式面板
+    setShowFormatSidebar(false);
     const file = files.find(f => f.id === activeFileId);
     if (!file) return;
     const tasks = file.tasks || [];
@@ -923,7 +956,7 @@ const CanvasFileToolbar = ({
     <div className="canvas-toolbar minimal filebar" style={{ display: 'flex', alignItems: 'center', touchAction: 'manipulation' }}>
       {/* 登出按钮 */}
       <Tooltip text={t('logout')}>
-        <button className="toolbar-btn" onClick={() => setShowLogoutConfirm(true)} style={{ marginRight: 8 }}>
+        <button className="toolbar-btn" onClick={() => { setShowFormatSidebar(false); setShowLogoutConfirm(true); }} style={{ marginRight: 8 }}>
           {/* 退出SVG图标 */}
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M16 17l5-5-5-5" />
@@ -1026,7 +1059,7 @@ const CanvasFileToolbar = ({
           </div>
         ))}
         <Tooltip text={t('new_file')}>
-          <button className="toolbar-btn" onClick={handleNewFile} style={{ marginLeft: 4 }}>
+          <button className="toolbar-btn" onClick={() => { setShowFormatSidebar(false); setShowNewFileDialog(true); }} style={{ marginLeft: 4 }}>
             <NewFileIcon />
           </button>
         </Tooltip>
@@ -1034,7 +1067,7 @@ const CanvasFileToolbar = ({
       {/* 导出/导入按钮（带下拉菜单） */}
       <div style={{ position: 'relative', marginRight: 4 }}>
         <Tooltip text={t('export_task')}>
-          <button className="toolbar-btn" onClick={() => setExportMenuOpen(v => !v)}>
+          <button className="toolbar-btn" onClick={() => { setShowFormatSidebar(false); setExportMenuOpen(v => !v); }}>
             <ExportIcon />
           </button>
         </Tooltip>
@@ -1053,7 +1086,7 @@ const CanvasFileToolbar = ({
           }} onMouseLeave={() => setExportMenuOpen(false)}>
             <div
               style={{ padding: '8px 16px', cursor: 'pointer', color: '#333', fontSize: 12 }}
-              onClick={handleExport}
+              onClick={() => { setShowFormatSidebar(false); handleExport(); setExportMenuOpen(false); }}
               onMouseEnter={e => e.currentTarget.style.background = '#f3f3f6'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >{t('export_json')}</div>
@@ -1068,7 +1101,7 @@ const CanvasFileToolbar = ({
       </div>
       <div style={{ position: 'relative', marginRight: 4 }}>
         <Tooltip text={t('import_task')}>
-          <button className="toolbar-btn" onClick={() => setImportMenuOpen(v => !v)}>
+          <button className="toolbar-btn" onClick={() => { setShowFormatSidebar(false); setImportMenuOpen(v => !v); }}>
             <ImportIcon />
           </button>
         </Tooltip>
@@ -1087,7 +1120,7 @@ const CanvasFileToolbar = ({
           }} onMouseLeave={() => setImportMenuOpen(false)}>
             <div
               style={{ padding: '8px 16px', cursor: 'pointer', color: '#333', fontSize: 12 }}
-              onClick={() => { setImportMenuOpen(false); fileInputRef.current.click(); }}
+              onClick={() => { setShowFormatSidebar(false); setImportMenuOpen(false); fileInputRef.current.click(); }}
               onMouseEnter={e => e.currentTarget.style.background = '#f3f3f6'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >{t('import_json')}</div>
@@ -1342,6 +1375,94 @@ const CanvasFileToolbar = ({
               >
                 确认登出
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* 新建文件 - 布局选择面板（右侧滑入） */}
+      {showNewFileDialog && (
+        <div
+          ref={newFilePopupRef}
+          style={{
+            position: 'fixed',
+            top: 64,
+            right: 0,
+            width: 300,
+            height: 'calc(100vh - 256px)',
+            background: 'var(--filebar-bg)',
+            color: 'var(--filebar-text)',
+            backdropFilter: 'blur(48px) saturate(1.5)',
+            WebkitBackdropFilter: 'blur(48px) saturate(1.5)',
+            boxShadow: '-2px 0 32px #0003',
+            zIndex: 9999,
+            padding: 16,
+            overflowY: 'auto',
+            transition: 'transform 0.35s cubic-bezier(.4,1.6,.4,1), opacity 0.25s',
+            borderLeft: '1px solid var(--filebar-border)',
+            display: 'flex',
+            flexDirection: 'column',
+            borderRadius: '18px 18px 18px 18px',
+            marginBottom: 0,
+            opacity: newFilePopupVisible ? 1 : 0,
+            transform: newFilePopupVisible ? 'translateX(0)' : 'translateX(100%)',
+            borderTop: '1px solid var(--filebar-border)',
+            boxSizing: 'border-box'
+          }}
+          onWheel={handleWheel}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+            <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--filebar-text)', flex: 1 }}>{t('new_file')}</span>
+            <button
+              style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--filebar-text)', opacity: 0.5 }}
+              onClick={() => setShowNewFileDialog(false)}
+              title={t('close_file')}
+            >×</button>
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--filebar-text)', opacity: 0.7, marginBottom: 12 }}>{t('layout')} - {t('select')}</div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <div
+              style={{
+                padding: '10px 10px',
+                borderRadius: 10,
+                background: 'var(--card-bg)',
+                boxShadow: '0 1px 3px #00000014',
+                border: '1px solid var(--filebar-border)',
+                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 8
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--button-hover-bg)'; e.currentTarget.style.border = '1px solid var(--accent-color)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'var(--card-bg)'; e.currentTarget.style.border = '1px solid var(--filebar-border)'; }}
+              onClick={() => { handleNewFile('horizontal'); setShowNewFileDialog(false); }}
+              title={t('horizontal_layout')}
+            >
+              <img src={LayoutH} alt={t('horizontal_layout')} style={{ width: '100%', height: 72, objectFit: 'contain', borderRadius: 8, opacity: 0.95 }} />
+              <span style={{ fontWeight: 600, color: 'var(--filebar-text)', fontSize: 13 }}>{t('horizontal_layout')}</span>
+            </div>
+            <div
+              style={{
+                padding: '10px 10px',
+                borderRadius: 10,
+                background: 'var(--card-bg)',
+                boxShadow: '0 1px 3px #00000014',
+                border: '1px solid var(--filebar-border)',
+                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 8
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--button-hover-bg)'; e.currentTarget.style.border = '1px solid var(--accent-color)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'var(--card-bg)'; e.currentTarget.style.border = '1px solid var(--filebar-border)'; }}
+              onClick={() => { handleNewFile('vertical'); setShowNewFileDialog(false); }}
+              title={t('vertical_layout')}
+            >
+              <img src={LayoutV} alt={t('vertical_layout')} style={{ width: '100%', height: 72, objectFit: 'contain', borderRadius: 8, opacity: 0.95 }} />
+              <span style={{ fontWeight: 600, color: 'var(--filebar-text)', fontSize: 13 }}>{t('vertical_layout')}</span>
             </div>
           </div>
         </div>

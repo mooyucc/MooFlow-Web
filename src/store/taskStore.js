@@ -354,8 +354,11 @@ export const useTaskStore = create((set, get) => ({
         }
         // 同时更新目标任务的父子关系
         if (t.id === toId && fromTask) {
-          // 根据父任务类型推断新类型
-          const newType = fromTask.type === 'center' ? 'main' : (fromTask.type === 'main' ? 'sub' : 'detail');
+          // 根据父任务类型推断新类型（独立任务作为父时，其子为 detail）
+          const newType =
+            fromTask.type === 'center' ? 'main' :
+            (fromTask.type === 'main' ? 'sub' :
+            (fromTask.type === 'independent' ? 'detail' : 'detail'));
           return {
             ...t,
             parentId: fromId,
@@ -551,6 +554,22 @@ export const useTaskStore = create((set, get) => ({
       const newTasks = ensureLinksLabel(state.tasks.map((t) =>
         t.id === id ? { ...t, collapsed: !t.collapsed } : t
       ));
+      saveTasksToStorage(newTasks);
+      return { tasks: newTasks };
+    });
+  },
+  // 一键折叠/展开（忽略中心任务）
+  toggleCollapseAll: () => {
+    set((state) => {
+      const tasks = state.tasks || [];
+      if (tasks.length === 0) return { tasks };
+      const centerId = tasks[0]?.id;
+      const eligible = tasks.filter(t => t.id !== centerId);
+      const hasAnyExpanded = eligible.some(t => !t.collapsed);
+      const targetCollapsed = hasAnyExpanded ? true : false;
+      const newTasks = ensureLinksLabel(tasks.map(t => (
+        t.id === centerId ? t : { ...t, collapsed: targetCollapsed }
+      )));
       saveTasksToStorage(newTasks);
       return { tasks: newTasks };
     });
@@ -854,8 +873,8 @@ window.addEventListener('storage', (event) => {
 export const defaultTaskStyle = {
   shape: 'roundRect',
   fillColor: '#f8f8fa',
-  borderColor: '#e0e0e5',
-  borderWidth: 1.5,
+  borderColor: '#b6b6b6',
+  borderWidth: 1,
   borderStyle: 'solid',
   fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, Microsoft YaHei, Arial, sans-serif',
   fontSize: 16,

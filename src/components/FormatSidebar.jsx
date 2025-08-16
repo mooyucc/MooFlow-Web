@@ -21,8 +21,7 @@ const FONTS = [
 ];
 const LINE_WIDTHS = [
   { label: 'thin', value: 1 },
-  { label: 'normal', value: 2 },
-  { label: 'medium', value: 3 },
+  { label: 'medium', value: 2 },
   { label: 'bold', value: 4 }
 ];
 
@@ -805,11 +804,11 @@ const FormatSidebar = ({
                     if (e.target.value === 'important') {
                       handleTaskStyleChange('importantLevel', e.target.value);
                       handleTaskStyleChange('borderColor', '#f44336');
-                      handleTaskStyleChange('borderWidth', 3);
+                      handleTaskStyleChange('borderWidth', 2);
                     } else if (e.target.value === 'secondary') {
                       handleTaskStyleChange('importantLevel', e.target.value);
                       handleTaskStyleChange('borderColor', '#ff9800');
-                      handleTaskStyleChange('borderWidth', 3);
+                      handleTaskStyleChange('borderWidth', 2);
                     } else {
                       handleTaskStyleChange('importantLevel', e.target.value);
                       handleTaskStyleChange('borderColor', defaultTaskStyle.borderColor);
