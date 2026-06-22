@@ -3,124 +3,393 @@
 @tailwind utilities;
 
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  /* MooFlow design tokens (UI UX Pro Max) */
+  --color-primary: #0D9488;
+  --color-primary-hover: #0F766E;
+  --color-secondary: #14B8A6;
+  --color-cta: #F97316;
+  --color-cta-hover: #EA580C;
+  --color-text: #134E4A;
+  --color-text-muted: #475569;
+  --color-surface: #F0FDFA;
+  --color-surface-elevated: #ffffff;
+  --color-border: #CCFBF1;
+  --focus-ring: 0 0 0 2px var(--color-surface-elevated), 0 0 0 4px var(--color-primary);
+  --transition-fast: 150ms ease-out;
+  --transition-normal: 200ms ease-out;
+  --toolbar-radius: 16px;
+  --toolbar-shadow: 0 2px 12px rgba(13, 148, 136, 0.08);
+  --toolbar-shadow-dark: 0 4px 24px rgba(0, 0, 0, 0.32);
+
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
   color-scheme: light dark;
-  color: rgba(28,28,30,0.85); /* 主文本色，浅色更柔和 */
-  background-color: #f2f2f7; /* 浅色模式下，macOS窗口背景色 */
+  color: var(--color-text);
+  background-color: var(--color-surface);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  --sidebar-bg: rgba(242, 242, 247, 0.92); /* 浅色模式下，类似 macOS 窗口背景 */
-  --sidebar-text: #1c1c1e;  /* 浅色模式下，主文本色 */
-  --sidebar-border: #d1d1d6; /* 浅色模式下，边框色 */
-  --filebar-bg: rgba(242, 242, 247, 0.85);
-  --filebar-text: #1c1c1e;
-  --filebar-border: #d1d1d6;
-  --accent-color: #1c1c1e;
-  --shape-stroke: #3a3a3c; /* 浅色模式下，形状描边色 */
-  --shape-bg: #ffffff; /* 浅色模式下，形状背景色 */
-  --dropdown-bg: #ffffff;         /* 浅色模式下，下拉菜单背景 */
-  --dropdown-text: #1c1c1e;    /* 浅色模式下，下拉菜单文字 */
-  --dropdown-border: #d1d1d6;  /* 浅色模式下，下拉菜单边框 */
-  --dropdown-hover-bg: #f5f5f7; /* 浅色模式下，下拉菜单悬停色，macOS风格 */
-  --shape-hover-bg: #559dfc; /* 浅色模式下，形状选择器悬停背景色（蓝色高亮） */
-  --shape-hover-text: #fff; /* 浅色模式下，形状选择器悬停文字颜色 */
-  --tab-underline: #333; /* 浅色模式下，标签底部线条色 */
-  --card-bg: #f5f5f7;
+  --sidebar-bg: rgba(240, 253, 250, 0.94);
+  --sidebar-text: #134E4A;
+  --sidebar-border: #99F6E4;
+  --filebar-bg: rgba(240, 253, 250, 0.88);
+  --filebar-text: #134E4A;
+  --filebar-border: #99F6E4;
+  --accent-color: var(--color-primary);
+  --shape-stroke: #3a3a3c;
+  --shape-bg: #ffffff;
+  --dropdown-bg: #ffffff;
+  --dropdown-text: #134E4A;
+  --dropdown-border: #CCFBF1;
+  --dropdown-hover-bg: #F0FDFA;
+  --shape-hover-bg: var(--color-primary);
+  --shape-hover-text: #fff;
+  --tab-underline: var(--color-primary);
+  --card-bg: #F0FDFA;
+  --button-border: rgba(13, 148, 136, 0.18);
+  --button-hover-bg: rgba(13, 148, 136, 0.08);
+  --toolbar-bg: rgba(255, 255, 255, 0.82);
+  --toolbar-text: #134E4A;
+  --toolbar-border: rgba(13, 148, 136, 0.12);
+  --toolbar-btn-hover: rgba(13, 148, 136, 0.1);
+  --hint-bg: #FEF3C7;
+  --hint-text: #92400E;
+  --hint-border: #FDE68A;
+}
+
+/* 格式侧边栏：系统中性色，不跟随 MooFlow 主题色 */
+.format-sidebar {
+  --sidebar-bg: rgba(246, 246, 246, 0.96);
+  --sidebar-text: #0f172a;
+  --sidebar-text-muted: #475569;
+  --sidebar-border: rgba(0, 0, 0, 0.1);
+  --sidebar-accent: #007aff;
+  --card-bg: rgba(255, 255, 255, 0.88);
+  --tab-underline: #1d1d1f;
   --button-border: rgba(0, 0, 0, 0.12);
-  --button-hover-bg: rgba(0, 0, 0, 0.05);
+  --button-hover-bg: rgba(0, 0, 0, 0.06);
+  --dropdown-bg: #ffffff;
+  --dropdown-text: #1d1d1f;
+  --dropdown-border: rgba(0, 0, 0, 0.12);
+  --dropdown-hover-bg: rgba(0, 0, 0, 0.04);
+  --shape-hover-bg: rgba(0, 0, 0, 0.08);
+  --shape-hover-text: #1d1d1f;
+}
+
+@media (prefers-color-scheme: dark) {
+  .format-sidebar {
+    --sidebar-bg: rgba(40, 40, 42, 0.96);
+    --sidebar-text: #f5f5f7;
+    --sidebar-text-muted: #98989d;
+    --sidebar-border: rgba(255, 255, 255, 0.12);
+    --sidebar-accent: #0a84ff;
+    --card-bg: rgba(58, 58, 60, 0.88);
+    --tab-underline: #f5f5f7;
+    --button-border: rgba(255, 255, 255, 0.15);
+    --button-hover-bg: rgba(255, 255, 255, 0.08);
+    --dropdown-bg: #3a3a3c;
+    --dropdown-text: #f5f5f7;
+    --dropdown-border: rgba(255, 255, 255, 0.12);
+    --dropdown-hover-bg: rgba(255, 255, 255, 0.06);
+    --shape-hover-bg: rgba(255, 255, 255, 0.12);
+    --shape-hover-text: #f5f5f7;
+  }
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    color: rgba(242,242,247,0.85); /* 主文本色，深色更柔和 */
-    background-color: #1c1c1e; /* 深色模式下，macOS窗口背景色 */
-    --sidebar-bg: rgba(34, 35, 35, 0.92); /* 深色模式下，类似 macOS 窗口背景 */
-    --sidebar-text: #f2f2f7; /* 深色模式下，主文本色 */
-    --sidebar-border: #464646; /* 深色模式下，边框色 */
-    --filebar-bg: rgba(34, 35, 35, 0.85);
-    --filebar-text: #f2f2f7;
-    --filebar-border: #464646;
-    --accent-color: #1c1c1e; /* 深色模式下的强调色 */
-    --shape-stroke: #f2f2f7; /* 深色模式下，形状描边色 */
-    --shape-bg: #2c2c2e; /* 深色模式下，形状背景色 */
-    --dropdown-bg: #242426;    /* 深色模式下，下拉菜单背景 */
-    --dropdown-text: #f2f2f7;  /* 深色模式下，下拉菜单文字 */
-    --dropdown-border: #3a3a3c;/* 深色模式下，下拉菜单边框 */
-    --dropdown-hover-bg: #35363a; /* 深色模式下，下拉菜单悬停色，macOS风格 */
-    --shape-hover-bg: #478ce2; /* 深色模式下，形状选择器悬停背景色（蓝色高亮） */
-    --shape-hover-text: #fff; /* 深色模式下，形状选择器悬停文字颜色 */
-    --tab-underline: #fff; /* 深色模式下，标签底部线条色 */
-    --card-bg: #222323;
-    --button-border: rgba(255, 255, 255, 0.12);
-    --button-hover-bg: rgba(255, 255, 255, 0.05);
-  }
-}
+    --color-text: #F0FDFA;
+    --color-text-muted: #99F6E4;
+    --color-surface: #134E4A;
+    --color-surface-elevated: #1a3a38;
+    --color-border: #115E59;
+    --focus-ring: 0 0 0 2px #134E4A, 0 0 0 4px var(--color-secondary);
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+    color: var(--color-text);
+    background-color: #1c1c1e;
+    --sidebar-bg: rgba(26, 58, 56, 0.94);
+    --sidebar-text: #F0FDFA;
+    --sidebar-border: #115E59;
+    --filebar-bg: rgba(26, 58, 56, 0.88);
+    --filebar-text: #F0FDFA;
+    --filebar-border: #115E59;
+    --accent-color: var(--color-secondary);
+    --shape-stroke: #f2f2f7;
+    --shape-bg: #2c2c2e;
+    --dropdown-bg: #1a3a38;
+    --dropdown-text: #F0FDFA;
+    --dropdown-border: #115E59;
+    --dropdown-hover-bg: #134E4A;
+    --shape-hover-bg: var(--color-secondary);
+    --shape-hover-text: #fff;
+    --tab-underline: var(--color-secondary);
+    --card-bg: #1a3a38;
+    --button-border: rgba(20, 184, 166, 0.2);
+    --button-hover-bg: rgba(20, 184, 166, 0.12);
+    --toolbar-bg: rgba(26, 58, 56, 0.82);
+    --toolbar-text: #F0FDFA;
+    --toolbar-border: rgba(20, 184, 166, 0.15);
+    --toolbar-btn-hover: rgba(20, 184, 166, 0.15);
+    --hint-bg: rgba(146, 64, 14, 0.25);
+    --hint-text: #FDE68A;
+    --hint-border: rgba(253, 230, 138, 0.3);
+  }
 }
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+a {
+  font-weight: 500;
+  color: var(--color-primary);
+  text-decoration: inherit;
+  transition: color var(--transition-fast);
+}
+a:hover {
+  color: var(--color-primary-hover);
 }
 
 button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
   cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
 }
 
 html, body, #root {
+  width: 100%;
   height: 100%;
   margin: 0;
   padding: 0;
+}
+
+#root {
+  max-width: none;
+  text-align: initial;
+}
+
+/* Focus & accessibility */
+button:focus-visible,
+[role="button"]:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Welcome screen */
+.welcome-screen {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #F0FDFA 0%, #CCFBF1 50%, #99F6E4 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.welcome-screen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 80%, rgba(13, 148, 136, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(249, 115, 22, 0.06) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.welcome-card {
+  position: relative;
+  max-width: 400px;
+  width: calc(100% - 48px);
+  padding: 40px 36px;
+  border-radius: 20px;
+  background: var(--color-surface-elevated);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 8px 32px rgba(13, 148, 136, 0.12);
+  text-align: center;
+}
+
+.welcome-logo {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 20px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(13, 148, 136, 0.25);
+}
+
+.welcome-logo svg {
+  width: 32px;
+  height: 32px;
+  color: #fff;
+}
+
+.welcome-title {
+  font-weight: 700;
+  font-size: 1.75rem;
+  color: var(--color-text);
+  margin: 0 0 8px;
+  letter-spacing: -0.02em;
+}
+
+.welcome-subtitle {
+  color: var(--color-text-muted);
+  margin: 0 0 32px;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+
+.welcome-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 600;
+  font-size: 1rem;
+  font-family: inherit;
+  border: none;
+  cursor: pointer;
+  transition: background var(--transition-normal), transform var(--transition-fast);
+}
+
+.welcome-cta svg {
+  transition: transform var(--transition-normal);
+}
+
+.welcome-cta:hover {
+  background: var(--color-primary-hover);
+}
+
+.welcome-cta:hover svg {
+  transform: translateX(3px);
+}
+
+.welcome-cta:active {
+  transform: scale(0.98);
+}
+
+.welcome-lang-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-elevated);
+  color: var(--color-text);
+  font-size: 0.875rem;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(13, 148, 136, 0.08);
+  transition: background var(--transition-normal), border-color var(--transition-normal);
+}
+
+.welcome-lang-btn:hover {
+  background: var(--dropdown-hover-bg);
+  border-color: var(--color-primary);
+}
+
+.welcome-lang-btn svg {
+  width: 18px;
+  height: 18px;
+  color: var(--color-primary);
+}
+
+/* Canvas loading */
+.canvas-loading {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: 0.9375rem;
+}
+
+.canvas-loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .canvas-loading-spinner {
+    animation: none;
+    border-top-color: var(--color-primary);
+    opacity: 0.7;
+  }
+}
+
+/* Linking mode hint */
+.linking-hint {
+  position: absolute;
+  top: 80px;
+  left: 16px;
+  z-index: 50;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: var(--hint-bg);
+  color: var(--hint-text);
+  border: 1px solid var(--hint-border);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  box-shadow: var(--toolbar-shadow);
+  pointer-events: none;
+}
+
+/* File tabs */
+.file-tab {
+  transition: background var(--transition-normal), color var(--transition-normal);
+}
+
+.file-tab:not(.active):hover {
+  background: var(--button-hover-bg) !important;
+}
+
+.file-tab.active {
+  box-shadow: 0 1px 4px rgba(13, 148, 136, 0.2);
 }
 
 /* 禁用Mac触控板默认行为，防止晃动效果 */
@@ -172,6 +441,18 @@ body {
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
+}
+
+/* 表单控件保留系统原生文本选择与剪贴板快捷键 */
+input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="file"]),
+textarea,
+select,
+[contenteditable="true"],
+[contenteditable=""] {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
 }
 
 /* 针对SVG画布的特殊处理 */

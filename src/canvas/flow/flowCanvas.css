@@ -1,0 +1,42 @@
+/** React Flow 画布样式：框选区域与 MooFlow 主题对齐 */
+
+/* Background 默认 z-index:-1 会被父级 stacking context 压到容器底色下方 */
+.react-flow__background {
+  z-index: 0;
+}
+
+/* 连线需在节点上方，与旧版 FlowLinksOverlay 层级一致 */
+.react-flow__edges {
+  z-index: 2;
+}
+
+.react-flow__edgelabel-renderer {
+  z-index: 3;
+  pointer-events: none;
+}
+
+.react-flow__nodes {
+  z-index: 1;
+}
+
+.react-flow__selection {
+  background: rgba(49, 106, 203, 0.13) !important;
+  border: 1px dashed #316acb !important;
+}
+
+.react-flow__nodesselection-rect {
+  background: rgba(49, 106, 203, 0.08) !important;
+  border: 1px dashed #316acb !important;
+}
+
+.react-flow__pane {
+  cursor: default;
+}
+
+.react-flow__node.task-flow-node {
+  cursor: grab;
+}
+
+.react-flow__node.task-flow-node:active {
+  cursor: grabbing;
+}

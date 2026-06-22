@@ -1,0 +1,67 @@
+.task-context-menu {
+  position: fixed;
+  z-index: 200;
+  min-width: 220px;
+  padding: 6px 0;
+  overflow: hidden;
+  background: var(--dropdown-bg);
+  border: 1px solid var(--dropdown-border);
+  border-radius: 10px;
+  box-shadow: 0 8px 30px rgba(13, 148, 136, 0.12);
+  backdrop-filter: saturate(180%) blur(16px);
+  -webkit-backdrop-filter: saturate(180%) blur(16px);
+  color: var(--dropdown-text);
+}
+
+@media (prefers-color-scheme: dark) {
+  .task-context-menu {
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.32);
+  }
+}
+
+.task-context-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: calc(100% - 8px);
+  margin: 0 4px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font-size: 13px;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.task-context-menu__item:hover:not(:disabled) {
+  background: var(--dropdown-hover-bg);
+}
+
+.task-context-menu__item:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.task-context-menu__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 16px;
+  color: var(--color-text-muted);
+}
+
+.task-context-menu__label {
+  flex: 1;
+}
+
+.task-context-menu__shortcut {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  letter-spacing: 0.02em;
+}

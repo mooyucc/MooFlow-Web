@@ -31,111 +31,41 @@ graph TD
 
 ## 二、核心功能实现详解
 
-### 🎨 1. 无限画布系统 (MainCanvas.jsx - 2100+行)
+### 🎨 1. 无限画布系统 (`MooFlowReactFlow.jsx` + `@xyflow/react`)
 
-基于原生SVG实现的高性能无限画布，支持大规模节点渲染和流畅交互：
+基于 React Flow 引擎 + 自研 SVG 连线的混合画布，`taskStore` 为唯一数据源；视口、框选、拖选、Handle 连线由 RF 原生能力承担，时间轴/对齐线/四锚点路由等保留自研。
 
 ```javascript
-// 核心画布组件 - 实际实现
-const MainCanvas = ({ onLogout }) => {
-  // 画布变换状态：缩放、平移
-  const [transform, setTransform] = useState({ 
-    scale: 1, 
-    offsetX: 0, 
-    offsetY: 0 
-  });
-  
-  // Zustand状态管理
-  const tasks = useTaskStore((state) => state.tasks);
-  const addLink = useTaskStore((state) => state.addLink);
-  const deleteTask = useTaskStore((state) => state.deleteTask);
-
-  // 🖱️ 鼠标交互处理
-  const handleWheel = (e) => {
-    e.preventDefault();
-    if (e.ctrlKey || e.metaKey) {
-      // Ctrl+滚轮：缩放 (0.1x - 5x)
-      const scaleDelta = e.deltaY < 0 ? 1.1 : 0.9;
-      setTransform((prev) => {
-        const newScale = Math.max(0.1, Math.min(5, prev.scale * scaleDelta));
-        // 以鼠标位置为中心缩放
-        const mouseX = e.clientX;
-        const mouseY = e.clientY;
-        const canvasX = (mouseX - prev.offsetX) / prev.scale;
-        const canvasY = (mouseY - prev.offsetY) / prev.scale;
-        return { 
-          scale: newScale, 
-          offsetX: mouseX - canvasX * newScale,
-          offsetY: mouseY - canvasY * newScale 
-        };
-      });
-    } else {
-      // 普通滚轮：平移
-      setTransform((prev) => ({
-        ...prev,
-        offsetX: prev.offsetX - e.deltaX,
-        offsetY: prev.offsetY - e.deltaY,
-      }));
-    }
-  };
-
-  // 📱 触控支持 (双指缩放、单指平移)
-  const handleTouchMove = (e) => {
-    if (touchState.current.mode === 'zoom' && e.touches.length === 2) {
-      const newDistance = getTouchDistance(e.touches);
-      const scaleDelta = newDistance / (touchState.current.lastDistance || 1);
-      setTransform(prev => {
-        const newScale = Math.max(0.1, Math.min(5, prev.scale * scaleDelta));
-        const center = getTouchCenter(e.touches);
-        const canvasX = (center.x - prev.offsetX) / prev.scale;
-        const canvasY = (center.y - prev.offsetY) / prev.scale;
-        return { 
-          scale: newScale, 
-          offsetX: center.x - canvasX * newScale,
-          offsetY: center.y - canvasY * newScale 
-        };
-      });
-    }
-  };
+// 核心画布 — src/canvas/flow/MooFlowReactFlow.jsx
+function MooFlowFlowCanvas() {
+  const tasks = useTaskStore(state => state.tasks);
+  const nodes = useMemo(() => tasksToNodes(tasks, ...), [tasks, ...]);
+  const edges = useMemo(() => tasksToEdges(tasks, ...), [tasks, ...]);
 
   return (
-    <div className="canvas-container" style={{ 
-      position: 'fixed', inset: 0, touchAction: 'none' 
-    }}>
-      <svg
-        ref={svgRef}
-        viewBox={`${-transform.offsetX / transform.scale} ${-transform.offsetY / transform.scale} ${window.innerWidth / transform.scale} ${window.innerHeight / transform.scale}`}
-        onWheel={handleWheel}
-        onTouchMove={handleTouchMove}
-      >
-        {/* 任务节点渲染 */}
-        {visibleTasks.map((task) => (
-          <TaskNode key={task.id} task={task} transform={transform} />
-        ))}
-        
-        {/* 连线渲染 */}
-        {tasks.flatMap((task) =>
-          task.links.map((link) => (
-            <LinkLine 
-              key={`${task.id}-${link.toId}`}
-              source={task} 
-              target={tasks.find(t => t.id === link.toId)} 
-            />
-          ))
-        )}
-      </svg>
-    </div>
+    <ReactFlow
+      nodes={nodes}
+      edges={edges}
+      nodeTypes={nodeTypes}       // TaskFlowNode
+      edgeTypes={edgeTypes}       // MooFlowEdge → LinkLine
+      onNodesChange={handleNodesChange}  // 位置 + 选中 → taskStore
+      selectionOnDrag
+      connectionLineComponent={MooFlowConnectionLine}
+    >
+      <Background variant={BackgroundVariant.Lines} />
+      <FlowDecorOverlay />        {/* 时间轴、对齐参考线 */}
+    </ReactFlow>
   );
-};
+}
 ```
 
 **🚀 核心特性**：
-- **无限缩放平移**：支持0.1x-5x缩放，流畅的鼠标和触控操作
-- **高性能渲染**：虚拟化可见节点，支持1000+任务同时显示
-- **响应式交互**：右键拖拽画布，左键框选，多点触控支持
-- **智能视口管理**：动态计算viewBox，仅渲染可见区域
+- **RF 原生交互**：框选（`selectionOnDrag`）、多选、视口缩放平移、Handle 连线
+- **自研保留**：四锚点 `LinkLine`、链式主线、吸附对齐、防环、日期级联
+- **混合渲染**：节点 HTML + 连线 SVG + 时长标签 `EdgeLabelRenderer`
+- **触控支持**：`useFlowTouch` 封装双指缩放与平移
 
-### 📋 2. 智能任务节点系统 (TaskNode.jsx - 600+行)
+### 📋 2. 智能任务节点系统 (`TaskFlowNode` + `TaskNodeBody`)
 
 支持多种形状、实时编辑、拖拽吸附的任务卡片组件：
 
@@ -631,8 +561,8 @@ export const useTaskStore = create((set, get) => ({
 
 | **功能模块** | **完成度** | **核心特性** | **代码量** |
 |-------------|-----------|-------------|-----------|
-| **无限画布** | 100% | 缩放、平移、触控支持 | MainCanvas.jsx (2100行) |
-| **任务节点** | 100% | 多形状、实时编辑、拖拽 | TaskNode.jsx (600行) |
+| **无限画布** | 100% | RF 视口/框选 + 自研连线 overlay | `MooFlowReactFlow` + `flow/` |
+| **任务节点** | 100% | 多形状、实时编辑、拖拽 | `TaskFlowNode` + `TaskNodeBody` |
 | **智能连线** | 100% | 锚点吸附、防环检测 | LinkLine.jsx (400行) |
 | **状态管理** | 100% | 持久化、撤销重做 | taskStore.js (869行) |
 | **多语言** | 100% | 中英文切换 | LanguageContext.jsx |
@@ -643,7 +573,7 @@ export const useTaskStore = create((set, get) => ({
 ### 🚀 技术亮点总结
 
 #### 🎨 **视觉交互层**
-- **无限画布**：基于SVG的高性能渲染，支持0.1x-5x缩放
+- **无限画布**：React Flow 引擎 + 自研 `LinkLine` 四锚点连线，支持 0.1x–5x 缩放
 - **智能拖拽**：磁吸对齐算法，防重叠检测
 - **多点触控**：完整的移动端支持，双指缩放
 - **实时编辑**：双击即时编辑，键盘导航

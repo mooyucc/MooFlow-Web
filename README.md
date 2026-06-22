@@ -2,7 +2,7 @@
 
 ## 📋 项目简介
 
-**MooFlow** 是一款现代化的智能项目计划与任务管理平台，基于 **React 18 + Electron** 技术栈构建。它为个人开发者和团队提供了直观、高效的项目规划与进度管理解决方案，通过创新的可视化交互设计，让复杂的项目管理变得简单而有趣。
+**MooFlow** 是一款现代化的智能项目计划与任务管理平台，基于 **React 19 + Vite + Electron** 技术栈构建。它为个人开发者和团队提供了直观、高效的项目规划与进度管理解决方案，通过创新的可视化交互设计，让复杂的项目管理变得简单而有趣。
 
 ### 🎯 核心理念
 - **可视化优先**：将抽象的项目结构转化为直观的视觉图表
@@ -55,10 +55,10 @@
 - 易扩展的语言包架构
 
 ### 🚀 技术亮点
-- **高性能渲染**：基于SVG的无限画布，支持大规模节点渲染
-- **响应式架构**：Zustand状态管理，确保数据流的高效和可预测
-- **模块化设计**：组件化架构，便于功能扩展和维护
-- **跨平台兼容**：Electron桌面应用，支持Windows、macOS、Linux
+- **混合画布引擎**：React Flow 负责视口/拖选，自研 LinkLine + 时间轴保留项目计划语义
+- **响应式架构**：Zustand 状态管理，确保数据流的高效和可预测
+- **模块化设计**：组件化架构，画布按需懒加载，便于功能扩展和维护
+- **跨平台兼容**：Electron 桌面应用，支持 Windows、macOS、Linux
 
 ### 🎯 适用场景
 - **软件开发**：需求分析、功能规划、开发流程管理
@@ -73,10 +73,11 @@
 ### 🏗️ **核心架构**
 | 技术分类 | 技术选型 | 版本 | 说明 |
 |---------|---------|------|------|
-| **前端框架** | React | 18.x | 现代化React Hooks + 函数式组件 |
-| **桌面应用** | Electron | 最新版 | 跨平台桌面应用框架 |
+| **前端框架** | React | 19.x | 现代化 React Hooks + 函数式组件 |
+| **桌面应用** | Electron | 36.x | 跨平台桌面应用框架 |
 | **构建工具** | Vite | 6.x | 超快的前端构建工具，HMR支持 |
-| **状态管理** | Zustand | 最新版 | 轻量级状态管理，支持持久化 |
+| **状态管理** | Zustand | 5.x | 轻量级状态管理，多 Store 分工 |
+| **测试** | Vitest | 4.x | 单元测试（utils / store） |
 | **包管理器** | npm | 最新版 | Node.js 官方包管理器 |
 
 ### 🎨 **UI & 样式**
@@ -87,20 +88,20 @@
 
 ### 📦 **核心依赖库**
 
-#### 🚀 **生产依赖**
+#### 🚀 **生产依赖（节选）**
 ```json
 {
-  "react": "^18.x",                    // React 核心库
-  "react-dom": "^18.x",                // React DOM 渲染
-  "zustand": "^4.x",                   // 轻量级状态管理
-  "react-datepicker": "^4.x",          // 日期选择组件
-  "date-fns": "^2.x",                  // 日期处理工具库
-  "antd": "^5.x",                      // 部分UI组件
-  "react-color": "^2.x",               // 颜色选择器
-  "papaparse": "^5.x",                 // CSV文件解析
-  "dayjs": "^1.x"                      // 轻量级日期库
+  "react": "^19.x",
+  "react-dom": "^19.x",
+  "zustand": "^5.x",
+  "@xyflow/react": "^12.x",
+  "antd": "^5.x",
+  "papaparse": "^5.x",
+  "tinycolor2": "^1.x"
 }
 ```
+
+> 日期选择、颜色选择等能力已逐步内建或精简，请以 `package.json` 为准。
 
 #### 🔧 **开发依赖**
 ```json
@@ -114,9 +115,9 @@
 ```
 
 ### ⚡ **性能优化技术**
-- **虚拟滚动**：大数据量任务列表优化
-- **组件懒加载**：按需加载减少初始包体积
-- **SVG渲染优化**：高性能画布绘制
+- **画布懒加载**：`CanvasRouter` 按环境变量加载 React Flow 或旧版画布
+- **Vendor 分包**：`xyflow` / `antd` / `react-vendor` 独立 chunk
+- **组件懒加载**：路由级 `React.lazy` 减少首屏体积
 - **状态订阅优化**：精确的状态更新订阅
 
 ### 🔐 **安全特性**
@@ -146,157 +147,71 @@
 - **Git工作流**：标准化版本控制流程
 
 ### 📊 **数据层架构**
-- **状态管理**：Zustand 轻量级全局状态
-- **本地存储**：localStorage 数据持久化
-- **文件系统**：Electron Node.js API文件操作
-- **导入导出**：JSON/CSV/PDF多格式支持
+- **fileStore**：多 Tab 文件管理，持久化到 `moo_files` / `moo_active_file_id`
+- **taskStore**：当前画布任务运行时状态（撤销/重做、剪贴板）
+- **canvasSettingsStore**：画布主题、网格、时间颗粒度等
+- **同步机制**：`useSyncActiveFileTasks` 防抖写回当前 Tab；`fileStoreSync` 支持多 Tab 跨页同步
+- **导入导出**：JSON / CSV；Electron 下通过 `window.electronAPI.exportFile`
 
 ## 主要目录结构与核心组件说明
 ```
 MooFlow/
-├── electron-main.js           # Electron 主进程入口，窗口与导入/导出
-├── preload.js                 # 预加载脚本，安全暴露 IPC
-├── electron.cjs               # Electron 构建/启动配置
-├── package.json               # 📦 项目依赖管理文件
-│                               #    - 项目基本信息和元数据
-│                               #    - 生产和开发依赖声明
-│                               #    - npm scripts 脚本定义
-│                               #    - Electron 构建配置
-├── package-lock.json          # 🔒 依赖版本锁定文件
-│                               #    - 确保依赖版本一致性
-│                               #    - 提供快速可重现的安装
-│                               #    - 安全哈希验证
-├── vite.config.js             # ⚡ Vite 构建工具配置
-│                               #    - 开发服务器配置
-│                               #    - 构建优化设置
-│                               #    - React 插件配置
-│                               #    - 路径别名和代理设置
-├── eslint.config.js           # 🔍 ESLint 代码规范配置
-│                               #    - JavaScript/React 代码规范
-│                               #    - 代码质量检查规则
-│                               #    - 自动格式化配置
-│                               #    - 开发环境代码提示
-├── index.html                 # 🌐 应用入口HTML模板
-│                               #    - React 应用挂载点
-│                               #    - 基础HTML结构
-│                               #    - 第三方库引入
-│                               #    - 应用图标和元信息
-├── public/                    # 静态资源目录
-│   ├── bg-login.png
-│   ├── favicon.png
-│   ├── jspdf.umd.min.js
-│   └── svg2pdf.umd.min.js
-├── assets/                    # 应用图标与示意图
-│   ├── icon.icns
-│   ├── icon.ico
-│   ├── icon.png
-│   ├── LayoutH.png
-│   └── LayoutV.png
-├── src/                       # 前端主代码目录
-│   ├── App.jsx
-│   ├── App.css
-│   ├── index.css
-│   ├── main.jsx
-│   ├── LanguageContext.jsx    # 🌍 多语言上下文管理
-│   │                           #    - React Context 语言状态
-│   │                           #    - 中英文无缝切换
-│   │                           #    - 翻译函数 t() 提供
-│   │                           #    - 语言偏好持久化
-│   ├── locales/               # 🗂️ 多语言资源文件
-│   │   ├── en.js                   # 英文语言包
-│   │   │                           #    - 完整UI文本翻译
-│   │   │                           #    - 工具提示文本
-│   │   │                           #    - 错误信息文本
-│   │   └── zh.js                   # 中文语言包
-│   │                               #    - 简体中文界面文本
-│   │                               #    - 本地化术语定义
-│   │                               #    - 文化适配内容
-│   ├── assets/
-│   │   └── react.svg
-│   ├── store/                 # 状态管理
-│   │   └── taskStore.js            # 📊 核心状态管理（Zustand）
-│   │                               #    - 任务数据管理（增删改查）
-│   │                               #    - 画布视图状态（缩放、偏移）
-│   │                               #    - 连线关系管理
-│   │                               #    - 撤销/重做历史栈
-│   │                               #    - 本地存储持久化
-│   │                               #    - 布局方向控制
-│   └── components/            # 主要功能组件
-│       ├── MainCanvas.jsx          # 🎨 无限画布核心组件
-│       │                           #    - 实现无限画布逻辑（缩放、拖拽、平移）
-│       │                           #    - 任务节点渲染与交互管理
-│       │                           #    - 连线模式与依赖关系建立
-│       │                           #    - 多选框选与批量操作
-│       │                           #    - 画布视图变换与坐标转换
-│       ├── TaskNode.jsx            # 📋 任务节点组件
-│       │                           #    - 可拖拽的任务卡片渲染
-│       │                           #    - 内联编辑（任务名称、描述）
-│       │                           #    - 进度条与状态切换
-│       │                           #    - 日期选择器集成
-│       │                           #    - 四向锚点连接支持
-│       │                           #    - 多种形状样式（圆角矩形、椭圆、菱形等）
-│       ├── LinkLine.jsx            # 🔗 连线组件
-│       │                           #    - 任务间依赖关系可视化
-│       │                           #    - 智能路径计算与碰撞检测
-│       │                           #    - 多种线条样式（实线、虚线、点线）
-│       │                           #    - 箭头样式变化（普通、圆形、菱形、无箭头）
-│       │                           #    - 连线标签与颜色自定义
-│       │                           #    - 主链路高亮显示
-│       ├── CanvasToolbar.jsx       # 🛠️ 主工具栏
-│       │                           #    - 撤销/重做操作
-│       │                           #    - 缩放控制（0.5x - 2x）
-│       │                           #    - 视图适配（适合窗口、重置视图）
-│       │                           #    - 对齐工具（左对齐、居中、分布等）
-│       │                           #    - 布局算法（自动排列、层级布局）
-│       ├── CanvasToolbar.css       # 工具栏样式文件
-│       ├── CanvasFileToolbar.jsx   # 📁 文件操作工具栏
-│       │                           #    - 项目文件导入/导出（JSON、CSV格式）
-│       │                           #    - 布局方向切换（水平/垂直）
-│       │                           #    - PDF导出功能
-│       │                           #    - 项目数据备份与恢复
-│       ├── CanvasThemeToolbar.jsx  # 🎨 主题切换工具栏
-│       │                           #    - 深色/浅色主题无缝切换
-│       │                           #    - 系统主题自动适配
-│       │                           #    - 主题状态持久化
-│       ├── CanvasThemeToolbar.css  # 主题工具栏样式
-│       ├── TaskTree.jsx            # 🌳 任务树结构组件
-│       │                           #    - 层级化任务列表视图
-│       │                           #    - 折叠/展开子任务
-│       │                           #    - 递归渲染任务层级
-│       │                           #    - 任务选择与导航
-│       ├── FormatSidebar.jsx       # ⚙️ 格式化侧边栏
-│       │                           #    - 任务节点样式编辑（颜色、形状、字体）
-│       │                           #    - 连线样式设置（颜色、粗细、样式）
-│       │                           #    - 颜色方案快速应用
-│       │                           #    - 多语言字体支持
-│       │                           #    - 布局参数调整
-│       ├── DatePickerPortal.jsx    # 📅 日期选择器门户组件
-│       │                           #    - 弹窗式日期选择器
-│       │                           #    - 多语言日期格式支持
-│       │                           #    - 任务截止日期设置
-│       ├── PopupPortal.jsx         # 🖼️ 通用弹窗容器
-│       │                           #    - 模态对话框基础组件
-│       │                           #    - 弹窗层级管理
-│       │                           #    - 点击外部关闭功能
-│       └── CollapseButton.jsx      # 🔽 折叠按钮组件
-│                                   #    - 任务节点展开/收起控制
-│                                   #    - 树形结构导航辅助
-├── dist/                      # 网页版构建产物
-├── dmg/                       # 桌面版打包产物
-├── test-vertical-layout-import-export.js  # 纵向布局导入/导出测试脚本
-├── update-github.sh
-├── update-githubPages.sh
-├── MooFlow 开发技术栈.md      # 详细技术方案与开发手册
-└── README.md                  # 项目说明文档
+├── electron.cjs               # Electron 主进程入口（窗口、IPC、导出）
+├── preload.js                 # 预加载脚本，暴露 window.electronAPI
+├── package.json
+├── vite.config.js
+├── src/
+│   ├── main.jsx               # 应用入口（含 fileStore 跨 Tab 同步初始化）
+│   ├── store/
+│   │   ├── taskStore.js       # 任务运行时、撤销/重做、剪贴板
+│   │   ├── fileStore.js       # 多 Tab 文件与 localStorage 持久化
+│   │   ├── fileStoreSync.js   # 跨浏览器 Tab 同步
+│   │   └── canvasSettingsStore.js
+│   ├── hooks/
+│   │   └── useFileOperations.js
+│   ├── canvas/
+│   │   ├── hooks/             # useSnapGuide、useTimeline、useTaskNodeEdit
+│   │   └── flow/              # React Flow 画布（adapter、hooks、TaskFlowNode、MooFlowEdge）
+│   ├── components/
+│   │   ├── CanvasRouter.jsx   # 画布入口（懒加载 MooFlowReactFlow）
+│   │   ├── CanvasFileToolbar.jsx
+│   │   ├── fileToolbar/       # 文件栏子组件（Tab、最近文件、新建文件）
+│   │   └── canvas/            # 画布子组件（连线、时间轴、右键菜单等）
+│   ├── utils/                 # 纯函数工具（布局、时间轴、导入导出等）
+│   └── layout/                # 自动布局算法
+└── README.md
 ```
+
+> 完整组件树见下方「主要目录结构」；历史文档中的 `electron-main.js` 已合并入 `electron.cjs`。
 
 ## 🏗️ 项目架构特性
 
 ### 核心技术架构
-- **模块化设计**：采用React函数式组件，每个组件职责单一，便于维护和扩展
-- **状态管理**：使用Zustand轻量级状态管理，支持状态持久化和时间旅行调试
-- **无限画布**：基于SVG实现的高性能无限画布，支持大规模节点渲染
+- **模块化设计**：采用 React 函数式组件，每个组件职责单一，便于维护和扩展
+- **状态管理**：使用 Zustand 轻量级状态管理，支持状态持久化和时间旅行调试
+- **混合无限画布**：React Flow 引擎 + 自研 SVG 连线/时间轴 overlay，`taskStore` 为唯一数据源
 - **响应式设计**：完全响应式界面，适配不同屏幕尺寸和设备类型
+
+### 画布架构（React Flow + 自研）
+
+| 层级 | 模块 | 职责 |
+|------|------|------|
+| 入口 | `CanvasRouter` | 懒加载，默认 `MooFlowReactFlow` |
+| 引擎 | `@xyflow/react` | 视口、框选、拖选、Handle 连线、`ConnectionLine` 预览 |
+| 适配 | `flowAdapter.js` | `tasks` ↔ `nodes` / `edges` 派生 |
+| 节点 | `TaskFlowNode` + `TaskNodeBody` | 自定义节点 UI |
+| 连线 | `MooFlowEdge`（`edgeTypes`） | 包装自研 `LinkLine` 四锚点路由；时长标签经 `EdgeLabelRenderer` |
+| 装饰 | `FlowDecorOverlay` | 时间轴、对齐参考线 |
+| 交互 | `useFlowNodeChanges` | `onNodesChange`：位置 → taskStore，select → 选中态 |
+| 领域 | `taskStore` + utils | 树形任务、布局、防环、日期级联、撤销重做 |
+
+**框选 / 选中**：完全使用 React Flow 内置框选（`selectionOnDrag`）；选中同步走 `onNodesChange` 的 `select` 事件。连线 `selectable: false`，不参与框选，仅点击选中。节点删除走 RF `onNodesDelete` + `Delete`/`Backspace`。
+
+**环境变量**
+
+| 变量 | 说明 |
+|------|------|
+| （默认） | 使用 React Flow 混合画布 `MooFlowReactFlow` |
 
 ### 用户体验特性
 - **拖拽交互**：流畅的拖拽体验，支持单选、多选和批量操作
@@ -305,10 +220,10 @@ MooFlow/
 - **快捷操作**：键盘快捷键支持，提高操作效率
 
 ### 数据持久化
-- **本地存储**：基于localStorage的数据持久化，确保数据安全
-- **导入导出**：支持JSON、CSV格式的数据导入导出
-- **版本控制**：内置撤销/重做功能，支持操作历史追溯
-- **备份恢复**：完整的项目数据备份与恢复机制
+- **单一数据源**：任务数据以 `fileStore`（`moo_files`）为准，不再使用旧的 `moo_tasks_*` 键
+- **多 Tab**：每个文件 Tab 含 `tasks`、`mainDirection`、`timeScale` 等
+- **跨 Tab 同步**：监听 `localStorage` 的 `storage` 事件自动重载
+- **导入导出**：JSON、CSV；内置撤销/重做
 
 ### 扩展性设计
 - **插件化架构**：组件化设计支持功能模块的独立开发和集成
@@ -326,6 +241,10 @@ MooFlow/
 1、安装依赖
 ```bash
 npm install
+npm run dev      # 开发
+npm run build    # 网页构建
+npm test         # Vitest 单元测试
+npm run electron # 桌面开发
 ```
 2、删除 dist 目录：(一般不需要)
 ```bash

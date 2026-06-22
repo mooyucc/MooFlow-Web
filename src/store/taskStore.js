@@ -1,41 +1,30 @@
 import { create } from 'zustand';
 import tinycolor from 'tinycolor2';
+import { inferTaskType, ensureTaskType, isCenterTask } from '../utils/taskType';
+import { useFileStore } from './fileStore';
+import { snapTasksPositionsToGrid } from '../utils/gridSnap';
+import { resolveNewTaskFillColor } from '../utils/taskPalette';
 
-// 优先从 sessionStorage 获取 fileId，没有则从 localStorage 获取，没有则新生成
-let fileId = sessionStorage.getItem('moo_file_id') || localStorage.getItem('moo_file_id');
-if (!fileId) {
-  fileId = `file_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
-  localStorage.setItem('moo_file_id', fileId);
-}
-sessionStorage.setItem('moo_file_id', fileId);
+export { inferTaskType, ensureTaskType };
 
-// 本地存储 key（每个 tab 独立）
-const TASKS_KEY = `moo_tasks_${fileId}`;
-
-// 辅助函数：根据 parentId/level 推断 type
-function inferTaskType(task, tasks) {
-  // 如果任务已经被标记为独立任务，保持该类型
-  if (task.type === 'independent') return 'independent';
-  
-  if (task.parentId === null) return 'center';
-  if (task.level === 1) return 'main';
-  if (task.level === 2) return 'sub';
-  if (task.level >= 3) return 'detail';
-  // 兜底：根据父任务类型
-  const parent = tasks.find(t => t.id === task.parentId);
-  if (!parent) return 'main';
-  if (parent.type === 'center') return 'main';
-  if (parent.type === 'main') return 'sub';
-  return 'detail';
+function getClipboardStorageKey() {
+  const activeFileId = useFileStore.getState().activeFileId;
+  return `moo_clipboard_${activeFileId ?? 'default'}`;
 }
 
-// 辅助函数：保证所有任务都有 type 字段
-function ensureTaskType(tasks) {
-  return tasks.map(t => ({
-    ...t,
-    type: t.type || inferTaskType(t, tasks)
-  }));
+export function hasTasksInClipboard() {
+  const clipboardRaw = localStorage.getItem(getClipboardStorageKey());
+  if (!clipboardRaw) return false;
+  try {
+    const data = JSON.parse(clipboardRaw);
+    return Boolean(data?.tasks?.length);
+  } catch {
+    return false;
+  }
 }
+
+/** 任务持久化由 fileStore + useSyncActiveFileTasks 负责，此处保留空实现兼容旧调用 */
+function saveTasksToStorage() {}
 
 // 辅助函数：保证所有 links 都有完整的属性字段和所有任务有 type 字段
 function ensureLinksLabel(tasks) {
@@ -57,47 +46,9 @@ function ensureLinksLabel(tasks) {
   }));
 }
 
-// 从 localStorage 加载任务数据
-function loadTasksFromStorage() {
-  try {
-    const saved = localStorage.getItem(TASKS_KEY);
-    if (saved) {
-      return ensureLinksLabel(JSON.parse(saved));
-    }
-  } catch (e) {
-    // 解析失败则忽略
-  }
-  // 默认初始任务
-  return ensureLinksLabel([
-    {
-      id: 1,
-      title: "中心任务",
-      position: { x: 100, y: 100 },
-      links: [],
-      lock: true,
-      parentId: null,
-      level: 0,
-      date: new Date().toISOString(), // 默认当天
-      collapsed: false,
-      fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, Microsoft YaHei, Arial, sans-serif',
-      fontSize: 16,
-      fontWeight: '500',
-      fontStyle: 'normal',
-      textDecoration: 'none',
-      color: '#222222',
-      textAlign: 'center',
-      importantLevel: 'normal',
-    }
-  ]);
-}
-
-// 保存任务数据到 localStorage
-function saveTasksToStorage(tasks) {
-  try {
-    localStorage.setItem(TASKS_KEY, JSON.stringify(ensureLinksLabel(tasks)));
-  } catch (e) {
-    // 存储失败忽略
-  }
+// 初始任务由 useInitialFileLoad 从 fileStore 加载
+function getInitialTasks() {
+  return [];
 }
 
 // 默认连线样式
@@ -110,9 +61,10 @@ export const defaultLinkStyle = {
 
 export const useTaskStore = create((set, get) => ({
   // 初始化时从 localStorage 恢复
-  tasks: loadTasksFromStorage(),
+  tasks: getInitialTasks(),
   undoStack: [],
   redoStack: [],
+  layoutVersion: 0,
   // 保存快照
   _saveSnapshot() {
     const { tasks, undoStack } = get();
@@ -129,19 +81,20 @@ export const useTaskStore = create((set, get) => ({
       if (!type) {
         if (task.type === 'independent') type = 'independent';
         else if (task.parentId === null) type = 'center';
-        else if (task.level === 1) type = 'main';
-        else if (task.level === 2) type = 'sub';
-        else if (task.level >= 3) type = 'detail';
         else {
-          // 兜底：根据父任务类型
           const parent = state.tasks.find(t => t.id === task.parentId);
-          if (!parent) type = 'main';
-          else if (parent.type === 'center') type = 'main';
-          else if (parent.type === 'main') type = 'sub';
+          if (parent?.type === 'center' || parent?.parentId == null) type = 'sub';
           else type = 'detail';
         }
       }
       
+      const paletteIdx = useFileStore.getState().getActiveFile()?.paletteIdx ?? null;
+      const resolvedFillColor = resolveNewTaskFillColor(
+        { ...task, type },
+        state.tasks,
+        paletteIdx,
+      );
+
       // 确保任务有完整的位置信息
       const processedTask = {
         ...task,
@@ -151,7 +104,7 @@ export const useTaskStore = create((set, get) => ({
         importantLevel: task.importantLevel || 'normal',
         position: task.position || { x: 100, y: 100 },
         // 确保样式字段存在
-        fillColor: task.fillColor || defaultTaskStyle.fillColor,
+        fillColor: resolvedFillColor,
         borderColor: task.borderColor || defaultTaskStyle.borderColor,
         borderWidth: task.borderWidth || defaultTaskStyle.borderWidth,
         borderStyle: task.borderStyle || defaultTaskStyle.borderStyle,
@@ -241,8 +194,8 @@ export const useTaskStore = create((set, get) => ({
     const tasksBefore = get().tasks;
     const targetPre = tasksBefore.find(t => t.id === toId);
     if (!targetPre) return;
-    const isCenterOrMain = targetPre.type === 'center' || targetPre.type === 'main' || targetPre.id === tasksBefore[0]?.id;
-    if (!isCenterOrMain) {
+    const isCenterTarget = isCenterTask(targetPre, tasksBefore);
+    if (!isCenterTarget) {
       // 如果把 toId 的父设为 fromId，会不会导致 fromId 的祖先链包含 toId
       let cur = fromId;
       const visited = new Set();
@@ -275,9 +228,9 @@ export const useTaskStore = create((set, get) => ({
       }
       
       // 检查是否是中心/主线任务（这些任务不受影响）
-      const isCenterOrMain = targetTask.type === 'center' || targetTask.type === 'main' || targetTask.id === tasks[0]?.id;
-      if (isCenterOrMain) {
-        // 中心任务、主线任务和独立任务不受影响，只添加连线
+      const isCenterTarget = isCenterTask(targetTask, tasks);
+      if (isCenterTarget) {
+        // 中心任务只添加/更新连线，不建立父子关系
         const newTasks = ensureLinksLabel(tasks.map((t) => {
           if (t.id === fromId) {
             const idx = t.links.findIndex(l => l.toId === toId);
@@ -356,9 +309,8 @@ export const useTaskStore = create((set, get) => ({
         if (t.id === toId && fromTask) {
           // 根据父任务类型推断新类型（独立任务作为父时，其子为 detail）
           const newType =
-            fromTask.type === 'center' ? 'main' :
-            (fromTask.type === 'main' ? 'sub' :
-            (fromTask.type === 'independent' ? 'detail' : 'detail'));
+            fromTask.type === 'center' ? 'sub' :
+            (fromTask.type === 'sub' ? 'detail' : 'detail');
           return {
             ...t,
             parentId: fromId,
@@ -403,8 +355,8 @@ export const useTaskStore = create((set, get) => ({
         return { tasks }; // 如果找不到任务，则不执行任何操作
       }
 
-      // 如果是主线任务（parentId为null），只删除自己并返回，彻底阻断后续所有级联删除逻辑
-      if (taskToDelete.parentId === null) {
+      // 中心任务只删除自身，不级联删除子树
+      if (isCenterTask(taskToDelete, tasks) && taskToDelete.parentId === null) {
         const newTasks = tasks
           .filter(t => t.id !== id)
           .map(t => ({
@@ -455,9 +407,8 @@ export const useTaskStore = create((set, get) => ({
         return { tasks };
       }
       
-      // 检查是否是中心任务、主线任务或独立任务（这些任务不受影响）
-      if (targetTask.parentId === null || targetTask.type === 'center' || targetTask.type === 'independent') {
-        // 中心任务、主线任务和独立任务不受影响，只删除连线
+      // 中心任务、独立任务删除连线时不改变父子关系
+      if (isCenterTask(targetTask, tasks) || targetTask.type === 'independent') {
         const newTasks = ensureLinksLabel(tasks.map((t) =>
           t.id === fromId
             ? { ...t, links: t.links.filter((l) => l.toId !== toId) }
@@ -603,6 +554,43 @@ export const useTaskStore = create((set, get) => ({
       return { tasks: newTasks };
     });
   },
+
+  /** 将所有任务卡片对齐到网格（左上角为准），支持撤销 */
+  snapAllTasksToGrid: (gridSize) => {
+    if (!gridSize || gridSize <= 0) return;
+
+    const { tasks } = get();
+    if (!tasks.length) return;
+
+    const snappedTasks = snapTasksPositionsToGrid(tasks, gridSize);
+    const movedIds = new Set(
+      snappedTasks
+        .filter((task, index) => (
+          task.position.x !== tasks[index].position.x
+          || task.position.y !== tasks[index].position.y
+        ))
+        .map(task => task.id),
+    );
+    if (movedIds.size === 0) return;
+
+    get()._saveSnapshot();
+
+    set((state) => {
+      const newTasks = ensureLinksLabel(snappedTasks.map(task => ({
+        ...task,
+        links: (task.links || []).map(link => (
+          movedIds.has(task.id) || movedIds.has(link.toId)
+            ? { ...link, fromAnchor: null, toAnchor: null }
+            : link
+        )),
+      })));
+      saveTasksToStorage(newTasks);
+      return {
+        tasks: newTasks,
+        layoutVersion: state.layoutVersion + 1,
+      };
+    });
+  },
   
   // 新增：批量导入任务（用于文件导入）
   importTasks: (tasks) => {
@@ -614,15 +602,9 @@ export const useTaskStore = create((set, get) => ({
         if (!type) {
           if (task.type === 'independent') type = 'independent';
           else if (task.parentId === null) type = 'center';
-          else if (task.level === 1) type = 'main';
-          else if (task.level === 2) type = 'sub';
-          else if (task.level >= 3) type = 'detail';
           else {
-            // 兜底：根据父任务类型
             const parent = tasks.find(t => t.id === task.parentId);
-            if (!parent) type = 'main';
-            else if (parent.type === 'center') type = 'main';
-            else if (parent.type === 'main') type = 'sub';
+            if (parent?.type === 'center' || parent?.parentId == null) type = 'sub';
             else type = 'detail';
           }
         }
@@ -727,7 +709,7 @@ export const useTaskStore = create((set, get) => ({
     };
 
     try {
-      localStorage.setItem(`moo_clipboard_${fileId}`, JSON.stringify(payload));
+      localStorage.setItem(getClipboardStorageKey(), JSON.stringify(payload));
     } catch (e) {
       // ignore
     }
@@ -738,7 +720,7 @@ export const useTaskStore = create((set, get) => ({
   // - offset: 粘贴偏移
   pasteTasksFromClipboard: (contextTaskId = null, asChild = false, offset = { x: 40, y: 40 }, options = {}) => {
     const { forceIndependentTopLevel = false } = options;
-    const clipboardRaw = localStorage.getItem(`moo_clipboard_${fileId}`);
+    const clipboardRaw = localStorage.getItem(getClipboardStorageKey());
     if (!clipboardRaw) return;
     let data;
     try {
@@ -803,11 +785,10 @@ export const useTaskStore = create((set, get) => ({
         level = contextLevel + (isTopOfSubset(orig) ? 0 : 1);
       }
 
-      let type = 'main';
+      let type = 'sub';
       if (parentId === null) {
-        // 若没有上下文且要求顶层为独立任务
         if (!contextTask && isTopOfSubset(orig) && forceIndependentTopLevel) type = 'independent';
-        else type = 'main';
+        else type = 'sub';
       } else if (level === 2) type = 'sub';
       else if (level >= 3) type = 'detail';
 
@@ -861,13 +842,6 @@ export const useTaskStore = create((set, get) => ({
     saveTasksToStorage(get().tasks);
   },
 }));
-
-// 监听 localStorage 变化，实现多标签页数据同步（仅同步同 fileId 的 tab）
-window.addEventListener('storage', (event) => {
-  if (event.key === TASKS_KEY) {
-    useTaskStore.setState({ tasks: loadTasksFromStorage() });
-  }
-});
 
 // 全局默认卡片样式
 export const defaultTaskStyle = {

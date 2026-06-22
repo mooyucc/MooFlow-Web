@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { ANCHORS } from './TaskNode';
+import { EdgeLabelRenderer } from '@xyflow/react';
+import { ANCHORS } from '../constants/nodeLayout';
+import { getCriticalPathGlowFilter } from '../utils/criticalPath';
 
 const getEdgePoint = (rect, target) => {
   // rect: {x, y, width, height}，target: {x, y}
@@ -33,16 +35,22 @@ const LinkLine = ({
   onUpdateLink,
   tasks,
   svgRef,
+  clientToFlowPoint,
   color = '#86868b',
   label = '',
   onUpdateLabel,
-  isMainChain = false,
   // 新增属性
   lineStyle = 'solid',      // 线形：solid, dashed, dotted
   arrowStyle = 'normal',    // 箭头：normal, triangle, diamond, none
   lineWidth = 2,            // 线宽：默认2
+  dimmed = false,
+  dimOpacity = 0.38,
+  labelBackground,
   selected = false, // 由外部props控制
+  isCritical = false,
   onClick,
+  /** React Flow 画布：用 HTML portal 渲染时长标签，避免 foreignObject 缩放/裁切问题 */
+  labelPortal = false,
 }) => {
   // source/target: {position, ...}
   // 任务卡片尺寸
@@ -85,6 +93,9 @@ const LinkLine = ({
   const SNAP_PADDING = 10;
 
   const getSvgPoint = (e) => {
+    if (clientToFlowPoint) {
+      return clientToFlowPoint(e.clientX, e.clientY);
+    }
     if (!svgRef?.current) return { x: 0, y: 0 };
     const svg = svgRef.current;
     const pt = svg.createSVGPoint();
@@ -93,6 +104,8 @@ const LinkLine = ({
     const svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
     return { x: svgP.x, y: svgP.y };
   };
+
+  const canMapClientPoint = Boolean(clientToFlowPoint || svgRef?.current);
 
   // 高亮吸附边线/角点状态
   const [highlight, setHighlight] = useState(null); // { cardId, type, edge/corner }
@@ -139,7 +152,7 @@ const LinkLine = ({
     setHighlight(null);
     window.removeEventListener('mousemove', handleStartMouseMove);
     window.removeEventListener('mouseup', handleStartMouseUp);
-    if (onUpdateLink && tasks && svgRef?.current) {
+    if (onUpdateLink && tasks && canMapClientPoint) {
       const svgP = getSvgPoint(e);
       const found = tasks.find(t => {
         if (t.id === toId) return false;
@@ -160,7 +173,7 @@ const LinkLine = ({
     setHighlight(null);
     window.removeEventListener('mousemove', handleEndMouseMove);
     window.removeEventListener('mouseup', handleEndMouseUp);
-    if (onUpdateLink && tasks && svgRef?.current) {
+    if (onUpdateLink && tasks && canMapClientPoint) {
       const svgP = getSvgPoint(e);
       const found = tasks.find(t => {
         if (t.id === fromId) return false;
@@ -310,6 +323,52 @@ const LinkLine = ({
     }
   };
 
+  const durationInputStyle = {
+    width: labelPortal ? 48 : 'calc(100% - 4px)',
+    height: labelPortal ? 20 : 'calc(100% - 4px)',
+    fontSize: 12,
+    textAlign: 'center',
+    border: '1px solid #b3b3b3',
+    borderRadius: 10,
+    background: labelBackground || '#9ca3af',
+    boxShadow: '0 1px 2px #0001',
+    outline: 'none',
+    padding: 0,
+    margin: labelPortal ? 0 : 2,
+    color: '#fff',
+  };
+
+  const durationLabelInput = (
+    <input
+      className="nodrag nowheel"
+      type="text"
+      value={inputValue}
+      onChange={e => {
+        const val = e.target.value.trim();
+        if (/^([1-9][0-9]*)$/.test(val) || val === '') {
+          setInputValue(val);
+        }
+      }}
+      onBlur={() => {
+        setInputFocused(false);
+        if (inputValue !== label) {
+          onUpdateLabel && onUpdateLabel(fromId, toId, inputValue);
+        }
+      }}
+      onFocus={() => setInputFocused(true)}
+      onKeyDown={e => {
+        if (e.key === 'Enter') {
+          e.target.blur();
+        }
+      }}
+      style={durationInputStyle}
+      maxLength={8}
+      spellCheck={false}
+      onClick={e => e.stopPropagation()}
+      onMouseDown={e => e.stopPropagation()}
+    />
+  );
+
   // 修改箭头样式
   const getArrowPath = () => {
     switch (arrowStyle) {
@@ -323,8 +382,20 @@ const LinkLine = ({
   // 箭头markerId唯一化（增加lineStyle和arrowStyle）
   const markerId = `arrowhead-${fromId}-${toId}-${color.replace('#','')}-${lineStyle}-${arrowStyle}`;
 
+  const pathFilter = (() => {
+    const parts = [];
+    if (isCritical) parts.push(getCriticalPathGlowFilter(mainColor));
+    if (selected) parts.push('drop-shadow(0 0 6px #316acb88)');
+    return parts.length > 0 ? parts.join(' ') : undefined;
+  })();
+
   return (
     <g
+      style={{
+        pointerEvents: 'auto',
+        opacity: dimmed ? dimOpacity : 1,
+        transition: 'opacity 0.2s ease',
+      }}
       onClick={e => { e.stopPropagation(); onClick && onClick(e); }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -361,60 +432,34 @@ const LinkLine = ({
         strokeDasharray={getStrokeDasharray()}
         fill="none"
         markerEnd={arrowStyle !== 'none' ? `url(#${markerId})` : ''}
-        style={{ cursor: 'pointer', transition: 'stroke 0.2s, stroke-width 0.2s', filter: selected ? 'drop-shadow(0 0 6px #316acb88)' : undefined }}
+        style={{ cursor: 'pointer', transition: 'stroke 0.2s, stroke-width 0.2s', filter: pathFilter }}
       />
-      {/* 连线中点文本输入框 */}
-      {!isMainChain && ((inputValue && inputValue !== '0') || effectiveHovered) && (
-        <foreignObject
-          x={mid.x - 26}
-          y={mid.y - 14}
-          width={52}
-          height={24}
-          style={{ pointerEvents: 'auto' }}
-        >
-          <input
-            type="text"
-            value={inputValue}
-            onChange={e => {
-              const val = e.target.value.trim();
-              // 只允许非零正整数或空
-              if (/^([1-9][0-9]*)$/.test(val) || val === '') {
-                setInputValue(val);
-              }
-            }}
-            onBlur={() => {
-              setInputFocused(false);
-              if (inputValue !== label) {
-                onUpdateLabel && onUpdateLabel(fromId, toId, inputValue);
-              }
-            }}
-            onFocus={() => setInputFocused(true)}
-            onKeyDown={e => {
-              if (e.key === 'Enter') {
-                e.target.blur(); // 触发onBlur
-              }
-            }}
-            style={{
-              // 留出 2px 边距，避免被 foreignObject 边界裁切圆角/阴影
-              width: 'calc(100% - 4px)',
-              height: 'calc(100% - 4px)',
-              fontSize: 12,
-              textAlign: 'center',
-              border: '1px solid #b3b3b3',
-              borderRadius: 10,
-              background: '#9ca3af',
-              boxShadow: '0 1px 2px #0001',
-              outline: 'none',
-              padding: 0,
-              margin: 2,
-              color: '#fff'
-            }}
-            maxLength={8}
-            spellCheck={false}
-            onClick={e => e.stopPropagation()}
-            onMouseDown={e => e.stopPropagation()}
-          />
-        </foreignObject>
+      {/* 连线中点时长标签 */}
+      {((inputValue && inputValue !== '0') || effectiveHovered) && (
+        labelPortal ? (
+          <EdgeLabelRenderer>
+            <div
+              style={{
+                position: 'absolute',
+                transform: `translate(-50%, -50%) translate(${mid.x}px, ${mid.y}px)`,
+                pointerEvents: 'all',
+              }}
+              className="nodrag nopan nowheel"
+            >
+              {durationLabelInput}
+            </div>
+          </EdgeLabelRenderer>
+        ) : (
+          <foreignObject
+            x={mid.x - 26}
+            y={mid.y - 14}
+            width={52}
+            height={24}
+            style={{ pointerEvents: 'auto' }}
+          >
+            {durationLabelInput}
+          </foreignObject>
+        )
       )}
       {/* 起点handle */}
       {selected && (
